@@ -14,3 +14,8 @@ src-tauri/binaries/
 
 # Producción
 dist/
+
+# Backup
+_backup/
+*.rar
+*.zip

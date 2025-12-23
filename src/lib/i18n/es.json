@@ -1,0 +1,16 @@
+{
+    "interface": {
+        "create_instance": "Crear Instancia",
+        "console": "Consola",
+        "configuration": "Configuración"
+    },
+    "states": {
+        "online": "En Línea",
+        "stopped": "Detenido",
+        "starting": "Iniciando..."
+    },
+    "dashboard": {
+        "welcome": "Bienvenido a AnvilCraft",
+        "server_count": "Tienes {count} servidores"
+    }
+}

@@ -1,21 +1,22 @@
 
 export interface Instance {
-    uuid: string;
+    id: string;
     name: string;
-    motor: 'Vanilla' | 'Paper' | 'Fabric' | 'Forge' | 'Spigot';
+    loader: 'Vanilla' | 'Paper' | 'Fabric' | 'Forge' | 'NeoForge' | 'Quilt';
     version: string;
     path: string;
-    icon?: string;
-    ram_min: number;
-    ram_max: number;
-    port: number;
+    icon: string;
+    date_created: string;
+    last_played: string | null;
     state: 'Stopped' | 'Starting' | 'Running' | 'Error';
 }
 
 class AppState {
     instances = $state<Instance[]>([]);
     selectedInstance = $state<Instance | null>(null);
+    view = $state<'home' | 'instances' | 'settings'>('home');
     refreshing = $state<boolean>(false);
+    creatingInstance = $state<boolean>(false);
 }
 
 export const appState = new AppState();

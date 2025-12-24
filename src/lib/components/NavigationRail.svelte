@@ -1,74 +1,8 @@
 <script lang="ts">
     import { appState, type Instance } from "$lib/runes/store.svelte";
 
-    // Mock data for initial visualization if store is empty
-    const mockInstances = [
-        {
-            uuid: "1",
-            name: "Survival",
-            icon: "https://placehold.co/48x48/5865F2/FFF?text=S",
-            state: "Running",
-            motor: "Paper",
-            version: "1.20.1",
-            path: "",
-            ram_min: 2048,
-            ram_max: 4096,
-            port: 25565,
-        },
-        {
-            uuid: "2",
-            name: "Creative",
-            icon: "https://placehold.co/48x48/eb4034/FFF?text=C",
-            state: "Stopped",
-            motor: "Vanilla",
-            version: "1.20.4",
-            path: "",
-            ram_min: 1024,
-            ram_max: 2048,
-            port: 25566,
-        },
-        {
-            uuid: "3",
-            name: "Skyblock",
-            icon: "https://placehold.co/48x48/f9a825/FFF?text=K",
-            state: "Stopped",
-            motor: "Spigot",
-            version: "1.20.1",
-            path: "",
-            ram_min: 1024,
-            ram_max: 2048,
-            port: 25567,
-        },
-        {
-            uuid: "4",
-            name: "BedWars",
-            icon: "https://placehold.co/48x48/c62828/FFF?text=B",
-            state: "Stopped",
-            motor: "Fabric",
-            version: "1.20.1",
-            path: "",
-            ram_min: 2048,
-            ram_max: 4096,
-            port: 25568,
-        },
-        {
-            uuid: "5",
-            name: "Factions",
-            icon: "https://placehold.co/48x48/2e7d32/FFF?text=F",
-            state: "Running",
-            motor: "Forge",
-            version: "1.20.1",
-            path: "",
-            ram_min: 4096,
-            ram_max: 8192,
-            port: 25569,
-        },
-    ] as Instance[];
-
-    let instances = $derived(
-        appState.instances.length > 0 ? appState.instances : mockInstances,
-    );
-    let selectedId = $derived(appState.selectedInstance?.uuid);
+    let instances = $derived(appState.instances);
+    let selectedId = $derived(appState.selectedInstance?.id);
 </script>
 
 <nav class="rail">
@@ -78,11 +12,17 @@
         <!-- 8: Inicio -->
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
             class="icon-wrapper"
             aria-label="Inicio"
-            class:selected={appState.selectedInstance === null}
-            onclick={() => (appState.selectedInstance = null)}
+            class:selected={appState.view === "home" &&
+                appState.selectedInstance === null}
+            onclick={() => {
+                appState.view = "home";
+                appState.selectedInstance = null;
+            }}
         >
             <!-- 5: Barrita indicador (Also for Home) -->
             <div class="pill"></div>
@@ -105,7 +45,18 @@
             <span class="tooltip">Inicio</span>
         </div>
         <!-- 7: Aplicaciones -->
-        <div class="icon-wrapper" aria-label="Aplicaciones">
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+            class="icon-wrapper"
+            aria-label="Aplicaciones"
+            class:selected={appState.view === "instances" &&
+                appState.selectedInstance === null}
+            onclick={() => {
+                appState.view = "instances";
+                appState.selectedInstance = null;
+            }}
+        >
             <div class="icon apps-icon">
                 <svg
                     width="24"
@@ -134,12 +85,12 @@
 
     <!-- 4: Área de Instancias (Flexible y Desplazable) -->
     <div class="scroller instance-area">
-        {#each instances as instance (instance.uuid)}
+        {#each instances as instance (instance.id)}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
                 class="icon-wrapper instance-item"
-                class:selected={selectedId === instance.uuid}
+                class:selected={selectedId === instance.id}
                 onclick={() => (appState.selectedInstance = instance)}
             >
                 <!-- 5: Barrita indicador -->
@@ -162,9 +113,13 @@
     <!-- 2 & 1: Contenedor Inferior (Fijo) -->
     <div class="fixed-container bottom">
         <!-- 2: Botón de Agregar (+) -->
-        <div class="icon-wrapper add-new" aria-label="Agregar">
+        <div
+            class="icon-wrapper add-new"
+            aria-label="Agregar"
+            onclick={() => (appState.creatingInstance = true)}
+        >
             <div class="icon add-icon">+</div>
-            <span class="tooltip">Agregar Servidor</span>
+            <span class="tooltip">Nueva Instancia</span>
         </div>
         <!-- 1: Engrane de Ajustes -->
         <div class="icon-wrapper settings" aria-label="Configuración">
@@ -190,8 +145,10 @@
 
 <style>
     .rail {
-        width: 80px; /* Fixed width (User request: 80px) */
-        background-color: #1e1f22; /* Discord Dark */
+        width: 80px;
+        /* User Darkened Gradient: #192232 to #0f1520 */
+        background: linear-gradient(180deg, #192232 0%, #0f1520 100%);
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -216,23 +173,22 @@
         flex-direction: column;
         align-items: center;
         gap: 8px;
-        flex-grow: 1; /* Occupy available space */
-        overflow-y: auto; /* Scroll if needed */
-        scrollbar-width: none; /* Hide scrollbar Firefox */
+        flex-grow: 1;
+        overflow-y: auto;
+        scrollbar-width: none;
         padding: 8px 0;
     }
 
     .instance-area::-webkit-scrollbar {
-        display: none; /* Hide scrollbar Chrome/Safari */
+        display: none;
     }
 
     .separator {
         width: 32px;
-        height: 2px;
-        background-color: #35363c; /* Pill background color or similar dark grey */
+        height: 1px;
+        background-color: rgba(255, 255, 255, 0.08);
         margin: 8px 0;
         flex-shrink: 0;
-        border-radius: 1px;
     }
 
     /* Icon Styles */
@@ -245,42 +201,48 @@
         align-items: center;
         justify-content: center;
         margin-bottom: 1px;
+        transition: background-color 0.2s;
+    }
+
+    .icon-wrapper:hover {
+        background-color: rgba(59, 130, 246, 0.05); /* Ion Blue Hover Tint */
     }
 
     .icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background-color: #313338;
-        transition:
-            border-radius 0.2s ease,
-            background-color 0.2s ease,
-            color 0.2s ease;
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background-color: transparent;
+        transition: all 0.2s ease;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #dbdee1; /* Text color */
-        overflow: hidden;
+        color: #71717a; /* Zinc-500 (Dimmed) */
     }
 
     /* Hover State */
-    .icon-wrapper:hover .icon,
+    .icon-wrapper:hover .icon {
+        color: #d4d4d8; /* Zinc-300 */
+        transform: scale(1.05);
+        text-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+    }
+
+    /* Active/Selected State - Ion Glow Blue */
     .icon-wrapper.selected .icon {
-        border-radius: 16px;
-        background-color: #5865f2; /* Discord Blurple */
-        color: white;
+        background-color: rgba(59, 130, 246, 0.15);
+        color: #60a5fa; /* Blue-400 */
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+        border: 1px solid rgba(59, 130, 246, 0.1);
     }
 
     .add-new .icon {
-        color: #23a559;
-        font-size: 24px;
-        font-weight: 400;
-        background-color: #313338;
+        color: #71717a;
+        background-color: rgba(255, 255, 255, 0.03);
     }
 
     .add-new:hover .icon {
-        background-color: #23a559;
-        color: white;
+        background-color: rgba(59, 130, 246, 0.1);
+        color: #60a5fa;
     }
 
     /* Pill Indicator (Barrita) */
@@ -289,33 +251,27 @@
         left: 0;
         top: 50%;
         transform: translateY(-50%);
-        width: 4px;
-        height: 8px;
-        background-color: white;
+        width: 3px;
+        height: 0px;
+        background-color: #3b82f6; /* Ion Blue */
         border-top-right-radius: 4px;
         border-bottom-right-radius: 4px;
         opacity: 0;
-        transition:
-            height 0.2s ease,
-            opacity 0.2s ease;
-    }
-
-    .icon-wrapper:hover .pill {
-        height: 20px;
-        opacity: 1;
+        transition: all 0.2s ease;
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
     }
 
     .icon-wrapper.selected .pill {
-        height: 40px;
+        height: 24px;
         opacity: 1;
     }
 
-    /* Simple Tooltip on hover (Optional, simplified) */
+    /* Simple Tooltip on hover */
     .tooltip {
         position: absolute;
         left: 80px;
-        background: #111214;
-        color: white;
+        background: #09090b; /* Zinc-950 */
+        color: #e4e4e7;
         padding: 6px 12px;
         border-radius: 4px;
         font-size: 14px;
@@ -325,7 +281,8 @@
         pointer-events: none;
         transition: opacity 0.1s ease;
         z-index: 100;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     }
 
     .tooltip::before {
@@ -336,7 +293,7 @@
         transform: translateY(-50%);
         border-top: 4px solid transparent;
         border-bottom: 4px solid transparent;
-        border-right: 4px solid #111214;
+        border-right: 4px solid #09090b;
     }
 
     .icon-wrapper:hover .tooltip {

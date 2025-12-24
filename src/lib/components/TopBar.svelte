@@ -4,7 +4,7 @@
 </script>
 
 <div
-    class="flex items-center justify-between w-full h-16 pl-4 pr-8 bg-zinc-900/50 backdrop-blur-md border-b border-white/5"
+    class="flex items-center justify-between w-full h-16 pl-4 pr-8 bg-gradient-to-r from-[#192232] to-[#141b28] shadow-md border-b border-white/5"
 >
     <div class="flex items-center gap-4">
         <h1 class="text-xl font-bold text-white tracking-wide">AnvilCRAFT</h1>
@@ -34,13 +34,13 @@
             </button>
 
             <div
-                class="flex items-center bg-zinc-800 rounded-md p-1 border border-zinc-700"
+                class="flex items-center bg-zinc-900/50 rounded-md p-1 border border-zinc-800"
             >
                 <button
                     class="px-4 py-1.5 rounded text-sm font-semibold transition-all flex items-center gap-2
                     {store.selectedInstance.state === 'Stopped'
-                        ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/20'
-                        : 'text-zinc-500 cursor-not-allowed'}"
+                        ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-500/20'
+                        : 'text-zinc-600 cursor-not-allowed'}"
                 >
                     ▶ Iniciar
                 </button>

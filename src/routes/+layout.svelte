@@ -6,48 +6,18 @@
     let { children } = $props();
 </script>
 
-<div class="app-container">
+<div class="flex h-screen w-screen overflow-hidden bg-zinc-900 text-white">
     <NavigationRail />
 
-    <div class="main-content">
-        <TopBar />
+    <div class="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative">
+        <div class="flex-none h-16 z-20">
+            <TopBar />
+        </div>
 
-        <div class="content-body">
+        <div
+            class="flex-1 relative w-full h-full overflow-y-auto z-10 flex flex-col"
+        >
             {@render children()}
         </div>
     </div>
 </div>
-
-<style>
-    :global(body) {
-        margin: 0;
-        padding: 0;
-        background-color: #313338; /* Discord dark background */
-        color: #dbdee1;
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        overflow: hidden; /* Prevent body scroll, handle internally */
-    }
-
-    .app-container {
-        display: flex;
-        width: 100vw;
-        height: 100vh;
-        overflow: hidden;
-    }
-
-    .main-content {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        min-width: 0; /* Prevent flex overflow */
-    }
-
-    .content-body {
-        flex: 1;
-        overflow-y: auto;
-        overflow-x: hidden;
-        position: relative;
-        padding: 16px;
-    }
-</style>

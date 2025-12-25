@@ -60,6 +60,7 @@
                 <input
                     type="text"
                     bind:value={searchQuery}
+                    autocomplete="off"
                     placeholder="Buscar icono (ej. grass, diamond, sword)..."
                     class="w-full bg-zinc-900 border border-zinc-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-all font-medium"
                     autoFocus

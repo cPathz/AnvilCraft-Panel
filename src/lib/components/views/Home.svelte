@@ -3,7 +3,7 @@
     import { appState } from "$lib/runes/store.svelte";
 </script>
 
-<div class="w-full h-full bg-transparent">
+<div class="w-full h-full bg-transparent" data-tauri-drag-region>
     <style>
         /* Custom fadeInUp implementation */
         @keyframes fadeInUp {

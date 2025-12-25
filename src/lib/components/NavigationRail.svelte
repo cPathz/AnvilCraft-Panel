@@ -3,15 +3,29 @@
 
     let instances = $derived(appState.instances);
     let selectedId = $derived(appState.selectedInstance?.id);
+
+    let hoveredLabel = $state<string | null>(null);
+    let tooltipTop = $state(0);
+
+    function handleMouseEnter(e: MouseEvent, label: string) {
+        const target = e.currentTarget as HTMLElement;
+        const rect = target.getBoundingClientRect();
+        hoveredLabel = label;
+        // Calculate center of the item relative to the viewport,
+        // but since we render tooltip fixed/absolute, let's use clientY or rect.top
+        // We will position the tooltip fixed to avoid any containment issues.
+        tooltipTop = rect.top + rect.height / 2;
+    }
+
+    function handleMouseLeave() {
+        hoveredLabel = null;
+    }
 </script>
 
 <nav class="rail">
     <!-- 8 & 7: Contenedor Superior (Fijo) -->
     <div class="fixed-container top">
         <!-- 8: Inicio -->
-        <!-- 8: Inicio -->
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
@@ -23,6 +37,8 @@
                 appState.view = "home";
                 appState.selectedInstance = null;
             }}
+            onmouseenter={(e) => handleMouseEnter(e, "Inicio")}
+            onmouseleave={handleMouseLeave}
         >
             <!-- 5: Barrita indicador (Also for Home) -->
             <div class="pill"></div>
@@ -42,7 +58,7 @@
                     ></polyline></svg
                 >
             </div>
-            <span class="tooltip">Inicio</span>
+            <!-- REMOVED CSS TOOLTIP -->
         </div>
         <!-- 7: Aplicaciones -->
         <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -56,7 +72,10 @@
                 appState.view = "instances";
                 appState.selectedInstance = null;
             }}
+            onmouseenter={(e) => handleMouseEnter(e, "Aplicaciones")}
+            onmouseleave={handleMouseLeave}
         >
+            <div class="pill"></div>
             <div class="icon apps-icon">
                 <svg
                     width="24"
@@ -76,7 +95,7 @@
                     ></rect><rect x="3" y="14" width="7" height="7"></rect></svg
                 >
             </div>
-            <span class="tooltip">Aplicaciones</span>
+            <!-- REMOVED CSS TOOLTIP -->
         </div>
     </div>
 
@@ -91,7 +110,10 @@
             <div
                 class="icon-wrapper instance-item"
                 class:selected={selectedId === instance.id}
+                class:running={instance.state === "Running"}
                 onclick={() => (appState.selectedInstance = instance)}
+                onmouseenter={(e) => handleMouseEnter(e, instance.name)}
+                onmouseleave={handleMouseLeave}
             >
                 <!-- 5: Barrita indicador -->
                 <div class="pill"></div>
@@ -102,7 +124,6 @@
                     alt={instance.name}
                     class="icon instance-icon"
                 />
-                <span class="tooltip">{instance.name}</span>
             </div>
         {/each}
     </div>
@@ -113,16 +134,31 @@
     <!-- 2 & 1: Contenedor Inferior (Fijo) -->
     <div class="fixed-container bottom">
         <!-- 2: Botón de Agregar (+) -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
             class="icon-wrapper add-new"
             aria-label="Agregar"
             onclick={() => (appState.creatingInstance = true)}
+            onmouseenter={(e) => handleMouseEnter(e, "Nueva Instancia")}
+            onmouseleave={handleMouseLeave}
         >
             <div class="icon add-icon">+</div>
-            <span class="tooltip">Nueva Instancia</span>
         </div>
         <!-- 1: Engrane de Ajustes -->
-        <div class="icon-wrapper settings" aria-label="Configuración">
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+            class="icon-wrapper settings"
+            class:selected={appState.view === "settings"}
+            aria-label="Configuración"
+            onclick={() => {
+                appState.view = "settings";
+                appState.selectedInstance = null;
+            }}
+            onmouseenter={(e) => handleMouseEnter(e, "Configuración")}
+            onmouseleave={handleMouseLeave}
+        >
             <div class="icon settings-icon">
                 <svg
                     width="24"
@@ -138,9 +174,15 @@
                     ></path></svg
                 >
             </div>
-            <span class="tooltip">Configuración</span>
         </div>
     </div>
+
+    <!-- Global Floating Tooltip -->
+    {#if hoveredLabel}
+        <div class="floating-tooltip" style="top: {tooltipTop}px">
+            {hoveredLabel}
+        </div>
+    {/if}
 </nav>
 
 <style>
@@ -235,6 +277,33 @@
         border: 1px solid rgba(59, 130, 246, 0.1);
     }
 
+    /* Running State Glow - Golden/Orange Gradient */
+    .icon-wrapper.running .icon {
+        box-shadow:
+            0 0 15px rgba(245, 158, 11, 0.5),
+            inset 0 0 10px rgba(245, 158, 11, 0.2);
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        animation: pulse-gold 2s infinite;
+    }
+
+    @keyframes pulse-gold {
+        0% {
+            box-shadow:
+                0 0 15px rgba(245, 158, 11, 0.5),
+                inset 0 0 10px rgba(245, 158, 11, 0.2);
+        }
+        50% {
+            box-shadow:
+                0 0 25px rgba(245, 158, 11, 0.7),
+                inset 0 0 15px rgba(245, 158, 11, 0.3);
+        }
+        100% {
+            box-shadow:
+                0 0 15px rgba(245, 158, 11, 0.5),
+                inset 0 0 10px rgba(245, 158, 11, 0.2);
+        }
+    }
+
     .add-new .icon {
         color: #71717a;
         background-color: rgba(255, 255, 255, 0.03);
@@ -266,9 +335,9 @@
         opacity: 1;
     }
 
-    /* Simple Tooltip on hover */
-    .tooltip {
-        position: absolute;
+    /* Floating Tooltip */
+    .floating-tooltip {
+        position: fixed; /* Fixed relative to viewport to avoid scroll clipping */
         left: 80px;
         background: #09090b; /* Zinc-950 */
         color: #e4e4e7;
@@ -277,15 +346,26 @@
         font-size: 14px;
         font-weight: 600;
         white-space: nowrap;
-        opacity: 0;
         pointer-events: none;
-        transition: opacity 0.1s ease;
-        z-index: 100;
+        z-index: 9999;
         border: 1px solid rgba(255, 255, 255, 0.05);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        transform: translateY(-50%); /* Center vertically on the coordinate */
+        animation: tooltip-fade 0.1s ease-out;
     }
 
-    .tooltip::before {
+    @keyframes tooltip-fade {
+        from {
+            opacity: 0;
+            transform: translateY(-50%) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(-50%) scale(1);
+        }
+    }
+
+    .floating-tooltip::before {
         content: "";
         position: absolute;
         left: -4px;
@@ -294,9 +374,5 @@
         border-top: 4px solid transparent;
         border-bottom: 4px solid transparent;
         border-right: 4px solid #09090b;
-    }
-
-    .icon-wrapper:hover .tooltip {
-        opacity: 1;
     }
 </style>

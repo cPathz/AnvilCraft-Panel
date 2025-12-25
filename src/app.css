@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap');
 
 html,
 body {
@@ -8,4 +9,12 @@ body {
   overflow: hidden;
   background-color: #223049;
   color: white;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  /* Ensure default font is nice too */
+}
+
+.font-jetbrains {
+  font-family: 'JetBrains Mono', monospace;
+  font-feature-settings: "rlig" 1, "calt" 1;
+  /* Enable ligatures explicitly */
 }

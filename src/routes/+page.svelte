@@ -2,6 +2,8 @@
   import CreateInstanceModal from "$lib/components/modals/CreateInstanceModal.svelte";
   import Home from "$lib/components/views/Home.svelte";
   import InstanceGallery from "$lib/components/views/InstanceGallery.svelte";
+  import InstanceDetail from "$lib/components/views/InstanceDetail.svelte";
+  import SettingsView from "$lib/components/views/SettingsView.svelte";
   import { appState } from "$lib/runes/store.svelte";
 </script>
 
@@ -12,11 +14,13 @@
   {/if}
 
   {#if appState.selectedInstance}
-    <div class="flex-1 w-full h-full p-4 text-white">
-      <h1>Consola Activa</h1>
-    </div>
+    {#key appState.selectedInstance.id}
+      <InstanceDetail />
+    {/key}
   {:else if appState.view === "instances"}
     <InstanceGallery />
+  {:else if appState.view === "settings"}
+    <SettingsView />
   {:else}
     <Home />
   {/if}

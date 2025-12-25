@@ -1,17 +1,37 @@
 <script lang="ts">
     import { appState, type Instance } from "$lib/runes/store.svelte";
+    import { invoke } from "@tauri-apps/api/core";
 
     let instances = $derived(appState.instances);
 
     function selectInstance(instance: Instance) {
         appState.selectedInstance = instance;
     }
+
+    async function openFolder() {
+        try {
+            await invoke("open_instances_folder");
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function refreshInstances() {
+        try {
+            const instances = await invoke("read_instances");
+            appState.instances = instances as Instance[];
+        } catch (e) {
+            console.error(e);
+        }
+    }
 </script>
+
+<svelte:window onfocus={refreshInstances} />
 
 <div class="w-full h-full px-8 pb-8 pt-5 overflow-y-auto">
     <div class="max-w-6xl mx-auto space-y-6">
         <!-- Header -->
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between" data-tauri-drag-region>
             <div>
                 <h2
                     class="text-2xl font-bold text-white tracking-tight drop-shadow-sm"
@@ -22,12 +42,45 @@
                     Gestiona tus servidores de Minecraft
                 </p>
             </div>
-            <button
-                class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-lg shadow-black/20"
-                onclick={() => (appState.creatingInstance = true)}
-            >
-                <span>+</span> Nueva
-            </button>
+            <div class="flex items-center gap-2">
+                <button
+                    class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-lg shadow-black/20 border border-zinc-700"
+                    onclick={refreshInstances}
+                    title="Actualizar lista"
+                >
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path
+                            d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+                        /><path d="M3 3v5h5" /><path
+                            d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"
+                        /><path d="M16 16h5v5" /></svg
+                    >
+                </button>
+                <button
+                    class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-lg shadow-black/20 border border-zinc-700"
+                    onclick={openFolder}
+                >
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        ><path
+                            d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2z"
+                        ></path></svg
+                    > Ver Carpeta
+                </button>
+            </div>
         </div>
 
         <!-- Widget Grid View -->
@@ -121,7 +174,7 @@
                 class="border-2 border-dashed border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/30 rounded-xl flex flex-col items-center justify-center gap-2 text-zinc-600 hover:text-zinc-400 transition-all min-h-[90px]"
                 onclick={() => (appState.creatingInstance = true)}
             >
-                <div class="text-2xl font-light">+</div>
+                <div class="text-4xl text-white font-medium">+</div>
                 <span class="text-xs font-medium">Crear Instancia</span>
             </button>
         </div>

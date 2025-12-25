@@ -8,18 +8,70 @@
     import { invoke } from "@tauri-apps/api/core";
     import type { Instance } from "$lib/runes/store.svelte";
 
+    import { listen } from "@tauri-apps/api/event";
+
     let { children } = $props();
 
-    onMount(async () => {
-        try {
-            appState.refreshing = true;
-            const instances = await invoke<Instance[]>("read_instances");
-            appState.instances = instances;
-        } catch (error) {
-            console.error("Failed to load instances:", error);
-        } finally {
-            appState.refreshing = false;
+    onMount(() => {
+        let unlisten: () => void;
+
+        const init = async () => {
+            // Global Log Listener
+            try {
+                unlisten = await listen<[string, string]>(
+                    "server-log",
+                    (event) => {
+                        const [id, line] = event.payload;
+                        appState.ensureRuntime(id);
+                        const runtime = appState.getRuntime(id);
+                        if (runtime) runtime.logs.push(line);
+                    },
+                );
+
+                const unlistenUpdate = await listen(
+                    "instance-update",
+                    async () => {
+                        await refreshInstances();
+                    },
+                );
+                // Combine cleanup
+                const oldUnlisten = unlisten;
+                unlisten = () => {
+                    oldUnlisten();
+                    unlistenUpdate();
+                };
+            } catch (e) {
+                console.error("Failed to setup listeners:", e);
+            }
+
+            await refreshInstances();
+        };
+
+        async function refreshInstances() {
+            try {
+                appState.refreshing = true;
+                const instances = await invoke<Instance[]>("read_instances");
+                appState.instances = instances;
+
+                // Sync selectedInstance if active
+                if (appState.selectedInstance) {
+                    const updated = instances.find(
+                        (i) => i.id === appState.selectedInstance!.id,
+                    );
+                    if (updated) appState.selectedInstance = updated;
+                }
+            } catch (error) {
+                console.error("Failed to load instances:", error);
+            } finally {
+                appState.refreshing = false;
+            }
         }
+
+        init();
+
+        return () => {
+            if (unlisten) unlisten();
+        };
     });
 </script>
 
@@ -42,12 +94,6 @@
         <NavigationRail />
 
         <div class="flex-1 flex flex-col min-w-0 relative">
-            {#if appState.selectedInstance}
-                <div class="flex-none h-16 z-20">
-                    <TopBar />
-                </div>
-            {/if}
-
             <div
                 class="flex-1 w-full relative overflow-y-auto z-10 flex flex-col"
             >

@@ -1,6 +1,7 @@
 <script lang="ts">
     import NavigationRail from "$lib/components/NavigationRail.svelte";
     import TopBar from "$lib/components/TopBar.svelte";
+    import ToastContainer from "$lib/components/ToastContainer.svelte";
     import "../app.css";
 
     import { appState } from "$lib/runes/store.svelte";
@@ -101,4 +102,6 @@
             </div>
         </div>
     </div>
+
+    <ToastContainer />
 </div>

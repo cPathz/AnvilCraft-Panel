@@ -3,6 +3,7 @@
     import { invoke } from "@tauri-apps/api/core";
     import { onDestroy, onMount, tick } from "svelte";
     import { fade, fly } from "svelte/transition";
+    import { toast } from "$lib/runes/toast.svelte";
 
     let instance = $derived(appState.selectedInstance!);
     let settings = $derived(appState.settings.console);
@@ -28,6 +29,10 @@
 
     let commandInput = $state("");
     let consoleContainer = $state<HTMLDivElement>();
+
+    let consoleProfile = $state<"Vanilla" | "Plugins" | "Mods">("Vanilla");
+    let hideNoise = $state(true);
+    let showConsoleToolbar = $state(false);
 
     // Auto-scroll when logs change
     $effect(() => {
@@ -77,6 +82,34 @@
         }
     }
 
+    function clearLogs() {
+        const r = appState.getRuntime(instance.id);
+        if (r) r.logs = [];
+    }
+
+    function formatLog(log: string): { text: string; level: string } {
+        if (!hideNoise) return { text: log, level: "RAW" };
+
+        // Simple parsing for Vanilla (Strip timestamp and thread info)
+        // Expected format: [HH:MM:SS] [Thread/LEVEL]: Message
+        // Regex to capture: ^\[\d{2}:\d{2}:\d{2}\] \[.*?/(\w+)\]: (.*)
+        const vanillaRegex = /^\[\d{2}:\d{2}:\d{2}\] \[.*?\/(\w+)\]: (.*)/;
+        const match = log.match(vanillaRegex);
+
+        if (match) {
+            return { text: match[2], level: match[1] };
+        }
+
+        // Fallback for lines that don't match (maybe startup banner or simple text)
+        return { text: log, level: getLogLevel(log) };
+    }
+
+    function getLogLevel(log: string): string {
+        if (log.includes("ERROR") || log.includes("stderr")) return "ERROR";
+        if (log.includes("WARN")) return "WARN";
+        return "INFO";
+    }
+
     function openFolder() {
         invoke("open_instances_folder", { slug: instance.path });
     }
@@ -85,6 +118,9 @@
     // --- Settings Logic ---
     let systemRam = $state(0); // Total System RAM in Bytes
     let originalSettings = $state<any>(null); // To track changes
+    let lastSyncedId = $state<string | null>(null); // Track which instance is loaded
+
+    let linkMemory = $state(true);
     let formSettings = $state({
         min_ram: 1024,
         max_ram: 2048,
@@ -116,17 +152,10 @@
     // Sync form with instance when selected instance changes
     $effect(() => {
         if (instance && instance.settings) {
-            // Only update if we switched instances or first load (not while editing)
-            if (
-                !originalSettings ||
-                instance.id !== appState.selectedInstance?.id
-            ) {
-                /* simple check */
-            }
-
-            if (!originalSettings || originalSettings.id !== instance.id) {
+            if (lastSyncedId !== instance.id) {
                 formSettings = { ...instance.settings };
-                originalSettings = { ...instance.settings, id: instance.id }; // track ID to avoid loop
+                originalSettings = { ...instance.settings };
+                lastSyncedId = instance.id;
             }
         }
     });
@@ -165,18 +194,17 @@
             if (appState.selectedInstance) {
                 appState.selectedInstance.settings = { ...formSettings };
             }
-            originalSettings = { ...formSettings, id: instance.id };
-            alert("¡Configuración guardada correctamente!");
+            originalSettings = { ...formSettings };
+            toast.success("¡Configuración guardada correctamente!");
         } catch (e) {
             console.error(e);
-            alert("Error al guardar: " + e);
+            toast.error("Error al guardar: " + e);
         }
     }
 
     function discardChanges() {
         if (originalSettings) {
-            const { id, ...settings } = originalSettings;
-            formSettings = { ...settings };
+            formSettings = { ...originalSettings };
         }
     }
 
@@ -295,11 +323,11 @@
 
     <!-- Stats & Tabs Bar -->
     <div
-        class="flex items-center justify-between border-b border-white/5 bg-[#192232] px-6"
+        class="flex items-center justify-between border-b border-white/5 bg-[#192232] px-6 h-14"
     >
-        <div class="flex">
+        <div class="flex h-full">
             <button
-                class="px-4 py-3 text-sm font-medium border-b-2 transition-colors {activeTab ===
+                class="px-4 text-sm font-medium border-b-2 transition-colors flex items-center {activeTab ===
                 'console'
                     ? 'border-blue-500 text-blue-400'
                     : 'border-transparent text-zinc-400 hover:text-zinc-200'}"
@@ -308,7 +336,7 @@
                 Consola
             </button>
             <button
-                class="px-4 py-3 text-sm font-medium border-b-2 transition-colors {activeTab ===
+                class="px-4 text-sm font-medium border-b-2 transition-colors flex items-center {activeTab ===
                 'settings'
                     ? 'border-blue-500 text-blue-400'
                     : 'border-transparent text-zinc-400 hover:text-zinc-200'}"
@@ -318,9 +346,94 @@
             </button>
         </div>
 
-        <!-- Status Indicator -->
-        <div class="flex items-center">
-            <div class="flex items-center gap-2">
+        <!-- Right Actions -->
+        <div class="flex items-center gap-4">
+            {#if activeTab === "console"}
+                <button
+                    onclick={() => (showConsoleToolbar = !showConsoleToolbar)}
+                    title={showConsoleToolbar
+                        ? "Ocultar ajustes"
+                        : "Mostrar ajustes"}
+                    class="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center transition-colors border border-white/5"
+                >
+                    {#if showConsoleToolbar}
+                        <!-- Minus Icon -->
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"><path d="M5 12h14" /></svg
+                        >
+                    {:else}
+                        <!-- Plus Icon -->
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            ><path d="M5 12h14" /><path d="M12 5v14" /></svg
+                        >
+                    {/if}
+                </button>
+
+                <button
+                    onclick={clearLogs}
+                    title="Limpiar consola"
+                    class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white font-bold text-xs transition-colors border border-white/5 flex items-center gap-2"
+                >
+                    <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path
+                            d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"
+                        ></path>
+                        <path d="M22 21H7"></path>
+                        <path d="m5 11 9 9"></path>
+                    </svg>
+                    Clear
+                </button>
+            {/if}
+
+            {#if activeTab === "settings"}
+                {#if isDirty}
+                    <button
+                        onclick={discardChanges}
+                        disabled={isServerRunning}
+                        class="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold text-xs transition-colors border border-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Descartar
+                    </button>
+                {/if}
+                <button
+                    onclick={saveSettings}
+                    disabled={!isDirty || isServerRunning}
+                    class={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors shadow-lg ${
+                        !isDirty || isServerRunning
+                            ? "bg-zinc-700 text-zinc-400 cursor-not-allowed opacity-50"
+                            : "bg-blue-600 hover:bg-blue-500 text-white"
+                    }`}
+                >
+                    Guardar Cambios
+                </button>
+            {/if}
+
+            <!-- Status Indicator -->
+            <div class="flex items-center gap-2 pl-4 border-l border-white/5">
                 <div
                     class={`w-2 h-2 rounded-full ${
                         instance.state === "Running"
@@ -353,26 +466,62 @@
             style:letter-spacing="{settings.letterSpacing}px"
             style:font-weight={settings.fontWeight}
         >
+            <!-- Console Toolbar -->
+            {#if showConsoleToolbar}
+                <div
+                    transition:fade={{ duration: 150 }}
+                    class="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-[#141b26] text-xs"
+                >
+                    <div class="flex items-center gap-4">
+                        <label
+                            class="flex items-center gap-2 cursor-pointer hover:text-white text-zinc-400 transition-colors"
+                        >
+                            <input
+                                type="checkbox"
+                                bind:checked={hideNoise}
+                                class="rounded bg-white/10 border-white/10 text-blue-500 focus:ring-0 w-3.5 h-3.5"
+                            />
+                            Ocultar ruido (Raw)
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <span class="text-zinc-500">Perfil:</span>
+                            <select
+                                bind:value={consoleProfile}
+                                class="bg-transparent border border-white/10 rounded px-2 py-0.5 text-zinc-300 focus:border-blue-500 focus:outline-none focus:text-white"
+                            >
+                                <option value="Vanilla">Vanilla</option>
+                                <option value="Plugins" disabled
+                                    >Plugins (Pronto)</option
+                                >
+                                <option value="Mods" disabled
+                                    >Mods (Pronto)</option
+                                >
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            {/if}
+
             <div
                 bind:this={consoleContainer}
                 class="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent"
             >
                 {#each logs as log}
+                    {@const formatted = formatLog(log)}
                     <div
                         class="text-zinc-300 break-words hover:bg-white/5 px-1 rounded -mx-1"
                     >
-                        <!-- Simple highlighting -->
-                        {#if log.includes("INFO")}
+                        {#if formatted.level === "INFO"}
                             <span class="text-blue-400">[INFO]</span>
-                            {log.split("INFO]:")[1] || log.split("INFO]")[1]}
-                        {:else if log.includes("WARN")}
+                            {formatted.text}
+                        {:else if formatted.level === "WARN"}
                             <span class="text-yellow-400">[WARN]</span>
-                            {log.split("WARN]:")[1] || log.split("WARN]")[1]}
-                        {:else if log.includes("ERROR")}
+                            {formatted.text}
+                        {:else if formatted.level === "ERROR"}
                             <span class="text-red-400">[ERROR]</span>
-                            {log.split("ERROR]:")[1] || log.split("ERROR]")[1]}
+                            {formatted.text}
                         {:else}
-                            {log}
+                            {formatted.text}
                         {/if}
                     </div>
                 {/each}
@@ -393,39 +542,6 @@
     {:else}
         <!-- Instance Settings -->
         <div class="flex-1 flex flex-col min-h-0">
-            <!-- Fixed Header -->
-            <div class="px-8 py-6 border-b border-white/5 bg-[#192232] z-10">
-                <div class="max-w-3xl">
-                    <h2
-                        class="text-xl font-bold text-white flex justify-between items-center"
-                    >
-                        <span>Configuración de Instancia</span>
-                        <div class="flex items-center gap-3">
-                            {#if isDirty}
-                                <button
-                                    onclick={discardChanges}
-                                    disabled={isServerRunning}
-                                    class="px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-sm transition-colors border border-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Descartar
-                                </button>
-                            {/if}
-                            <button
-                                onclick={saveSettings}
-                                disabled={!isDirty || isServerRunning}
-                                class={`px-4 py-2 rounded-lg font-bold text-sm transition-colors shadow-lg ${
-                                    !isDirty || isServerRunning
-                                        ? "bg-zinc-700 text-zinc-400 cursor-not-allowed opacity-50"
-                                        : "bg-blue-600 hover:bg-blue-500 text-white"
-                                }`}
-                            >
-                                Guardar Cambios
-                            </button>
-                        </div>
-                    </h2>
-                </div>
-            </div>
-
             <!-- Scrollable Content -->
             <div class="flex-1 p-8 overflow-y-auto">
                 <div class="max-w-3xl space-y-8">
@@ -472,125 +588,229 @@
                         </div>
                     {/if}
 
-                    <!-- RAM Section -->
                     <section
                         class="bg-[#1e293b]/50 border border-white/5 rounded-xl p-6 relative transition-opacity {isServerRunning
                             ? 'opacity-50 pointer-events-none'
                             : ''}"
                     >
-                        <!-- ... content ... -->
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center gap-3">
-                                <div
-                                    class="p-2 rounded-lg bg-blue-500/10 text-blue-400"
-                                >
-                                    <svg
-                                        width="20"
-                                        height="20"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="2"
-                                        ><path
-                                            d="M22 12h-4l-3 9L9 3l-3 9H2"
-                                        /></svg
-                                    >
-                                </div>
-                                <div>
-                                    <h3 class="font-medium text-white">
-                                        Asignación de Memoria (RAM)
-                                    </h3>
-                                    <p class="text-xs text-zinc-400">
-                                        Memoria del Sistema detectada: <span
-                                            class="text-blue-400 font-bold"
-                                            >{(systemRam / 1073741824).toFixed(
-                                                1,
-                                            )} GB</span
-                                        >
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onclick={resetRamSettings}
-                                disabled={isServerRunning}
-                                title="Restablecer valores por defecto"
-                                class="p-2 rounded-lg hover:bg-white/5 text-zinc-500 hover:text-white transition-colors"
+                        <!-- Reset Button - Absolute Position -->
+                        <button
+                            onclick={resetRamSettings}
+                            disabled={isServerRunning}
+                            title="Restablecer valores por defecto"
+                            class="absolute top-6 right-6 p-2 rounded-lg hover:bg-white/5 text-zinc-500 hover:text-white transition-colors"
+                        >
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                ><path
+                                    d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+                                ></path><path d="M3 3v5h5"></path></svg
+                            >
+                        </button>
+
+                        <div class="flex items-center gap-3 mb-4">
+                            <div
+                                class="p-2 rounded-lg bg-blue-500/10 text-blue-400"
                             >
                                 <svg
-                                    width="18"
-                                    height="18"
+                                    width="20"
+                                    height="20"
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
                                     stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    ><path
-                                        d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
-                                    ></path><path d="M3 3v5h5"></path></svg
+                                    ><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg
                                 >
-                            </button>
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-white">
+                                    Asignación de Memoria (RAM)
+                                </h3>
+                                <p class="text-xs text-zinc-400">
+                                    Memoria del Sistema detectada: <span
+                                        class="text-blue-400 font-bold"
+                                        >{(systemRam / 1073741824).toFixed(1)} GB</span
+                                    >
+                                </p>
+                            </div>
                         </div>
 
-                        <div class="space-y-6">
-                            <div class="grid grid-cols-2 gap-6">
-                                <!-- Min RAM -->
-                                <div class="space-y-2">
-                                    <label
-                                        for="min-ram"
-                                        class="text-xs font-bold text-zinc-400 uppercase"
-                                        >Mínima (MB) (-Xms)</label
+                        <div
+                            class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center"
+                        >
+                            <!-- Left: Slider -->
+                            <div class="space-y-2">
+                                <div class="text-center pb-1 translate-y-2">
+                                    <p
+                                        class="text-base text-blue-400 font-bold"
                                     >
-                                    <input
-                                        id="min-ram"
-                                        type="number"
-                                        bind:value={formSettings.min_ram}
-                                        disabled={isServerRunning}
-                                        class="w-full bg-[#0f1520] border border-white/10 rounded-lg px-4 py-2.5 text-white focus:border-blue-500 focus:outline-none transition-colors font-mono disabled:cursor-not-allowed"
-                                    />
+                                        {(formSettings.max_ram / 1024).toFixed(
+                                            1,
+                                        )} GB
+                                        <span
+                                            class="text-zinc-500 font-normal ml-1"
+                                            >Seleccionado</span
+                                        >
+                                    </p>
                                 </div>
-                                <!-- Max RAM -->
-                                <div class="space-y-2">
-                                    <label
-                                        for="max-ram"
-                                        class="text-xs font-bold text-zinc-400 uppercase"
-                                        >Máxima (MB) (-Xmx)</label
-                                    >
+
+                                <div class="relative pt-2 pb-2">
                                     <input
-                                        id="max-ram"
-                                        type="number"
-                                        bind:value={formSettings.max_ram}
+                                        type="range"
+                                        min="1024"
+                                        max={systemRam / 1048576}
+                                        step="512"
+                                        value={formSettings.max_ram}
+                                        oninput={(e) => {
+                                            const val = parseInt(
+                                                e.currentTarget.value,
+                                            );
+                                            formSettings.max_ram = val;
+                                            if (linkMemory)
+                                                formSettings.min_ram = val;
+                                        }}
                                         disabled={isServerRunning}
-                                        class="w-full bg-[#0f1520] border border-white/10 rounded-lg px-4 py-2.5 text-white focus:border-blue-500 focus:outline-none transition-colors font-mono disabled:cursor-not-allowed"
+                                        class="w-full h-2 bg-[#0f1520] border border-white/5 rounded-lg appearance-none cursor-pointer accent-blue-500 disabled:opacity-50"
                                     />
+                                    <!-- Marks -->
+                                    <div
+                                        class="flex justify-between text-[10px] text-zinc-500 font-bold mt-2 font-mono uppercase tracking-wider"
+                                    >
+                                        <span>1 GB</span>
+                                        <span>2 GB</span>
+                                        <span>4 GB</span>
+                                        <span>8 GB</span>
+                                        <span
+                                            >{(systemRam / 1073741824).toFixed(
+                                                0,
+                                            )} GB</span
+                                        >
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Slider for Max RAM -->
-                            <div class="space-y-2">
-                                <div
-                                    class="flex justify-between text-xs text-zinc-500"
-                                >
-                                    <span>1 GB</span>
-                                    <span
-                                        >{(
-                                            (systemRam / 1073741824) *
-                                            0.75
-                                        ).toFixed(1)} GB (Recomendado)</span
-                                    >
-                                    <span
-                                        >{(systemRam / 1073741824).toFixed(1)} GB</span
-                                    >
+                            <!-- Right: Inputs -->
+                            <div class="flex items-end gap-3 -translate-y-2">
+                                <div class="flex gap-4">
+                                    <!-- Min RAM -->
+                                    <div class="space-y-2">
+                                        <label
+                                            for="min-ram"
+                                            class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider"
+                                            >Mínima (MB) (-Xms)</label
+                                        >
+                                        <div class="relative group">
+                                            <input
+                                                id="min-ram"
+                                                type="number"
+                                                value={formSettings.min_ram}
+                                                oninput={(e) => {
+                                                    const val = parseInt(
+                                                        e.currentTarget.value,
+                                                    );
+                                                    formSettings.min_ram = val;
+                                                    if (linkMemory)
+                                                        formSettings.max_ram =
+                                                            val;
+                                                }}
+                                                disabled={isServerRunning}
+                                                class="w-28 h-10 bg-[#0f1520] border border-white/10 rounded-lg px-3 text-white focus:border-blue-500 focus:outline-none transition-colors font-mono text-sm disabled:cursor-not-allowed group-hover:border-white/20"
+                                            />
+                                        </div>
+                                    </div>
+                                    <!-- Max RAM -->
+                                    <div class="space-y-3">
+                                        <label
+                                            for="max-ram"
+                                            class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider"
+                                            >Máxima (MB) (-Xmx)</label
+                                        >
+                                        <div class="relative group">
+                                            <input
+                                                id="max-ram"
+                                                type="number"
+                                                value={formSettings.max_ram}
+                                                oninput={(e) => {
+                                                    const val = parseInt(
+                                                        e.currentTarget.value,
+                                                    );
+                                                    formSettings.max_ram = val;
+                                                    if (linkMemory)
+                                                        formSettings.min_ram =
+                                                            val;
+                                                }}
+                                                disabled={isServerRunning}
+                                                class="w-28 h-10 bg-[#0f1520] border border-white/10 rounded-lg px-3 text-white focus:border-blue-500 focus:outline-none transition-colors font-mono text-sm disabled:cursor-not-allowed group-hover:border-white/20"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                                <input
-                                    type="range"
-                                    min="1024"
-                                    max={systemRam / 1048576}
-                                    step="512"
-                                    bind:value={formSettings.max_ram}
+
+                                <!-- Link Button -->
+                                <button
+                                    class="h-8 w-8 mb-1 flex items-center justify-center rounded-lg border transition-all {linkMemory
+                                        ? 'bg-blue-500/10 border-blue-500/50 text-blue-400'
+                                        : 'bg-[#0f1520] border-white/10 text-zinc-500 hover:text-zinc-300'}"
+                                    onclick={() => {
+                                        linkMemory = !linkMemory;
+                                        if (linkMemory) {
+                                            // Sync when enabling
+                                            formSettings.min_ram =
+                                                formSettings.max_ram;
+                                        }
+                                    }}
+                                    title={linkMemory
+                                        ? "Desvincular memoria"
+                                        : "Vincular memoria (Igualar Min y Max)"}
                                     disabled={isServerRunning}
-                                    class="w-full accent-blue-500 h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                                />
+                                >
+                                    {#if linkMemory}
+                                        <svg
+                                            width="20"
+                                            height="20"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            ><path
+                                                d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                                            ></path><path
+                                                d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                                            ></path></svg
+                                        >
+                                    {:else}
+                                        <svg
+                                            width="20"
+                                            height="20"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            class="opacity-50"
+                                            ><path
+                                                d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                                            ></path><path
+                                                d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                                            ></path><line
+                                                x1="4"
+                                                y1="4"
+                                                x2="20"
+                                                y2="20"
+                                            /></svg
+                                        >
+                                    {/if}
+                                </button>
                             </div>
                         </div>
                     </section>

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { appState } from "$lib/runes/store.svelte";
+    import { appState, type Instance } from "$lib/runes/store.svelte";
     import { invoke } from "@tauri-apps/api/core";
     import { onDestroy, onMount, tick } from "svelte";
     import { fade, fly } from "svelte/transition";
@@ -33,6 +33,25 @@
     let consoleProfile = $state<"Vanilla" | "Plugins" | "Mods">("Vanilla");
     let hideNoise = $state(true);
     let showConsoleToolbar = $state(false);
+    let showDeleteModal = $state(false);
+
+    async function deleteInstance() {
+        if (!instance) return;
+        try {
+            await invoke("delete_instance", { id: instance.id });
+            // Refresh logic similar to refreshInstances in Gallery
+            const instances = await invoke("read_instances");
+            appState.instances = instances as Instance[];
+
+            appState.selectedInstance = null;
+            appState.view = "instances";
+        } catch (e) {
+            console.error("Failed to delete instance:", e);
+            alert("Error al eliminar la instancia: " + e);
+        } finally {
+            showDeleteModal = false;
+        }
+    }
 
     // Auto-scroll when logs change
     $effect(() => {
@@ -260,6 +279,39 @@
 
         <!-- Actions -->
         <div class="flex items-center gap-3">
+            <!-- Delete Button -->
+            <button
+                class="p-2.5 rounded-xl bg-white/5 hover:bg-red-500/10 text-zinc-400 hover:text-red-400 border border-white/5 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/5 disabled:hover:text-zinc-400"
+                title={instance.state === "Running" ||
+                instance.state === "Starting"
+                    ? "Detén la instancia para eliminarla"
+                    : "Eliminar Instancia"}
+                onclick={() => (showDeleteModal = true)}
+                disabled={instance.state === "Running" ||
+                    instance.state === "Starting"}
+            >
+                <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="group-hover:scale-110 transition-transform"
+                    ><polyline points="3 6 5 6 21 6"></polyline><path
+                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                    ></path><line x1="10" y1="11" x2="10" y2="17"></line><line
+                        x1="14"
+                        y1="11"
+                        x2="14"
+                        y2="17"
+                    ></line></svg
+                >
+            </button>
+
+            <!-- Open Folder Button -->
             <button
                 class="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/5 transition-colors"
                 title="Abrir Carpeta"
@@ -1038,6 +1090,69 @@
                     >
                         Descartar y Salir
                     </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Delete Confirmation Modal -->
+    {#if showDeleteModal}
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            transition:fade={{ duration: 200 }}
+        >
+            <div
+                class="bg-[#192232] border border-white/10 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+                in:fly={{ y: 20, duration: 300 }}
+            >
+                <div class="p-6">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div
+                            class="p-3 rounded-xl bg-orange-500/10 text-orange-500"
+                        >
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                ><path
+                                    d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+                                ></path><line x1="12" y1="9" x2="12" y2="13"
+                                ></line><line x1="12" y1="17" x2="12.01" y2="17"
+                                ></line></svg
+                            >
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">
+                                ¿Eliminar Instancia?
+                            </h3>
+                            <p class="text-zinc-400 text-sm">
+                                Esta acción eliminará permanentemente la carpeta
+                                y los datos de la instancia "<b
+                                    >{instance?.name}</b
+                                >".
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button
+                            class="px-4 py-2 rounded-lg text-sm font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                            onclick={() => (showDeleteModal = false)}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            class="px-4 py-2 rounded-lg text-sm font-bold bg-red-500 hover:bg-red-400 text-white shadow-lg shadow-red-900/20 transition-all"
+                            onclick={deleteInstance}
+                        >
+                            Eliminar Permanentemente
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -83,6 +83,8 @@
             </div>
         </div>
 
+        <hr class="border-white/5" />
+
         <!-- Widget Grid View -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {#each instances as instance}
@@ -170,13 +172,6 @@
             {/each}
 
             <!-- Add New Widget -->
-            <button
-                class="border-2 border-dashed border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/30 rounded-xl flex flex-col items-center justify-center gap-2 text-zinc-600 hover:text-zinc-400 transition-all min-h-[90px]"
-                onclick={() => (appState.creatingInstance = true)}
-            >
-                <div class="text-4xl text-white font-medium">+</div>
-                <span class="text-xs font-medium">Crear Instancia</span>
-            </button>
         </div>
     </div>
 </div>

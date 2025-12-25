@@ -671,6 +671,53 @@ async fn save_instance_settings(
 }
 
 #[tauri::command]
+async fn delete_instance(
+    app: tauri::AppHandle,
+    state: State<'_, ChildProcessMap>,
+    id: String,
+) -> Result<(), String> {
+    // 1. Check if running
+    let is_running = {
+        let map = state.0.lock().map_err(|_| "Failed to lock state")?;
+        map.contains_key(&id)
+    };
+
+    if is_running {
+        return Err("Cannot delete a running instance. Stop it first.".to_string());
+    }
+
+    // 2. Resolve Path
+    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let instances_dir = app_data_dir.join("instances");
+    let mut instance_path = PathBuf::new();
+
+    if instances_dir.exists() {
+        for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let json_path = entry.path().join("instance.json");
+            if json_path.exists() {
+                let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
+                if let Ok(instance) = serde_json::from_str::<Instance>(&content) {
+                    if instance.id == id {
+                        instance_path = entry.path();
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if !instance_path.exists() {
+        return Err("Instance not found".to_string());
+    }
+
+    // 3. Delete Directory
+    fs::remove_dir_all(instance_path).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
@@ -689,7 +736,8 @@ pub fn run() {
             stop_instance,
             send_command,
             get_system_memory,
-            save_instance_settings
+            save_instance_settings,
+            delete_instance
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

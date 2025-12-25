@@ -143,7 +143,24 @@
             onmouseenter={(e) => handleMouseEnter(e, "Nueva Instancia")}
             onmouseleave={handleMouseLeave}
         >
-            <div class="icon add-icon">+</div>
+            <div class="icon add-icon">
+                <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><line x1="12" y1="5" x2="12" y2="19"></line><line
+                        x1="5"
+                        y1="12"
+                        x2="19"
+                        y2="12"
+                    ></line></svg
+                >
+            </div>
         </div>
         <!-- 1: Engrane de Ajustes -->
         <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -305,13 +322,16 @@
     }
 
     .add-new .icon {
-        color: #71717a;
-        background-color: rgba(255, 255, 255, 0.03);
+        color: #4ade80; /* Green-400 */
+        background-color: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.2);
     }
 
     .add-new:hover .icon {
-        background-color: rgba(59, 130, 246, 0.1);
-        color: #60a5fa;
+        background-color: rgba(34, 197, 94, 0.2);
+        color: #86efac; /* Green-300 */
+        box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+        transform: scale(1.05);
     }
 
     /* Pill Indicator (Barrita) */

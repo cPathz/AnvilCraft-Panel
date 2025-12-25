@@ -6,7 +6,7 @@
     import IconPicker from "./IconPicker.svelte";
 
     let instanceName = $state("");
-    let gameVersion = $state("1.20.4");
+    let gameVersion = $state("");
     let activeTab = $state<"custom" | "file" | "import">("custom");
 
     let selectedLoader = $state<
@@ -48,6 +48,7 @@
         installStep = "Preparando...";
 
         let unlisten: () => void;
+        let createdId: string | null = null;
 
         try {
             unlisten = await listen<any>("install-progress", (event) => {
@@ -56,16 +57,25 @@
                     installStep = "Descargando servidor...";
                     installProgress = payload.progress;
                 } else if (payload.step === "Done") {
-                    finishInstallation();
+                    if (createdId) {
+                        finishInstallation(createdId);
+                    } else {
+                        // Use a fallback or wait? Usually ID is ready by now.
+                        console.warn("Installation done but ID not set yet?");
+                        // Retrying won't help here easily without async logic,
+                        // but create_instance returns ID fast.
+                        finishInstallation(null);
+                    }
                 }
             });
 
-            const id = await invoke("create_instance", {
+            const id = await invoke<string>("create_instance", {
                 name: instanceName.trim(),
                 loader: selectedLoader,
                 version: gameVersion,
                 icon: selectedIcon,
             });
+            createdId = id; // Store it for the event listener
             console.log("Instance created, installing:", id);
         } catch (error) {
             console.error("Failed to create instance:", error);
@@ -75,9 +85,18 @@
         }
     }
 
-    async function finishInstallation() {
+    async function finishInstallation(targetId?: string | null) {
         const instances = await invoke<any[]>("read_instances");
         appState.instances = instances;
+
+        if (targetId) {
+            const found = instances.find((i) => i.id === targetId);
+            if (found) {
+                appState.selectedInstance = found;
+                appState.view = "instances"; // Ensure we are on the instances view context
+            }
+        }
+
         installing = false;
         close();
     }
@@ -102,7 +121,8 @@
             versions = await invoke("get_minecraft_versions", {
                 snapshots: showSnapshots,
             });
-            if (versions.length > 0 && !versions.includes(gameVersion)) {
+            if (versions.length > 0) {
+                // User requested to always show the first (latest) version when reloaded (snapshots toggle)
                 gameVersion = versions[0];
             }
         } catch (error) {
@@ -136,6 +156,7 @@
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4"
     role="dialog"
     aria-modal="true"
+    tabindex="-1"
     onclick={(e) => {
         if (e.target === e.currentTarget) close();
     }}
@@ -143,6 +164,7 @@
     <!-- Modal Container -->
     <div
         class="bg-[#18181b] w-full max-w-[420px] rounded-xl border border-zinc-800 shadow-2xl flex flex-col max-h-[90vh] animate-scale-in"
+        tabindex="-1"
     >
         <!-- Header -->
         <div

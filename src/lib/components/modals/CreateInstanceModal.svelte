@@ -11,16 +11,31 @@
 
     let selectedLoader = $state<
         | "Vanilla"
-        | "Fabric"
-        | "Forge"
-        | "NeoForge"
-        | "Quilt"
         | "Paper"
-        | "Spigot"
         | "Purpur"
+        | "Folia"
+        | "Velocity"
+        | "Waterfall"
         | null
     >("Vanilla");
     let hoveredIcon = $state(false);
+
+    // Custom URL State
+    let useCustomUrl = $state(false);
+    let customUrl = $state("");
+
+    // Version State
+    let versions = $state<string[]>([]);
+    let showSnapshots = $state(false);
+    let loadingVersions = $state(false);
+    let showVersionDropdown = $state(false);
+
+    // UI Layout State
+    let showLoaderDropdown = $state(false);
+    let dropdownBottom = $state(0);
+    let dropdownLeft = $state(0);
+    let dropdownWidth = $state(0);
+    let dropdownMaxHeight = 260;
 
     // Icon Selection State
     let showIconPicker = $state(false);
@@ -53,19 +68,32 @@
         try {
             unlisten = await listen<any>("install-progress", (event) => {
                 const payload = event.payload;
-                if (payload.step === "Downloading") {
+                if (payload.step.startsWith("Downloading")) {
                     installStep = "Descargando servidor...";
-                    installProgress = payload.progress;
-                } else if (payload.step === "Done") {
-                    if (createdId) {
-                        finishInstallation(createdId);
+                    // Formatter helper
+                    const formatSize = (bytes: number) =>
+                        (bytes / 1024 / 1024).toFixed(1);
+
+                    if (payload.total_size) {
+                        installStep = `Descargando... ${formatSize(payload.downloaded)} MB de ${formatSize(payload.total_size)} MB`;
+                        installProgress = payload.progress;
                     } else {
-                        // Use a fallback or wait? Usually ID is ready by now.
-                        console.warn("Installation done but ID not set yet?");
-                        // Retrying won't help here easily without async logic,
-                        // but create_instance returns ID fast.
-                        finishInstallation(null);
+                        // If we are in "unknown size" mode or heuristic
+                        installStep = `Descargando... ${formatSize(payload.downloaded)} MB de NULL`;
+                        installProgress = payload.progress;
                     }
+                } else if (payload.step === "Done") {
+                    finishInstallation(payload.id);
+                } else if (payload.step.startsWith("Error")) {
+                    installStep = "Error";
+                    installing = false;
+                    alert("Error en la instalación: " + payload.step);
+                    if (unlisten) unlisten();
+                } else {
+                    // Update any other step (Creating, Resolving, Connecting, etc)
+                    installStep = payload.step;
+                    if (payload.progress > 0)
+                        installProgress = payload.progress;
                 }
             });
 
@@ -74,6 +102,7 @@
                 loader: selectedLoader,
                 version: gameVersion,
                 icon: selectedIcon,
+                customDownloadUrl: useCustomUrl && customUrl ? customUrl : null,
             });
             createdId = id; // Store it for the event listener
             console.log("Instance created, installing:", id);
@@ -101,28 +130,36 @@
         close();
     }
 
-    let versions = $state<string[]>([]);
-    let showSnapshots = $state(false);
-    let loadingVersions = $state(false);
-
-    // Custom Dropdown State
-    let showVersionDropdown = $state(false);
-    let showLoaderDropdown = $state(false);
-    let dropdownBottom = $state(0);
-    let dropdownLeft = $state(0);
-    let dropdownWidth = $state(0);
-    let dropdownMaxHeight = 260; // Max height for ~7 items
-
     async function loadVersions() {
-        if (selectedLoader !== "Vanilla") return;
-
+        if (!selectedLoader) return;
         loadingVersions = true;
+        versions = []; // Clear previous
+
         try {
-            versions = await invoke("get_minecraft_versions", {
-                snapshots: showSnapshots,
-            });
-            if (versions.length > 0) {
-                // User requested to always show the first (latest) version when reloaded (snapshots toggle)
+            if (selectedLoader === "Vanilla") {
+                versions = await invoke("get_minecraft_versions", {
+                    snapshots: showSnapshots,
+                });
+            } else {
+                // Custom API Loaders
+                try {
+                    versions = await invoke("get_project_versions", {
+                        project: selectedLoader.toLowerCase(),
+                    });
+                } catch (e) {
+                    console.error(
+                        `Failed to load versions for ${selectedLoader}:`,
+                        e,
+                    );
+                    versions = [];
+                }
+            }
+
+            // Auto-select first version if current is invalid
+            if (
+                versions.length > 0 &&
+                (!gameVersion || !versions.includes(gameVersion))
+            ) {
                 gameVersion = versions[0];
             }
         } catch (error) {
@@ -133,9 +170,14 @@
     }
 
     $effect(() => {
-        // Reload versions when loader matches Vanilla, tracked automatically by runes usage
+        // Trigger load options when loader/snapshots changes
+        if (selectedLoader) {
+            loadVersions();
+        }
+    });
+
+    $effect(() => {
         if (selectedLoader === "Vanilla") {
-            // Pass the current state of showSnapshots
             loadVersions();
         }
     });
@@ -310,7 +352,7 @@
                         <div
                             class="absolute z-20 bottom-full mb-1 left-0 right-0 bg-[#18181b] border border-zinc-700 rounded-lg shadow-xl overflow-hidden animate-fade-in max-h-[260px] overflow-y-auto custom-scrollbar"
                         >
-                            {#each ["Vanilla", "Fabric", "Forge", "NeoForge", "Quilt", "Paper", "Spigot", "Purpur"] as loader}
+                            {#each ["Vanilla", "Paper", "Purpur", "Folia", "Velocity", "Waterfall"] as loader}
                                 <button
                                     class="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors flex items-center justify-between"
                                     class:bg-green-900_20={selectedLoader ===
@@ -341,7 +383,7 @@
                     {/if}
                 </div>
 
-                <!-- Version Selection Dropdown -->
+                <!-- Unified Version Selection Logic -->
                 <div class="space-y-1.5 relative">
                     <span class="text-xs font-bold text-white tracking-wider"
                         >Versión del Juego</span
@@ -351,13 +393,10 @@
                         id="game-version"
                         type="button"
                         class="w-full bg-black/20 border border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-300 flex items-center justify-between focus:outline-none focus:border-green-500/50 transition-all font-medium disabled:opacity-50"
-                        disabled={loadingVersions ||
-                            selectedLoader !== "Vanilla"}
+                        disabled={loadingVersions}
                         onclick={(e) => {
-                            if (selectedLoader !== "Vanilla") return;
                             const rect =
                                 e.currentTarget.getBoundingClientRect();
-                            // Position upwards
                             dropdownBottom = window.innerHeight - rect.top + 5;
                             dropdownLeft = rect.left;
                             dropdownWidth = rect.width;
@@ -367,8 +406,6 @@
                         <span class="truncate font-bold text-sm">
                             {#if loadingVersions && versions.length === 0}
                                 ...
-                            {:else if selectedLoader !== "Vanilla"}
-                                Latest
                             {:else}
                                 {gameVersion}
                             {/if}
@@ -417,7 +454,7 @@
         </div>
 
         <!-- Footer -->
-        <div class="p-6 pt-2 flex justify-end gap-3 min-h-[60px]">
+        <div class="p-6 pt-2 flex justify-end gap-3 min-h-[60px] shrink-0">
             {#if installing}
                 <div class="w-full flex flex-col gap-2 justify-center">
                     <div
@@ -445,7 +482,9 @@
                 <button
                     onclick={handleCreate}
                     class="px-6 py-2 rounded-lg text-sm font-bold bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-900/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!instanceName.trim() || !selectedLoader}
+                    disabled={!instanceName.trim() ||
+                        !selectedLoader ||
+                        (useCustomUrl && !customUrl)}
                 >
                     Crear Instancia
                 </button>
@@ -475,6 +514,7 @@
         style="bottom: {dropdownBottom}px; left: {dropdownLeft}px; width: {dropdownWidth}px; max-height: {dropdownMaxHeight}px;"
     >
         <div class="overflow-y-auto custom-scrollbar flex-1 py-1">
+            <!-- Determine list based on loader -->
             {#each versions as v}
                 <button
                     class="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors flex items-center justify-between"

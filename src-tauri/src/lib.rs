@@ -10,7 +10,6 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
-use sysinfo::System;
 use tauri::Emitter;
 use tauri::Manager;
 use tauri::State;
@@ -18,6 +17,12 @@ use uuid::Uuid;
 
 // Global map to store running server processes
 struct ChildProcessMap(Arc<Mutex<HashMap<String, Child>>>);
+
+// Helper for debug logging
+// Helper for debug logging
+fn log_debug(msg: &str) {
+    println!("[DEBUG] {}", msg); // Write to stdout instead of file to avoid triggering file watcher restarts
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct InstanceInstallProgress {
@@ -36,8 +41,11 @@ pub enum InstanceEngine {
     Forge,
     NeoForge,
     Quilt,
-    Purpur,
     Spigot,
+    Purpur,
+    Folia,
+    Velocity,
+    Waterfall,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -82,6 +90,8 @@ pub struct Instance {
     pub state: InstanceState,
     #[serde(default)]
     pub settings: InstanceSettings,
+    #[serde(default)]
+    pub build: Option<String>,
 }
 
 #[tauri::command]
@@ -91,6 +101,7 @@ async fn create_instance(
     loader: String,
     version: String,
     icon: String,
+    custom_download_url: Option<String>,
 ) -> Result<String, String> {
     // 1. Resolve AppData path
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
@@ -124,9 +135,30 @@ async fn create_instance(
         "NeoForge" => InstanceEngine::NeoForge,
         "Quilt" => InstanceEngine::Quilt,
         "Paper" => InstanceEngine::Paper,
+        "PaperMC" => InstanceEngine::Paper,
         "Spigot" => InstanceEngine::Spigot,
         "Purpur" => InstanceEngine::Purpur,
+        "Folia" => InstanceEngine::Folia,
+        "Velocity" => InstanceEngine::Velocity,
+        "Waterfall" => InstanceEngine::Waterfall,
         _ => InstanceEngine::Vanilla,
+    };
+
+    // Extract build number if custom URL is provided
+    let build = if let Some(url) = &custom_download_url {
+        // Simple heuristic: try to get the number before .jar
+        // e.g. https://.../paper-1.20.5-15.jar -> 15
+        url.split('/').last().and_then(|filename| {
+            if filename.ends_with(".jar") {
+                let name = filename.trim_end_matches(".jar");
+                // Split by '-' and take last part
+                name.split('-').last().map(|s| s.to_string())
+            } else {
+                None
+            }
+        })
+    } else {
+        None
     };
 
     let instance = Instance {
@@ -141,6 +173,7 @@ async fn create_instance(
 
         state: InstanceState::Stopped,
         settings: InstanceSettings::default(),
+        build,
     };
 
     // 6. Save instance.json
@@ -153,19 +186,86 @@ async fn create_instance(
     let instance_id = id.clone();
     let instance_version = version.clone();
     let instance_path_clone = instance_path.clone(); // Clone complete PathBuf
+    let loader_engine = instance.loader.clone();
+    let custom_download_url_clone = custom_download_url.clone();
 
-    // Only for Vanilla for now
-    if matches!(instance.loader, InstanceEngine::Vanilla) {
-        tauri::async_runtime::spawn(async move {
-            let _ = install_vanilla(
-                &app_handle,
-                &instance_id,
-                &instance_version,
-                &instance_path_clone,
-            )
-            .await;
-        });
-    }
+    tauri::async_runtime::spawn(async move {
+        // Emit initial "Creating files" event
+        let _ = app_handle.emit(
+            "install-progress",
+            InstanceInstallProgress {
+                id: instance_id.clone(),
+                step: "Creating files...".into(),
+                progress: 10, // Start at 10% to show activity
+                total_size: None,
+                downloaded: 0,
+            },
+        );
+        // Small delay to let user see "Creating files"
+        std::thread::sleep(std::time::Duration::from_millis(500));
+
+        match loader_engine {
+            InstanceEngine::Paper
+            | InstanceEngine::Purpur
+            | InstanceEngine::Spigot
+            | InstanceEngine::Folia
+            | InstanceEngine::Velocity
+            | InstanceEngine::Waterfall => {
+                // Determine project name based on engine
+                let project = match loader_engine {
+                    InstanceEngine::Purpur => "purpur",
+                    InstanceEngine::Spigot => "spigot", // Note: Spigot usually not in Paper API, but if it is in my custom API it works
+                    InstanceEngine::Folia => "folia",
+                    InstanceEngine::Velocity => "velocity",
+                    InstanceEngine::Waterfall => "waterfall",
+                    _ => "paper",
+                };
+
+                if let Err(e) = install_project_server(
+                    app_handle.clone(),
+                    instance_path_clone.join(".minecraft"),
+                    instance_version,
+                    instance_id.clone(),
+                    project.to_string(),
+                    custom_download_url_clone,
+                )
+                .await
+                {
+                    let _ = app_handle.emit(
+                        "install-progress",
+                        InstanceInstallProgress {
+                            id: instance_id,
+                            step: format!("Error: {}", e),
+                            progress: 0,
+                            total_size: None,
+                            downloaded: 0,
+                        },
+                    );
+                }
+            }
+            _ => {
+                if let Err(e) = install_vanilla(
+                    &app_handle,
+                    &instance_id,
+                    &instance_version,
+                    &instance_path_clone,
+                )
+                .await
+                {
+                    let _ = app_handle.emit(
+                        "install-progress",
+                        InstanceInstallProgress {
+                            id: instance_id,
+                            step: format!("Error: {}", e),
+                            progress: 0,
+                            total_size: None,
+                            downloaded: 0,
+                        },
+                    );
+                }
+            }
+        }
+    });
 
     Ok(id)
 }
@@ -206,7 +306,14 @@ async fn install_vanilla(
 
     // 3. Download JAR
     let server_jar_path = path.join(".minecraft").join("server.jar"); // Inside .minecraft
-    download_file(app, &server_download.url, &server_jar_path, id).await?;
+    download_file(
+        app,
+        &server_download.url,
+        &server_jar_path,
+        id,
+        Some(server_download.size),
+    )
+    .await?;
 
     // 4. Auto EULA
     auto_eula(&path.join(".minecraft"))?;
@@ -283,8 +390,15 @@ async fn read_instances(
     Ok(instances)
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Deserialize)]
+struct LatestVersions {
+    release: String,
+    snapshot: String,
+}
+
+#[derive(Debug, Deserialize)]
 struct VersionManifest {
+    latest: LatestVersions,
     versions: Vec<VersionInfo>,
 }
 
@@ -318,14 +432,48 @@ async fn download_file(
     url: &str,
     path: &std::path::Path,
     id: &str,
+    known_size: Option<u64>,
 ) -> Result<(), String> {
-    let client = reqwest::Client::new();
-    let res = client.get(url).send().await.map_err(|e| e.to_string())?;
-    let total_size = res.content_length();
+    let client = reqwest::Client::builder()
+        .user_agent("AnvilCraft/1.0")
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    log_debug(&format!("Starting download: {}", url));
+    log_debug(&format!("Known size passed: {:?}", known_size));
+
+    // Emit connecting state
+    app.emit(
+        "install-progress",
+        InstanceInstallProgress {
+            id: id.to_string(),
+            step: format!("Connecting: {}", url),
+            progress: 0,
+            total_size: known_size,
+            downloaded: 0,
+        },
+    )
+    .map_err(|e| e.to_string())?;
+
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .error_for_status()
+        .map_err(|e| e.to_string())?;
+
+    let total_size = response.content_length().or(known_size).filter(|&s| s > 0);
+    log_debug(&format!(
+        "Response content-length: {:?}",
+        response.content_length()
+    ));
+    log_debug(&format!("Final total_size used: {:?}", total_size));
 
     let mut file = fs::File::create(path).map_err(|e| e.to_string())?;
     let mut downloaded: u64 = 0;
-    let mut stream = res.bytes_stream();
+    let mut stream = response.bytes_stream();
 
     while let Some(item) = stream.next().await {
         let chunk = item.map_err(|e| e.to_string())?;
@@ -338,15 +486,51 @@ async fn download_file(
                 "install-progress",
                 InstanceInstallProgress {
                     id: id.to_string(),
-                    step: "Downloading".to_string(),
+                    step: format!("Downloading: {}", url),
                     progress,
                     total_size: Some(size),
                     downloaded,
                 },
             )
             .map_err(|e| e.to_string())?;
+        } else {
+            // Emulate progress based on approx 60MB (Paper/Vanilla jars are usually 30-60MB)
+            // Cap at 99% so we don't show 100% prematurely
+            let estimated_size = 60 * 1024 * 1024; // 60 MB
+            let progress = ((downloaded as f64 / estimated_size as f64 * 100.0) as u64).min(99);
+
+            app.emit(
+                "install-progress",
+                InstanceInstallProgress {
+                    id: id.to_string(),
+                    step: format!(
+                        "Downloading... ({:.1} MB)",
+                        downloaded as f64 / 1024.0 / 1024.0
+                    ),
+                    progress,
+                    total_size: None,
+                    downloaded,
+                },
+            )
+            .map_err(|e| e.to_string())?;
         }
     }
+
+    // Artificial delay for UI visibility
+    std::thread::sleep(std::time::Duration::from_millis(800));
+
+    // Force 100% progress event
+    app.emit(
+        "install-progress",
+        InstanceInstallProgress {
+            id: id.to_string(),
+            step: format!("Downloading: {}", url),
+            progress: 100,
+            total_size: total_size,
+            downloaded: downloaded,
+        },
+    )
+    .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -461,6 +645,21 @@ async fn start_instance(
         });
     }
 
+    // Stream Stderr (Prevent buffer deadlock & capture errors)
+    if let Some(stderr) = child.stderr.take() {
+        let id_clone = id.clone();
+        let app_clone = app.clone();
+
+        tauri::async_runtime::spawn(async move {
+            let reader = BufReader::new(stderr);
+            for line in reader.lines() {
+                if let Ok(l) = line {
+                    let _ = app_clone.emit("server-log", (id_clone.clone(), l));
+                }
+            }
+        });
+    }
+
     // Capture child in state
     state
         .0
@@ -501,6 +700,7 @@ fn update_instance_state(
                     last_played: None,
                     state: InstanceState::Error,
                     settings: InstanceSettings::default(),
+                    build: None,
                 });
 
             if instance.id == id {
@@ -511,23 +711,6 @@ fn update_instance_state(
                 break;
             }
         }
-    }
-    Ok(())
-}
-
-#[tauri::command]
-async fn stop_instance(state: State<'_, ChildProcessMap>, id: String) -> Result<(), String> {
-    let mut map = state.0.lock().map_err(|_| "Failed to lock state")?;
-    if let Some(child) = map.get_mut(&id) {
-        // Graceful stop for Minecraft servers usually involves sending "stop" to stdin
-        if let Some(stdin) = child.stdin.as_mut() {
-            writeln!(stdin, "stop").map_err(|e| e.to_string())?;
-        }
-        // Process will exit asynchronously.
-        // We might want to wait? or just assume it stops.
-        // For CLI responsiveness, return OK. The log reading thread will finish naturally.
-
-        map.remove(&id); // Remove from tracking
     }
     Ok(())
 }
@@ -548,6 +731,31 @@ async fn send_command(
 }
 
 #[tauri::command]
+async fn stop_instance(state: State<'_, ChildProcessMap>, id: String) -> Result<(), String> {
+    let mut map = state.0.lock().map_err(|_| "Failed to lock state")?;
+    if let Some(child) = map.get_mut(&id) {
+        // Graceful stop
+        if let Some(stdin) = child.stdin.as_mut() {
+            // "stop" command is standard for Minecraft servers
+            writeln!(stdin, "stop").map_err(|e| e.to_string())?;
+        }
+        // We do NOT remove from map here. We allow the process to exit naturally.
+        // The log reader thread detects exit and removes it from map.
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn kill_instance(state: State<'_, ChildProcessMap>, id: String) -> Result<(), String> {
+    let mut map = state.0.lock().map_err(|_| "Failed to lock state")?;
+    if let Some(child) = map.get_mut(&id) {
+        let _ = child.kill();
+        map.remove(&id);
+    }
+    Ok(())
+}
+
+#[tauri::command]
 async fn get_minecraft_versions(snapshots: bool) -> Result<Vec<String>, String> {
     let url = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
     let response = reqwest::get(url)
@@ -563,6 +771,86 @@ async fn get_minecraft_versions(snapshots: bool) -> Result<Vec<String>, String> 
         .filter(|v| snapshots || v.version_type == "release")
         .map(|v| v.id)
         .collect();
+
+    Ok(versions)
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+struct CustomMeta {
+    project: String,
+    generated_at: String,
+    source: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+struct CustomBuildInfo {
+    number: u32,
+    label: String,
+    time: String,
+    sha256: Option<String>,
+    size: u64,
+    url: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+struct CustomVersionInfo {
+    #[serde(rename = "type")]
+    version_type: String,
+    channel: String,
+    requires_java: Option<u32>,
+    latest_build: CustomBuildInfo,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+struct CustomFamily {
+    lifecycle: String,
+    versions: HashMap<String, CustomVersionInfo>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+struct CustomApiResponse {
+    meta: CustomMeta,
+    families: HashMap<String, CustomFamily>,
+}
+
+#[tauri::command]
+async fn get_project_versions(project: String) -> Result<Vec<String>, String> {
+    let url = format!(
+        "https://corpmore.com/anvilcraft/api/v1/{}.json",
+        project.to_lowercase()
+    );
+    let response = reqwest::get(&url).await.map_err(|e| e.to_string())?;
+
+    let api_response = response
+        .json::<CustomApiResponse>()
+        .await
+        .map_err(|e| format!("Failed to parse JSON for {}: {}", project, e))?;
+
+    let mut versions = Vec::new();
+
+    // Iterate over families and their versions to collect all available version IDs
+    for (_, family) in api_response.families {
+        for (version_id, _) in family.versions {
+            versions.push(version_id);
+        }
+    }
+
+    // Sort versions using a custom logic or semver if possible.
+    // For now, simple reverse string sort works reasonably well for MC versions (1.20 > 1.10)
+    // BUT string sort fails on 1.10 vs 1.2.
+    // Let's implement a basic heuristic sort: Major.Minor.Patch
+    versions.sort_by(|a, b| {
+        // Helper to parse version string into a tuple of integers
+        fn parse_version(v: &str) -> Vec<u32> {
+            v.split('.').filter_map(|s| s.parse::<u32>().ok()).collect()
+        }
+
+        let va = parse_version(a);
+        let vb = parse_version(b);
+
+        // Compare properly (b vs a for descending order)
+        vb.cmp(&va)
+    });
 
     Ok(versions)
 }
@@ -637,7 +925,6 @@ async fn save_instance_settings(
     // Wait, read_instances does scanning.
     // To be efficient, we might need a method to get instance path by ID.
     // But since `path` (slug) is not passed here, let's scan.
-    // OR, better: pass the slug from frontend?
     // Let's implement a quick scan helper or just scan here.
 
     let instances_dir = app_data_dir.join("instances");
@@ -717,6 +1004,93 @@ async fn delete_instance(
     Ok(())
 }
 
+async fn install_project_server(
+    app: tauri::AppHandle,
+    instance_dir: PathBuf,
+    version: String,
+    id: String,
+    project: String,
+    custom_download_url: Option<String>,
+) -> Result<(), String> {
+    let step_msg = if custom_download_url.is_some() {
+        "Resolving link..."
+    } else {
+        "Fetching builds..."
+    };
+
+    let _ = app.emit(
+        "install-progress",
+        InstanceInstallProgress {
+            id: id.clone(),
+            step: step_msg.into(),
+            progress: 0,
+            total_size: None,
+            downloaded: 0,
+        },
+    );
+
+    let (download_url, known_size) = if let Some(url) = custom_download_url {
+        (url, None)
+    } else {
+        // 1. Fetch Project Metadata from Custom API
+        let url = format!("https://corpmore.com/anvilcraft/api/v1/{}.json", project);
+
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(15))
+            .build()
+            .map_err(|e| e.to_string())?;
+
+        let response = client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?
+            .json::<CustomApiResponse>()
+            .await
+            .map_err(|e| format!("Failed to parse JSON for {}: {}", project, e))?;
+
+        // 2. Find version info
+        let mut target_version_info = None;
+        for (_, family) in response.families {
+            if let Some(v_info) = family.versions.get(&version) {
+                target_version_info = Some(v_info.clone());
+                break;
+            }
+        }
+
+        let version_info = target_version_info
+            .ok_or_else(|| format!("Version {} not found for project {}", version, project))?;
+
+        // 3. Get URL and Size
+        (
+            version_info.latest_build.url.clone(),
+            Some(version_info.latest_build.size),
+        )
+    };
+
+    // 4. Download JAR
+    let server_jar_path = instance_dir.join("server.jar");
+    download_file(&app, &download_url, &server_jar_path, &id, known_size).await?;
+
+    // 5. Auto EULA
+    auto_eula(&instance_dir)?;
+
+    // 6. Emit Done
+    app.emit(
+        "install-progress",
+        InstanceInstallProgress {
+            id: id.to_string(),
+            step: "Done".to_string(),
+            progress: 100,
+            total_size: None,
+            downloaded: 0,
+        },
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -730,11 +1104,13 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             create_instance,
             read_instances,
-            get_minecraft_versions,
-            open_instances_folder,
             start_instance,
             stop_instance,
+            kill_instance,
             send_command,
+            get_minecraft_versions,
+            get_project_versions,
+            open_instances_folder,
             get_system_memory,
             save_instance_settings,
             delete_instance

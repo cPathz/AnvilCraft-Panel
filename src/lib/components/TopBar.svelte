@@ -7,7 +7,16 @@
     class="flex items-center justify-between w-full h-16 pl-4 pr-8 bg-gradient-to-r from-[#192232] to-[#141b28] shadow-md border-b border-white/5"
 >
     <div class="flex items-center gap-4">
-        <h1 class="text-xl font-bold text-white tracking-wide">AnvilCRAFT</h1>
+        <h1
+            class="text-xl font-bold text-white tracking-wide flex items-center gap-2"
+        >
+            AnvilCRAFT Panel
+            <span
+                class="text-[10px] font-normal text-yellow-500/80 uppercase tracking-wider bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20"
+            >
+                v0.1.0 Copia de Evaluación
+            </span>
+        </h1>
 
         {#if store.selectedInstance}
             <div class="h-6 w-px bg-zinc-700"></div>

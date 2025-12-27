@@ -16,6 +16,7 @@ export interface Instance {
         args: string;
         jar_file: string;
     };
+    build?: string;
 }
 
 class AppState {
@@ -26,7 +27,7 @@ class AppState {
     creatingInstance = $state<boolean>(false);
 
     // Runtime state (Logs, active tabs, etc)
-    instanceRuntime = $state<Record<string, { logs: string[], activeTab: "console" | "settings" }>>({});
+    instanceRuntime = $state<Record<string, { logs: string[], activeTab: "console" | "settings", commandHistory: string[] }>>({});
 
     // Global Settings
     settings = $state({
@@ -42,7 +43,7 @@ class AppState {
 
     ensureRuntime(id: string) {
         if (!this.instanceRuntime[id]) {
-            this.instanceRuntime[id] = { logs: [], activeTab: "console" };
+            this.instanceRuntime[id] = { logs: [], activeTab: "console", commandHistory: [] };
         }
     }
 

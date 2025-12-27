@@ -2,6 +2,7 @@
     import NavigationRail from "$lib/components/NavigationRail.svelte";
     import TopBar from "$lib/components/TopBar.svelte";
     import ToastContainer from "$lib/components/ToastContainer.svelte";
+    import BetaWatermark from "$lib/components/BetaWatermark.svelte";
     import "../app.css";
 
     import { appState } from "$lib/runes/store.svelte";
@@ -104,4 +105,5 @@
     </div>
 
     <ToastContainer />
+    <BetaWatermark />
 </div>

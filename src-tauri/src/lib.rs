@@ -731,13 +731,47 @@ async fn send_command(
 }
 
 #[tauri::command]
-async fn stop_instance(state: State<'_, ChildProcessMap>, id: String) -> Result<(), String> {
+async fn stop_instance(
+    app: tauri::AppHandle,
+    state: State<'_, ChildProcessMap>,
+    id: String,
+) -> Result<(), String> {
     let mut map = state.0.lock().map_err(|_| "Failed to lock state")?;
+
+    // Determine stop command
+    let mut stop_cmd = "stop";
+
+    // Try to read instance config to check for Proxy (Velocity/Waterfall)
+    if let Ok(app_data) = app.path().app_data_dir() {
+        let instances_dir = app_data.join("instances");
+        if instances_dir.exists() {
+            if let Ok(entries) = fs::read_dir(instances_dir) {
+                for entry in entries.flatten() {
+                    let json_path = entry.path().join("instance.json");
+                    if json_path.exists() {
+                        if let Ok(content) = fs::read_to_string(&json_path) {
+                            if let Ok(instance) = serde_json::from_str::<Instance>(&content) {
+                                if instance.id == id {
+                                    match instance.loader {
+                                        InstanceEngine::Velocity | InstanceEngine::Waterfall => {
+                                            stop_cmd = "end";
+                                        }
+                                        _ => {}
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if let Some(child) = map.get_mut(&id) {
         // Graceful stop
         if let Some(stdin) = child.stdin.as_mut() {
-            // "stop" command is standard for Minecraft servers
-            writeln!(stdin, "stop").map_err(|e| e.to_string())?;
+            writeln!(stdin, "{}", stop_cmd).map_err(|e| e.to_string())?;
         }
         // We do NOT remove from map here. We allow the process to exit naturally.
         // The log reader thread detects exit and removes it from map.
@@ -853,6 +887,44 @@ async fn get_project_versions(project: String) -> Result<Vec<String>, String> {
     });
 
     Ok(versions)
+}
+
+#[tauri::command]
+async fn update_instance_icon(
+    app: tauri::AppHandle,
+    id: String,
+    icon: String,
+) -> Result<(), String> {
+    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let instances_dir = app_data_dir.join("instances");
+
+    if !instances_dir.exists() {
+        return Err("Instances directory not found".to_string());
+    }
+
+    // Find the instance by ID
+    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let json_path = entry.path().join("instance.json");
+        if json_path.exists() {
+            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
+            let mut instance: Instance =
+                serde_json::from_str(&content).map_err(|e| e.to_string())?;
+
+            if instance.id == id {
+                // Update icon
+                instance.icon = icon;
+
+                // Save back to file
+                let new_json =
+                    serde_json::to_string_pretty(&instance).map_err(|e| e.to_string())?;
+                fs::write(json_path, new_json).map_err(|e| e.to_string())?;
+                return Ok(());
+            }
+        }
+    }
+
+    Err("Instance not found".to_string())
 }
 
 #[tauri::command]
@@ -1113,7 +1185,9 @@ pub fn run() {
             open_instances_folder,
             get_system_memory,
             save_instance_settings,
-            delete_instance
+            delete_instance,
+            get_project_versions,
+            update_instance_icon
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

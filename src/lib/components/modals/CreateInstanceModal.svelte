@@ -5,6 +5,8 @@
 
     import IconPicker from "./IconPicker.svelte";
 
+    import iconList from "$lib/data/icons.json";
+
     let instanceName = $state("");
     let gameVersion = $state("");
     let activeTab = $state<"custom" | "file" | "import">("custom");
@@ -39,7 +41,11 @@
 
     // Icon Selection State
     let showIconPicker = $state(false);
-    let selectedIcon = $state("/Transparent-Images/grass_block.png");
+
+    // Pick random icon on init
+    let selectedIcon = $state(
+        `/Transparent-Images/${iconList[Math.floor(Math.random() * iconList.length)]}`,
+    );
 
     let installing = $state(false);
     let installProgress = $state(0);

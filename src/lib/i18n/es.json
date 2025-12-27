@@ -10,11 +10,11 @@
         "starting": "Iniciando..."
     },
     "dashboard": {
-        "welcome": "Bienvenido a AnvilCraft",
+        "welcome": "Bienvenido a AnvilCraft Panel",
         "server_count": "Tienes {count} servidores"
     },
     "home": {
-        "subtitle": "Administra tus servidores de Minecraft fácilmente",
+        "subtitle": "Gestiona tus servidores locales de Minecraft de forma sencilla",
         "create": "Nueva Instancia"
     }
 }

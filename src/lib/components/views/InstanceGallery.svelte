@@ -38,9 +38,6 @@
                 >
                     Mis Instancias
                 </h2>
-                <p class="text-sm text-slate-300 mt-0.5 font-medium">
-                    Gestiona tus servidores de Minecraft
-                </p>
             </div>
             <div class="flex items-center gap-2">
                 <button

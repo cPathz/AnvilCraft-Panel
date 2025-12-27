@@ -4,6 +4,9 @@
     import { onDestroy, onMount, tick } from "svelte";
     import { fade, fly } from "svelte/transition";
     import { toast } from "$lib/runes/toast.svelte";
+    import IconPicker from "$lib/components/modals/IconPicker.svelte";
+    import commandTree from "$lib/data/command_tree.json";
+    import argumentData from "$lib/data/arguments.json";
 
     let instance = $derived(appState.selectedInstance!);
     let settings = $derived(appState.settings.console);
@@ -29,6 +32,14 @@
 
     let commandInput = $state("");
     let consoleContainer = $state<HTMLDivElement>();
+
+    // History Index stays local
+    let historyIndex = $state(-1);
+
+    // Autocomplete State
+    let showAutocomplete = $state(false);
+    let autocompleteSuggestions = $state<string[]>([]);
+    let autocompleteIndex = $state(0);
 
     let consoleProfile = $state<"Vanilla" | "Plugins" | "Mods">("Vanilla");
     let hideNoise = $state(true);
@@ -86,8 +97,38 @@
         }
     }
 
+    async function forceKill() {
+        if (
+            !confirm(
+                "¿Estás seguro de que quieres forzar el cierre? Esto podría corromper datos si no se ha guardado.",
+            )
+        )
+            return;
+        try {
+            await invoke("kill_instance", { id: instance.id });
+        } catch (e) {
+            console.error(e);
+            alert("Error killing server: " + e);
+        }
+    }
+
     async function sendCommand() {
         if (!commandInput.trim()) return;
+
+        // Add to persistent history
+        if (
+            runtime.commandHistory.length === 0 ||
+            runtime.commandHistory[runtime.commandHistory.length - 1] !==
+                commandInput
+        ) {
+            runtime.commandHistory.push(commandInput);
+            // Cap history at 50 items to prevent saturation
+            if (runtime.commandHistory.length > 50) {
+                runtime.commandHistory = runtime.commandHistory.slice(-50);
+            }
+        }
+        historyIndex = -1;
+
         try {
             await invoke("send_command", {
                 id: instance.id,
@@ -100,6 +141,258 @@
             console.error(e);
         }
     }
+
+    function applyAutocomplete(selected: string) {
+        if (selected.startsWith("<")) return; // Argument hint
+
+        let newCommandInput = "";
+
+        // Special handling for the very first command to preserve "/"
+        if (!commandInput.includes(" ")) {
+            newCommandInput = "/" + selected;
+        } else {
+            // Retrieve all parts including empty strings from trailing spaces
+            // "time set " -> ["time", "set", ""]
+            // "time se" -> ["time", "se"]
+            const parts = commandInput.substring(1).split(" ");
+
+            // Replace the last part (which is the one being typed/completed)
+            parts[parts.length - 1] = selected;
+
+            // Reconstruct: "/" + joined parts
+            newCommandInput = "/" + parts.join(" ");
+        }
+
+        // SMART SPACING LOGIC
+        // Check if the selected node has children to decide if we append a space
+        const raw = newCommandInput.substring(1);
+        const parts = raw.split(" ");
+        let currentNode: any = commandTree;
+        let hasChildren = false;
+
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            if (!currentNode.children) break;
+
+            if (currentNode.children[part]) {
+                currentNode = currentNode.children[part];
+            } else {
+                const argChildKey = Object.keys(currentNode.children).find(
+                    (k) => currentNode.children[k].type === "argument",
+                );
+                if (argChildKey) {
+                    currentNode = currentNode.children[argChildKey];
+                } else {
+                    currentNode = null;
+                    break;
+                }
+            }
+        }
+
+        if (
+            currentNode &&
+            currentNode.children &&
+            Object.keys(currentNode.children).length > 0
+        ) {
+            hasChildren = true;
+        }
+
+        if (hasChildren) {
+            newCommandInput += " ";
+        }
+
+        commandInput = newCommandInput;
+
+        showAutocomplete = false;
+
+        // Refocus input
+        const input = document.querySelector('input[type="text"]');
+        if (input instanceof HTMLElement) input.focus();
+    }
+
+    function handleConsoleKeydown(e: KeyboardEvent) {
+        if (e.key === "Enter") {
+            // Enter ONLY sends the command, never autocompletes
+            sendCommand();
+            showAutocomplete = false;
+            return;
+        }
+
+        if (e.key === "Tab") {
+            e.preventDefault();
+            if (showAutocomplete && autocompleteSuggestions.length > 0) {
+                applyAutocomplete(autocompleteSuggestions[autocompleteIndex]);
+            }
+            return;
+        }
+
+        if (e.key === " ") {
+            if (showAutocomplete && autocompleteSuggestions.length > 0) {
+                e.preventDefault();
+                applyAutocomplete(autocompleteSuggestions[autocompleteIndex]);
+                return;
+            }
+        }
+
+        if (e.key === "Escape") {
+            showAutocomplete = false;
+            return;
+        }
+
+        if (e.key === "ArrowUp") {
+            e.preventDefault();
+            if (showAutocomplete) {
+                autocompleteIndex =
+                    autocompleteIndex > 0
+                        ? autocompleteIndex - 1
+                        : autocompleteSuggestions.length - 1;
+                return;
+            }
+
+            if (runtime.commandHistory.length === 0) return;
+
+            if (historyIndex === -1) {
+                // Start navigating from local latest
+                historyIndex = runtime.commandHistory.length - 1;
+            } else if (historyIndex > 0) {
+                historyIndex--;
+            }
+            commandInput = runtime.commandHistory[historyIndex];
+        } else if (e.key === "ArrowDown") {
+            e.preventDefault();
+
+            if (showAutocomplete) {
+                autocompleteIndex =
+                    autocompleteIndex < autocompleteSuggestions.length - 1
+                        ? autocompleteIndex + 1
+                        : 0;
+                return;
+            }
+
+            if (historyIndex === -1) return; // Not navigating history
+
+            if (historyIndex < runtime.commandHistory.length - 1) {
+                historyIndex++;
+                commandInput = runtime.commandHistory[historyIndex];
+            } else {
+                // Return to empty/new input
+                historyIndex = -1;
+                commandInput = "";
+            }
+        }
+    }
+
+    // Autocomplete Logic
+    $effect(() => {
+        if (!commandInput.startsWith("/")) {
+            showAutocomplete = false;
+            return;
+        }
+
+        // Remove leading / and split
+        // We want to preserve trailing empty string if space matches
+        const raw = commandInput.substring(1);
+        const parts = raw.split(" ");
+        // Example: "time set " -> ["time", "set", ""]
+        // Example: "time se" -> ["time", "se"]
+
+        let currentNode: any = commandTree;
+        // Traverse for all parts except the last one (which is being typed)
+        for (let i = 0; i < parts.length - 1; i++) {
+            const part = parts[i];
+            if (!currentNode.children) {
+                currentNode = null;
+                break;
+            }
+
+            // Find child that matches 'part'
+            // Either a literal match specific key
+            if (currentNode.children[part]) {
+                currentNode = currentNode.children[part];
+            } else {
+                // OR check if there is an argument node (any node type: argument)
+                // Arguments in brigadier are usually keys like 'targets', 'pos', etc.
+                // We assume if no literal matches, we successfully "consumed" an argument?
+                // We need to find IF there is an argument child.
+                // In our tree structure, children keys ARE the node names (literals or arg names).
+                // If we typed "10", and there is a child "seconds" (type argument), we go there.
+
+                const argChildKey = Object.keys(currentNode.children).find(
+                    (k) => currentNode.children[k].type === "argument",
+                );
+                if (argChildKey) {
+                    currentNode = currentNode.children[argChildKey];
+                } else {
+                    currentNode = null; // Dead end
+                    break;
+                }
+            }
+        }
+
+        if (currentNode && currentNode.children) {
+            const currentTyped = parts[parts.length - 1].toLowerCase();
+
+            let possible: string[] = [];
+
+            // 1. Literal suggestions
+            const literals = Object.keys(currentNode.children).filter(
+                (k) => currentNode.children[k].type === "literal",
+            );
+            possible.push(...literals);
+
+            // 2. Argument suggestions (Dynamic)
+            const argKeys = Object.keys(currentNode.children).filter(
+                (k) => currentNode.children[k].type === "argument",
+            );
+            for (const k of argKeys) {
+                const argNode = currentNode.children[k];
+                const parser = argNode.parser;
+
+                // Check if we have dynamic data for this parser
+                // access argumentData as any index signature
+                const data = (argumentData as any)[parser];
+                if (data && Array.isArray(data)) {
+                    // Filter valid items from the big list
+                    // Optimization: If currentTyped is empty, maybe don't show ALL 1000 items?
+                    // Or just slice top 50.
+                    const matches = data.filter((item: string) =>
+                        item.startsWith(currentTyped),
+                    );
+                    possible.push(...matches);
+                } else {
+                    // Fallback to static placeholder
+                    possible.push(`<${k}>`);
+                }
+            }
+
+            // Filter and Sort
+            const matches = possible.filter(
+                (p) => p.startsWith(currentTyped) || p.startsWith("<"),
+            );
+
+            if (matches.length > 0) {
+                autocompleteSuggestions = matches
+                    .sort((a, b) => {
+                        // Argument placeholders last
+                        const aIsArg = a.startsWith("<");
+                        const bIsArg = b.startsWith("<");
+                        if (aIsArg && !bIsArg) return 1;
+                        if (!aIsArg && bIsArg) return -1;
+
+                        // Prefer exact match (e.g. "time") over "time_set" if applicable (not here)
+                        // Alphabetical
+                        return a.localeCompare(b);
+                    })
+                    .slice(0, 50); // Increased limit for arguments
+                showAutocomplete = true;
+                autocompleteIndex = 0;
+            } else {
+                showAutocomplete = false;
+            }
+        } else {
+            showAutocomplete = false;
+        }
+    });
 
     function clearLogs() {
         const r = appState.getRuntime(instance.id);
@@ -232,11 +525,46 @@
         formSettings.max_ram = 2048;
     }
 
-    function resetGeneralSettings() {
+    function resetGeneralSettingsForm() {
         formSettings.port = 25565;
         formSettings.jar_file = "server.jar";
     }
+
+    // --- Icon Picker Logic ---
+    let showIconPicker = $state(false);
+
+    async function handleIconSelected(newIcon: string) {
+        showIconPicker = false;
+        try {
+            await invoke("update_instance_icon", {
+                id: instance.id,
+                icon: newIcon,
+            });
+            // Update local state directly for immediate feedback
+            if (appState.selectedInstance) {
+                appState.selectedInstance.icon = newIcon;
+            }
+            // Update instance in list
+            const idx = appState.instances.findIndex(
+                (i) => i.id === instance.id,
+            );
+            if (idx !== -1) {
+                appState.instances[idx].icon = newIcon;
+            }
+            toast.success("Icono actualizado correctamente");
+        } catch (e) {
+            console.error(e);
+            toast.error("Error al actualizar icono: " + e);
+        }
+    }
 </script>
+
+{#if showIconPicker}
+    <IconPicker
+        onselect={handleIconSelected}
+        onclose={() => (showIconPicker = false)}
+    />
+{/if}
 
 <div class="flex flex-col h-full w-full bg-[#192232]">
     <!-- Header / Top Bar -->
@@ -246,8 +574,9 @@
     >
         <div class="flex items-center gap-4">
             <!-- Icon -->
+            <!-- Icon -->
             <div
-                class="w-16 h-16 rounded-2xl bg-[#0f1520] flex items-center justify-center shadow-lg border border-white/10 overflow-hidden"
+                class="group w-16 h-16 rounded-2xl bg-[#0f1520] flex items-center justify-center shadow-lg border border-white/10 overflow-hidden relative"
             >
                 <img
                     src={instance.icon ||
@@ -255,6 +584,30 @@
                     alt={instance.name}
                     class="w-full h-full object-cover"
                 />
+
+                <!-- Edit Overlay -->
+                <button
+                    onclick={() => (showIconPicker = true)}
+                    class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                    title="Cambiar icono"
+                >
+                    <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="text-white drop-shadow-md"
+                    >
+                        <path
+                            d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"
+                        />
+                        <path d="m15 5 4 4" />
+                    </svg>
+                </button>
             </div>
 
             <!-- Info -->
@@ -271,8 +624,11 @@
                         {instance.loader}
                     </span>
                     <span class="text-zinc-500 text-sm">•</span>
-                    <span class="text-zinc-400 text-sm">{instance.version}</span
-                    >
+                    <span class="text-zinc-400 text-sm">
+                        {instance.version}{instance.build
+                            ? ` (Build #${instance.build})`
+                            : ""}
+                    </span>
                 </div>
             </div>
         </div>
@@ -580,14 +936,43 @@
             </div>
 
             <!-- Command Input -->
-            <div class="p-3 bg-[#1e293b] border-t border-white/5 flex gap-2">
-                <span class="text-zinc-500 select-none">{">"}</span>
+            <div
+                class="relative px-3 py-1.5 bg-[#1e293b] border-t border-white/5 flex gap-2 items-center"
+            >
+                {#if showAutocomplete && autocompleteSuggestions.length > 0}
+                    <div
+                        class="absolute bottom-full left-0 w-full mb-1 bg-[#1e293b] border border-white/10 rounded-t-lg shadow-xl overflow-hidden z-50"
+                    >
+                        {#each autocompleteSuggestions as cmd, i}
+                            <!-- svelte-ignore a11y_click_events_have_key_events -->
+                            <div
+                                class="px-3 py-2 text-sm font-jetbrains cursor-pointer flex justify-between {i ===
+                                autocompleteIndex
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-zinc-300 hover:bg-white/5'}"
+                                role="button"
+                                tabindex="0"
+                                onclick={() => {
+                                    applyAutocomplete(cmd);
+                                }}
+                            >
+                                <span>{cmd}</span>
+                                {#if cmd.startsWith("<")}
+                                    <span class="opacity-50 text-xs italic"
+                                        >Argumento</span
+                                    >
+                                {/if}
+                            </div>
+                        {/each}
+                    </div>
+                {/if}
+                <span class="text-zinc-500 select-none text-xl">{">"}</span>
                 <input
                     type="text"
                     bind:value={commandInput}
-                    onkeydown={(e) => e.key === "Enter" && sendCommand()}
+                    onkeydown={handleConsoleKeydown}
                     placeholder="Escribe un comando..."
-                    class="bg-transparent border-none outline-none flex-1 text-white placeholder-zinc-600 font-mono"
+                    class="bg-transparent border-none outline-none flex-1 text-white placeholder-zinc-600 font-jetbrains text-sm font-light"
                 />
             </div>
         </div>
@@ -640,6 +1025,80 @@
                         </div>
                     {/if}
 
+                    <!-- Main Ops Button -->
+                    <div class="flex items-center gap-2">
+                        <button
+                            onclick={toggleServer}
+                            class="px-6 py-2 rounded-lg font-bold shadow-lg transition-all active:scale-95 flex items-center gap-2
+                            {instance.state === 'Running' ||
+                            instance.state === 'Starting'
+                                ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-900/20'
+                                : 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20'}"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class:hidden={instance.state === "Running" ||
+                                    instance.state === "Starting"}
+                            >
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class:hidden={instance.state !== "Running" &&
+                                    instance.state !== "Starting"}
+                            >
+                                <rect x="6" y="4" width="4" height="16"></rect>
+                                <rect x="14" y="4" width="4" height="16"></rect>
+                            </svg>
+                            {instance.state === "Running" ||
+                            instance.state === "Starting"
+                                ? "Detener"
+                                : "Iniciar"}
+                        </button>
+
+                        <!-- Force Kill Button (Small) -->
+                        {#if instance.state === "Running" || instance.state === "Starting"}
+                            <button
+                                onclick={forceKill}
+                                class="p-2.5 rounded-lg bg-red-900/30 hover:bg-red-900/50 text-red-400 hover:text-red-200 border border-red-900/50 transition-all flex items-center justify-center"
+                                title="Forzar Cierre (Kill)"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    class="lucide lucide-skull"
+                                    ><path d="m11.1 12.93-1.8 1.8" /><path
+                                        d="m14.7 12.93 1.8 1.8"
+                                    /><path
+                                        d="M15.6 11.6a9 9 0 1 1-7.2 0Z"
+                                    /></svg
+                                >
+                            </button>
+                        {/if}
+                    </div>
                     <section
                         class="bg-[#1e293b]/50 border border-white/5 rounded-xl p-6 relative transition-opacity {isServerRunning
                             ? 'opacity-50 pointer-events-none'
@@ -922,7 +1381,7 @@
                                 </div>
                             </div>
                             <button
-                                onclick={resetGeneralSettings}
+                                onclick={resetGeneralSettingsForm}
                                 disabled={isServerRunning}
                                 title="Restablecer valores por defecto"
                                 class="p-2 rounded-lg hover:bg-white/5 text-zinc-500 hover:text-white transition-colors"

@@ -22,7 +22,7 @@ export interface Instance {
 class AppState {
     instances = $state<Instance[]>([]);
     selectedInstance = $state<Instance | null>(null);
-    view = $state<'home' | 'instances' | 'settings'>('home');
+    view = $state<'home' | 'instances' | 'settings' | 'dev'>('home');
     refreshing = $state<boolean>(false);
     creatingInstance = $state<boolean>(false);
 

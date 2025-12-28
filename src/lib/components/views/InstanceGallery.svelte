@@ -31,23 +31,29 @@
 <div class="w-full h-full px-8 pb-8 pt-5 overflow-y-auto">
     <div class="max-w-6xl mx-auto space-y-6">
         <!-- Header -->
-        <div class="flex items-center justify-between" data-tauri-drag-region>
+        <div
+            class="flex items-end justify-between pb-6 border-b border-white/5"
+            data-tauri-drag-region
+        >
             <div>
                 <h2
-                    class="text-2xl font-bold text-white tracking-tight drop-shadow-sm"
+                    class="text-3xl font-bold text-white tracking-tight leading-none"
                 >
                     Mis Instancias
                 </h2>
+                <p class="text-zinc-500 text-sm mt-1 font-medium">
+                    Gestiona y lanza tus servidores
+                </p>
             </div>
             <div class="flex items-center gap-2">
                 <button
-                    class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-lg shadow-black/20 border border-zinc-700"
+                    class="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all active:scale-95"
                     onclick={refreshInstances}
                     title="Actualizar lista"
                 >
                     <svg
-                        width="16"
-                        height="16"
+                        width="18"
+                        height="18"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -62,7 +68,7 @@
                     >
                 </button>
                 <button
-                    class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-lg shadow-black/20 border border-zinc-700"
+                    class="h-9 px-3 text-sm font-bold text-zinc-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all flex items-center gap-2"
                     onclick={openFolder}
                 >
                     <svg
@@ -72,15 +78,16 @@
                         fill="none"
                         stroke="currentColor"
                         stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
                         ><path
                             d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2z"
                         ></path></svg
-                    > Ver Carpeta
+                    >
+                    Carpeta
                 </button>
             </div>
         </div>
-
-        <hr class="border-white/5" />
 
         <!-- Widget Grid View -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

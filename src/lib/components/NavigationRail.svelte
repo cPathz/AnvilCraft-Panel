@@ -1,3 +1,7 @@
+<script module>
+    import devIcon from "$lib/assets/dev_icon.png";
+</script>
+
 <script lang="ts">
     import { appState, type Instance } from "$lib/runes/store.svelte";
 
@@ -133,6 +137,28 @@
 
     <!-- 2 & 1: Contenedor Inferior (Fijo) -->
     <div class="fixed-container bottom">
+        <!-- Dev Mode (Only visible in Development) -->
+        {#if import.meta.env.DEV}
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+                class="icon-wrapper dev-mode"
+                aria-label="Dev Mode"
+                class:selected={appState.view === "dev"}
+                onclick={() => {
+                    appState.view = "dev";
+                    appState.selectedInstance = null;
+                }}
+                onmouseenter={(e) => handleMouseEnter(e, "Dev Mode")}
+                onmouseleave={handleMouseLeave}
+            >
+                <div class="pill"></div>
+                <div class="icon">
+                    <img src={devIcon} alt="Dev" class="dev-icon-img" />
+                </div>
+            </div>
+        {/if}
+
         <!-- 2: Botón de Agregar (+) -->
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -319,6 +345,13 @@
                 0 0 15px rgba(245, 158, 11, 0.5),
                 inset 0 0 10px rgba(245, 158, 11, 0.2);
         }
+    }
+
+    .dev-icon-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 10px; /* Same as .icon */
     }
 
     .add-new .icon {

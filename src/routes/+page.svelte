@@ -4,6 +4,7 @@
   import InstanceGallery from "$lib/components/views/InstanceGallery.svelte";
   import InstanceDetail from "$lib/components/views/InstanceDetail.svelte";
   import SettingsView from "$lib/components/views/SettingsView.svelte";
+  import DevDashboard from "$lib/components/views/DevDashboard.svelte";
   import { appState } from "$lib/runes/store.svelte";
 </script>
 
@@ -21,6 +22,8 @@
     <InstanceGallery />
   {:else if appState.view === "settings"}
     <SettingsView />
+  {:else if appState.view === "dev"}
+    <DevDashboard />
   {:else}
     <Home />
   {/if}

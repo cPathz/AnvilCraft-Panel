@@ -32,6 +32,11 @@
 <!-- Backdrop -->
 <div
     class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in"
+    role="button"
+    tabindex="0"
+    onkeydown={(e) => {
+        if (e.key === "Escape") onclose();
+    }}
     onclick={(e) => {
         if (e.target === e.currentTarget) onclose();
     }}
@@ -39,6 +44,8 @@
     <!-- Picker Container -->
     <div
         class="bg-[#18181b] w-full max-w-4xl h-[80vh] rounded-2xl border border-zinc-800 shadow-2xl flex flex-col overflow-hidden animate-scale-in"
+        role="dialog"
+        aria-modal="true"
     >
         <!-- Header -->
         <div
@@ -63,11 +70,11 @@
                     autocomplete="off"
                     placeholder="Buscar icono (ej. grass, diamond, sword)..."
                     class="w-full bg-zinc-900 border border-zinc-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-all font-medium"
-                    autoFocus
                 />
             </div>
             <button
                 onclick={onclose}
+                aria-label="Cerrar"
                 class="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
             >
                 <svg

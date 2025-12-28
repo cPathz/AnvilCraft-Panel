@@ -1,0 +1,280 @@
+{
+  "versions": {
+    "1.20.1": {
+      "commands": "minecraft/v1_20_1/commands.json",
+      "blocks": "minecraft/v1_20_1/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_20_1/registries.json"
+    },
+    "1.20": {
+      "commands": "minecraft/v1_20/commands.json",
+      "blocks": "minecraft/v1_20/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_20/registries.json"
+    },
+    "1.15.2": {
+      "commands": "minecraft/v1_15_2/commands.json",
+      "blocks": "minecraft/v1_15_2/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_15_2/registries.json"
+    },
+    "1.21.1": {
+      "commands": "minecraft/v1_21_1/commands.json",
+      "blocks": "minecraft/v1_21_1/blocks.json",
+      "items": "minecraft/v1_21_1/items.json",
+      "registries": "minecraft/v1_21_1/registries.json"
+    },
+    "1.21.3": {
+      "commands": "minecraft/v1_21_3/commands.json",
+      "blocks": "minecraft/v1_21_3/blocks.json",
+      "items": "minecraft/v1_21_3/items.json",
+      "registries": "minecraft/v1_21_3/registries.json"
+    },
+    "1.19.1": {
+      "commands": "minecraft/v1_19_1/commands.json",
+      "blocks": "minecraft/v1_19_1/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_19_1/registries.json"
+    },
+    "1.19": {
+      "commands": "minecraft/v1_19/commands.json",
+      "blocks": "minecraft/v1_19/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_19/registries.json"
+    },
+    "1.21.10": {
+      "commands": "minecraft/v1_21_10/commands.json",
+      "blocks": "minecraft/v1_21_10/blocks.json",
+      "items": "minecraft/v1_21_10/items.json",
+      "registries": "minecraft/v1_21_10/registries.json"
+    },
+    "1.14.4": {
+      "commands": "minecraft/v1_14_4/commands.json",
+      "blocks": "minecraft/v1_14_4/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_14_4/registries.json"
+    },
+    "1.18.1": {
+      "commands": "minecraft/v1_18_1/commands.json",
+      "blocks": "minecraft/v1_18_1/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_18_1/registries.json"
+    },
+    "1.14": {
+      "commands": "minecraft/v1_14/commands.json",
+      "blocks": "minecraft/v1_14/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_14/registries.json"
+    },
+    "1.21.9": {
+      "commands": "minecraft/v1_21_9/commands.json",
+      "blocks": "minecraft/v1_21_9/blocks.json",
+      "items": "minecraft/v1_21_9/items.json",
+      "registries": "minecraft/v1_21_9/registries.json"
+    },
+    "1.16.2": {
+      "commands": "minecraft/v1_16_2/commands.json",
+      "blocks": "minecraft/v1_16_2/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_16_2/registries.json"
+    },
+    "1.14.1": {
+      "commands": "minecraft/v1_14_1/commands.json",
+      "blocks": "minecraft/v1_14_1/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_14_1/registries.json"
+    },
+    "1.13.2": {
+      "commands": "minecraft/v1_13_2/commands.json",
+      "blocks": "minecraft/v1_13_2/blocks.json",
+      "items": "minecraft/v1_13_2/items.json",
+      "registries": ""
+    },
+    "1.16.4": {
+      "commands": "minecraft/v1_16_4/commands.json",
+      "blocks": "minecraft/v1_16_4/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_16_4/registries.json"
+    },
+    "1.21.11": {
+      "commands": "minecraft/v1_21_11/commands.json",
+      "blocks": "minecraft/v1_21_11/blocks.json",
+      "items": "minecraft/v1_21_11/items.json",
+      "registries": "minecraft/v1_21_11/registries.json"
+    },
+    "1.20.6": {
+      "commands": "minecraft/v1_20_6/commands.json",
+      "blocks": "minecraft/v1_20_6/blocks.json",
+      "items": "minecraft/v1_20_6/items.json",
+      "registries": "minecraft/v1_20_6/registries.json"
+    },
+    "1.20.3": {
+      "commands": "minecraft/v1_20_3/commands.json",
+      "blocks": "minecraft/v1_20_3/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_20_3/registries.json"
+    },
+    "1.21.5": {
+      "commands": "minecraft/v1_21_5/commands.json",
+      "blocks": "minecraft/v1_21_5/blocks.json",
+      "items": "minecraft/v1_21_5/items.json",
+      "registries": "minecraft/v1_21_5/registries.json"
+    },
+    "1.18.2": {
+      "commands": "minecraft/v1_18_2/commands.json",
+      "blocks": "minecraft/v1_18_2/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_18_2/registries.json"
+    },
+    "1.20.5": {
+      "commands": "minecraft/v1_20_5/commands.json",
+      "blocks": "minecraft/v1_20_5/blocks.json",
+      "items": "minecraft/v1_20_5/items.json",
+      "registries": "minecraft/v1_20_5/registries.json"
+    },
+    "1.17.1": {
+      "commands": "minecraft/v1_17_1/commands.json",
+      "blocks": "minecraft/v1_17_1/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_17_1/registries.json"
+    },
+    "1.19.2": {
+      "commands": "minecraft/v1_19_2/commands.json",
+      "blocks": "minecraft/v1_19_2/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_19_2/registries.json"
+    },
+    "1.14.2": {
+      "commands": "minecraft/v1_14_2/commands.json",
+      "blocks": "minecraft/v1_14_2/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_14_2/registries.json"
+    },
+    "1.21.2": {
+      "commands": "minecraft/v1_21_2/commands.json",
+      "blocks": "minecraft/v1_21_2/blocks.json",
+      "items": "minecraft/v1_21_2/items.json",
+      "registries": "minecraft/v1_21_2/registries.json"
+    },
+    "1.13": {
+      "commands": "minecraft/v1_13/commands.json",
+      "blocks": "minecraft/v1_13/blocks.json",
+      "items": "minecraft/v1_13/items.json",
+      "registries": ""
+    },
+    "1.15.1": {
+      "commands": "minecraft/v1_15_1/commands.json",
+      "blocks": "minecraft/v1_15_1/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_15_1/registries.json"
+    },
+    "1.16.3": {
+      "commands": "minecraft/v1_16_3/commands.json",
+      "blocks": "minecraft/v1_16_3/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_16_3/registries.json"
+    },
+    "1.21.8": {
+      "commands": "minecraft/v1_21_8/commands.json",
+      "blocks": "minecraft/v1_21_8/blocks.json",
+      "items": "minecraft/v1_21_8/items.json",
+      "registries": "minecraft/v1_21_8/registries.json"
+    },
+    "1.16": {
+      "commands": "minecraft/v1_16/commands.json",
+      "blocks": "minecraft/v1_16/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_16/registries.json"
+    },
+    "1.16.5": {
+      "commands": "minecraft/v1_16_5/commands.json",
+      "blocks": "minecraft/v1_16_5/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_16_5/registries.json"
+    },
+    "1.16.1": {
+      "commands": "minecraft/v1_16_1/commands.json",
+      "blocks": "minecraft/v1_16_1/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_16_1/registries.json"
+    },
+    "1.18": {
+      "commands": "minecraft/v1_18/commands.json",
+      "blocks": "minecraft/v1_18/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_18/registries.json"
+    },
+    "1.21": {
+      "commands": "minecraft/v1_21/commands.json",
+      "blocks": "minecraft/v1_21/blocks.json",
+      "items": "minecraft/v1_21/items.json",
+      "registries": "minecraft/v1_21/registries.json"
+    },
+    "1.13.1": {
+      "commands": "minecraft/v1_13_1/commands.json",
+      "blocks": "minecraft/v1_13_1/blocks.json",
+      "items": "minecraft/v1_13_1/items.json",
+      "registries": ""
+    },
+    "1.21.4": {
+      "commands": "minecraft/v1_21_4/commands.json",
+      "blocks": "minecraft/v1_21_4/blocks.json",
+      "items": "minecraft/v1_21_4/items.json",
+      "registries": "minecraft/v1_21_4/registries.json"
+    },
+    "1.20.4": {
+      "commands": "minecraft/v1_20_4/commands.json",
+      "blocks": "minecraft/v1_20_4/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_20_4/registries.json"
+    },
+    "1.17": {
+      "commands": "minecraft/v1_17/commands.json",
+      "blocks": "minecraft/v1_17/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_17/registries.json"
+    },
+    "1.19.4": {
+      "commands": "minecraft/v1_19_4/commands.json",
+      "blocks": "minecraft/v1_19_4/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_19_4/registries.json"
+    },
+    "1.20.2": {
+      "commands": "minecraft/v1_20_2/commands.json",
+      "blocks": "minecraft/v1_20_2/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_20_2/registries.json"
+    },
+    "1.21.6": {
+      "commands": "minecraft/v1_21_6/commands.json",
+      "blocks": "minecraft/v1_21_6/blocks.json",
+      "items": "minecraft/v1_21_6/items.json",
+      "registries": "minecraft/v1_21_6/registries.json"
+    },
+    "1.15": {
+      "commands": "minecraft/v1_15/commands.json",
+      "blocks": "minecraft/v1_15/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_15/registries.json"
+    },
+    "1.14.3": {
+      "commands": "minecraft/v1_14_3/commands.json",
+      "blocks": "minecraft/v1_14_3/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_14_3/registries.json"
+    },
+    "1.21.7": {
+      "commands": "minecraft/v1_21_7/commands.json",
+      "blocks": "minecraft/v1_21_7/blocks.json",
+      "items": "minecraft/v1_21_7/items.json",
+      "registries": "minecraft/v1_21_7/registries.json"
+    },
+    "1.19.3": {
+      "commands": "minecraft/v1_19_3/commands.json",
+      "blocks": "minecraft/v1_19_3/blocks.json",
+      "items": "",
+      "registries": "minecraft/v1_19_3/registries.json"
+    }
+  }
+}

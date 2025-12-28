@@ -19,3 +19,6 @@ dist/
 _backup/
 *.rar
 *.zip
+
+# Ignore raw data for dev use only
+src/lib/data/minecraft/

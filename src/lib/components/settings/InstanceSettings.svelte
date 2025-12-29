@@ -1,9 +1,11 @@
 <script lang="ts">
     import { appState, type Instance } from "$lib/runes/store.svelte";
     import { invoke } from "@tauri-apps/api/core";
+    import { open } from "@tauri-apps/plugin-dialog";
     import { toast } from "$lib/runes/toast.svelte";
     import { onMount, tick } from "svelte";
-    import { fade } from "svelte/transition";
+    import { fade, slide } from "svelte/transition";
+    import { listen } from "@tauri-apps/api/event";
 
     let {
         instance,
@@ -22,12 +24,38 @@
         port: 25565,
         args: "",
         jar_file: "server.jar",
+        java_path: null as string | null,
     });
+
+    const formatRam = (mb: number) => {
+        const gb = mb / 1024;
+        if (gb % 1 === 0) return `${gb} GB`;
+        return `${gb.toFixed(1)} GB`;
+    };
 
     let originalSettings = $state<any>(null);
     let systemRam = $state(0);
     let linkMemory = $state(true);
     let lastSyncedId = $state<string | null>(null);
+
+    // Java Downloader State
+    let javaRuntimes = $state<any[]>([]);
+    let downloadProgress = $state<
+        Record<string, { step: string; progress: number }>
+    >({});
+    let unlistenProgress: any = null;
+
+    // derived max allowed RAM (75% of system RAM, at least 512 MB)
+    let maxAllowed = $derived.by(() => {
+        if (!systemRam) return 512;
+        const totalMb = Math.floor(systemRam / 1024 / 1024);
+        return Math.max(512, Math.floor(totalMb * 0.75));
+    });
+
+    // Helper to mark component dirty
+    function markDirty() {
+        isDirty = true;
+    }
 
     let internalIsDirty = $derived(
         originalSettings &&
@@ -46,7 +74,60 @@
         } catch (e) {
             console.error("Failed to get system memory", e);
         }
+        await loadJavaRuntimes();
+
+        // Listen for Java download progress
+        unlistenProgress = await listen<any>("install-progress", (event) => {
+            const payload = event.payload;
+            if (payload.id.startsWith("java-download-")) {
+                downloadProgress[payload.id] = {
+                    step: payload.step,
+                    progress: payload.progress,
+                };
+                if (payload.step === "Done") {
+                    loadJavaRuntimes();
+                    setTimeout(() => {
+                        delete downloadProgress[payload.id];
+                    }, 3000);
+                }
+            }
+        });
+
+        return () => {
+            if (unlistenProgress) unlistenProgress();
+        };
     });
+
+    async function loadJavaRuntimes() {
+        try {
+            javaRuntimes = await invoke("get_available_java_versions");
+        } catch (e) {
+            console.error("Failed to load java runtimes", e);
+        }
+    }
+
+    async function handleDownloadJava(version: number) {
+        const id = `java-download-${version}`;
+        downloadProgress[id] = { step: "Iniciando...", progress: 0 };
+        try {
+            const path = await invoke<string>("download_java_runtime", {
+                version,
+            });
+            formSettings.java_path = path;
+            markDirty();
+            toast.success(`Java ${version} descargado y configurado`);
+        } catch (e) {
+            console.error(e);
+            toast.error(`Error descargando Java ${version}: ${e}`);
+            delete downloadProgress[id];
+        }
+    }
+
+    function useJavaRuntime(path: string) {
+        formSettings.java_path = path;
+        markDirty();
+        toast.success("Ruta de Java actualizada");
+    }
 
     // Sync form when instance changes
     $effect(() => {
@@ -58,6 +139,33 @@
             }
         }
     });
+
+    // RAM input handlers to enforce constraints
+    function toggleLink() {
+        linkMemory = !linkMemory;
+        if (linkMemory) {
+            formSettings.min_ram = formSettings.max_ram;
+        }
+        markDirty();
+    }
+
+    function handleMinInput() {
+        markDirty();
+        if (linkMemory) {
+            formSettings.max_ram = formSettings.min_ram;
+        } else if (formSettings.min_ram > formSettings.max_ram) {
+            formSettings.max_ram = formSettings.min_ram;
+        }
+    }
+
+    function handleMaxInput() {
+        markDirty();
+        if (linkMemory) {
+            formSettings.min_ram = formSettings.max_ram;
+        } else if (formSettings.max_ram < formSettings.min_ram) {
+            formSettings.min_ram = formSettings.max_ram;
+        }
+    }
 
     // Actions
     async function saveSettings() {
@@ -91,9 +199,40 @@
     function resetGeneralSettingsForm() {
         formSettings.port = 25565;
         formSettings.jar_file = "server.jar";
-        formSettings.min_ram = 1024;
-        formSettings.max_ram = 2048;
         formSettings.args = "";
+        formSettings.java_path = null;
+
+        const totalMb = Math.floor(systemRam / 1024 / 1024);
+        // Step to 512MB increments
+        if (totalMb >= 8192) {
+            formSettings.min_ram = 4096;
+            formSettings.max_ram = 4096;
+        } else {
+            formSettings.min_ram = 2048;
+            formSettings.max_ram = 2048;
+        }
+        markDirty();
+    }
+
+    async function selectJavaPath() {
+        try {
+            const selected = await open({
+                multiple: false,
+                filters: [
+                    {
+                        name: "Java Executable",
+                        extensions: ["exe", "bin", "sh", "*"],
+                    },
+                ],
+            });
+            if (selected && typeof selected === "string") {
+                formSettings.java_path = selected;
+                markDirty();
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("Error al abrir el selector: " + e);
+        }
     }
 
     function formatBytes(bytes: number, decimals = 2) {
@@ -187,47 +326,134 @@
                 </div>
             {/if}
 
-            <div class="space-y-6">
-                <div class="grid grid-cols-2 gap-6">
-                    <!-- RAM Min -->
-                    <div class="space-y-2">
-                        <label
-                            for="min-ram"
-                            class="text-xs font-bold text-zinc-400 uppercase tracking-wider"
-                            >RAM Mínima (MB)</label
+            <div class="space-y-8">
+                <div class="grid grid-cols-2 gap-16">
+                    <!-- Column 1: RAM -->
+                    <div class="space-y-4">
+                        <div
+                            class="grid grid-cols-[1fr,96px] gap-x-4 items-center gap-y-1"
                         >
-                        <div class="relative group">
+                            <!-- Header Min -->
+                            <label
+                                for="min-ram"
+                                class="text-xs font-bold text-zinc-400 uppercase tracking-wider"
+                                >RAM Mínima (MB)</label
+                            >
+                            <div></div>
+
+                            <!-- Row Min -->
                             <input
                                 id="min-ram"
-                                type="number"
+                                type="range"
+                                min="512"
+                                step="512"
+                                max={maxAllowed}
                                 bind:value={formSettings.min_ram}
+                                oninput={handleMinInput}
                                 disabled={isServerRunning}
-                                class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl px-4 py-3 font-jetbrains focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300"
+                                class="w-full accent-blue-500 h-1.5 bg-zinc-700/50 rounded-lg appearance-none cursor-pointer"
                             />
                             <div
-                                class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-600 bg-[#1e293b] px-2 py-1 rounded"
+                                class="bg-[#1e293b] px-3 py-2 rounded-xl text-center text-sm font-jetbrains font-bold text-zinc-400 shadow-inner"
                             >
-                                MIN
+                                {formatRam(formSettings.min_ram)}
+                            </div>
+
+                            <!-- Link Row -->
+                            <div></div>
+                            <div class="flex justify-center -my-1">
+                                <button
+                                    onclick={toggleLink}
+                                    class="p-1.5 rounded-full hover:bg-white/5 transition-colors group"
+                                    title={linkMemory
+                                        ? "Desvincular"
+                                        : "Vincular"}
+                                >
+                                    <svg
+                                        width="18"
+                                        height="18"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2.5"
+                                        class={linkMemory
+                                            ? "text-blue-500"
+                                            : "text-zinc-600 opacity-50"}
+                                    >
+                                        <path
+                                            d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                                        ></path>
+                                        {#if linkMemory}
+                                            <path
+                                                d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                                            ></path>
+                                        {/if}
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- Header Max -->
+                            <label
+                                for="max-ram"
+                                class="text-xs font-bold text-zinc-400 uppercase tracking-wider mt-2"
+                                >RAM Máxima (MB)</label
+                            >
+                            <div></div>
+
+                            <!-- Row Max -->
+                            <input
+                                id="max-ram"
+                                type="range"
+                                min="512"
+                                step="512"
+                                max={maxAllowed}
+                                bind:value={formSettings.max_ram}
+                                oninput={handleMaxInput}
+                                disabled={isServerRunning}
+                                class="w-full accent-blue-500 h-1.5 bg-zinc-700/50 rounded-lg appearance-none cursor-pointer"
+                            />
+                            <div
+                                class="bg-[#1e293b] px-3 py-2 rounded-xl text-center text-sm font-jetbrains font-bold text-zinc-300 shadow-inner"
+                            >
+                                {formatRam(formSettings.max_ram)}
+                            </div>
+
+                            <!-- Stats -->
+                            <div
+                                class="col-span-2 flex justify-between text-xs text-zinc-500 mt-4 pr-1"
+                            >
+                                <span>Sistema: {formatBytes(systemRam)}</span>
+                                <span
+                                    class={formSettings.max_ram >
+                                    (systemRam / 1024 / 1024) * 0.8
+                                        ? "text-yellow-500"
+                                        : ""}
+                                >
+                                    {Math.round(
+                                        (formSettings.max_ram /
+                                            (systemRam / 1024 / 1024)) *
+                                            100,
+                                    )}% del total
+                                </span>
                             </div>
                         </div>
                     </div>
-
-                    <!-- RAM Max -->
-                    <div class="space-y-2">
-                        <label
-                            for="max-ram"
-                            class="text-xs font-bold text-zinc-400 uppercase tracking-wider flex justify-between"
-                        >
-                            <span>RAM Máxima (MB)</span>
-                            {#if linkMemory}
-                                <button
-                                    onclick={() => (linkMemory = false)}
-                                    class="text-blue-400 hover:text-blue-300 transition-colors"
-                                    title="Desvincular"
+                    <!-- Column 2: JAR & Port -->
+                    <div class="space-y-6">
+                        <!-- JAR -->
+                        <div class="space-y-2">
+                            <label
+                                for="jar-file"
+                                class="text-xs font-bold text-zinc-400 uppercase tracking-wider"
+                                >Archivo JAR</label
+                            >
+                            <div class="relative group">
+                                <div
+                                    class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600"
                                 >
                                     <svg
-                                        width="14"
-                                        height="14"
+                                        width="16"
+                                        height="16"
                                         viewBox="0 0 24 24"
                                         fill="none"
                                         stroke="currentColor"
@@ -238,90 +464,79 @@
                                             d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
                                         ></path></svg
                                     >
-                                </button>
-                            {:else}
-                                <button
-                                    onclick={() => (linkMemory = true)}
-                                    class="text-zinc-600 hover:text-blue-400 transition-colors"
-                                    title="Vincular"
+                                </div>
+                                <input
+                                    id="jar-file"
+                                    type="text"
+                                    bind:value={formSettings.jar_file}
+                                    oninput={markDirty}
+                                    disabled={isServerRunning}
+                                    class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl pl-12 pr-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 shadow-inner"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Port -->
+                        <div class="space-y-2">
+                            <label
+                                for="server-port"
+                                class="text-xs font-bold text-zinc-400 uppercase tracking-wider"
+                                >Puerto</label
+                            >
+                            <div class="relative group">
+                                <div
+                                    class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600"
                                 >
                                     <svg
-                                        width="14"
-                                        height="14"
+                                        width="16"
+                                        height="16"
                                         viewBox="0 0 24 24"
                                         fill="none"
                                         stroke="currentColor"
                                         stroke-width="2"
-                                        class="opacity-50"
-                                        ><path
-                                            d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
-                                        ></path></svg
+                                        ><line x1="4" y1="9" x2="20" y2="9"
+                                        ></line><line
+                                            x1="4"
+                                            y1="15"
+                                            x2="20"
+                                            y2="15"
+                                        ></line><line
+                                            x1="10"
+                                            y1="3"
+                                            x2="8"
+                                            y2="21"
+                                        ></line><line
+                                            x1="16"
+                                            y1="3"
+                                            x2="14"
+                                            y2="21"
+                                        ></line></svg
                                     >
-                                </button>
-                            {/if}
-                        </label>
-                        <div class="relative group">
-                            <input
-                                id="max-ram"
-                                type="number"
-                                bind:value={formSettings.max_ram}
-                                disabled={isServerRunning}
-                                class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl px-4 py-3 font-jetbrains focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-[0_0_20px_rgba(59,130,246,0.1)] focus:shadow-[0_0_30px_rgba(59,130,246,0.2)]"
-                            />
-                            <div
-                                class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-blue-500 bg-blue-500/10 px-2 py-1 rounded"
-                            >
-                                MAX
+                                </div>
+                                <input
+                                    id="server-port"
+                                    type="number"
+                                    bind:value={formSettings.port}
+                                    oninput={markDirty}
+                                    disabled={isServerRunning}
+                                    class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl pl-12 pr-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 shadow-inner"
+                                />
                             </div>
-                        </div>
-                        <div
-                            class="flex justify-between text-xs text-zinc-500 px-1"
-                        >
-                            <span>Sistema: {formatBytes(systemRam)}</span>
-                            <span
-                                class={formSettings.max_ram >
-                                (systemRam / 1024 / 1024) * 0.8
-                                    ? "text-yellow-500"
-                                    : ""}
-                            >
-                                {Math.round(
-                                    (formSettings.max_ram /
-                                        (systemRam / 1024 / 1024)) *
-                                        100,
-                                )}% del total
-                            </span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Java Args -->
-                <div class="space-y-2">
+                <!-- Java Selection -->
+                <div class="space-y-3">
                     <label
-                        for="java-args"
+                        for="java-path"
                         class="text-xs font-bold text-zinc-400 uppercase tracking-wider"
-                        >Argumentos Java</label
+                        >Ruta de Java (Opcional)</label
                     >
-                    <input
-                        id="java-args"
-                        type="text"
-                        bind:value={formSettings.args}
-                        disabled={isServerRunning}
-                        placeholder="-XX:+UseG1GC..."
-                        class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl px-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 placeholder:text-zinc-700"
-                    />
-                </div>
-
-                <!-- JAR File & Port -->
-                <div class="grid grid-cols-3 gap-6">
-                    <div class="col-span-2 space-y-2">
-                        <label
-                            for="jar-file"
-                            class="text-xs font-bold text-zinc-400 uppercase tracking-wider"
-                            >Archivo JAR</label
-                        >
-                        <div class="relative group">
+                    <div class="flex gap-2">
+                        <div class="relative flex-1 group">
                             <div
-                                class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600"
+                                class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600"
                             >
                                 <svg
                                     width="16"
@@ -331,47 +546,262 @@
                                     stroke="currentColor"
                                     stroke-width="2"
                                     ><path
-                                        d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
-                                    ></path><path
-                                        d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
-                                    ></path></svg
+                                        d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+                                    /><polyline
+                                        points="3.27 6.96 12 12.01 20.73 6.96"
+                                    /><line
+                                        x1="12"
+                                        y1="22.08"
+                                        x2="12"
+                                        y2="12"
+                                    /></svg
                                 >
                             </div>
                             <input
-                                id="jar-file"
+                                id="java-path"
                                 type="text"
-                                bind:value={formSettings.jar_file}
+                                bind:value={formSettings.java_path}
+                                oninput={markDirty}
                                 disabled={isServerRunning}
-                                class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl pl-10 pr-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300"
+                                placeholder="Por defecto (java)"
+                                class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl pl-12 pr-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 placeholder:text-zinc-700 shadow-inner"
                             />
                         </div>
-                    </div>
-
-                    <div class="space-y-2">
-                        <label
-                            for="server-port"
-                            class="text-xs font-bold text-zinc-400 uppercase tracking-wider"
-                            >Puerto</label
-                        >
-                        <input
-                            id="server-port"
-                            type="number"
-                            bind:value={formSettings.port}
+                        <button
+                            onclick={selectJavaPath}
                             disabled={isServerRunning}
-                            class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl px-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 text-center"
-                        />
+                            class="px-4 bg-zinc-800 border border-zinc-700 rounded-xl text-zinc-300 hover:text-white hover:bg-zinc-700 transition-all disabled:opacity-30 flex items-center gap-2"
+                        >
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                ><path
+                                    d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+                                /></svg
+                            >
+                            <span
+                                class="text-xs font-bold uppercase tracking-widest"
+                                >Explorar</span
+                            >
+                        </button>
+                    </div>
+                    {#if instance.version.includes("1.12") || instance.version.includes("1.8")}
+                        <p
+                            class="text-[10px] text-yellow-500/70 italic flex items-center gap-1.5 px-1"
+                        >
+                            <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="3"
+                                ><circle cx="12" cy="12" r="10" /><line
+                                    x1="12"
+                                    y1="8"
+                                    x2="12"
+                                    y2="12"
+                                /><line
+                                    x1="12"
+                                    y1="16"
+                                    x2="12.01"
+                                    y2="16"
+                                /></svg
+                            >
+                            Tip: Esta versión suele requerir Java 8 para funcionar
+                            correctamente.
+                        </p>
+                    {:else if instance.version.includes("1.16.5")}
+                        <p
+                            class="text-[10px] text-yellow-500/70 italic flex items-center gap-1.5 px-1"
+                        >
+                            <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="3"
+                                ><circle cx="12" cy="12" r="10" /><line
+                                    x1="12"
+                                    y1="8"
+                                    x2="12"
+                                    y2="12"
+                                /><line
+                                    x1="12"
+                                    y1="16"
+                                    x2="12.01"
+                                    y2="16"
+                                /></svg
+                            >
+                            Tip: Para 1.16.5 se recomienda Java 11 o 16. Java 17+
+                            puede dar errores.
+                        </p>
+                    {/if}
+                </div>
+
+                <!-- Portable Java Downloader -->
+                <div
+                    class="bg-[#1e293b]/30 border border-[#1e293b] rounded-2xl overflow-hidden"
+                >
+                    <div
+                        class="px-6 py-4 border-b border-[#1e293b] bg-[#1e293b]/20 flex items-center justify-between"
+                    >
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center"
+                            >
+                                <svg
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="#3b82f6"
+                                    stroke-width="2"
+                                    ><path
+                                        d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                                    /><polyline
+                                        points="7 10 12 15 17 10"
+                                    /><line
+                                        x1="12"
+                                        y1="15"
+                                        x2="12"
+                                        y2="3"
+                                    /></svg
+                                >
+                            </div>
+                            <h3 class="text-sm font-bold text-zinc-200">
+                                Java Portátil (Adoptium)
+                            </h3>
+                        </div>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        <div
+                            class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"
+                        >
+                            {#each javaRuntimes as runtime}
+                                <div
+                                    class="bg-[#0f172a] border border-[#1e293b] rounded-xl p-3 flex flex-col gap-3 relative overflow-hidden group"
+                                >
+                                    <div
+                                        class="flex items-center justify-between"
+                                    >
+                                        <span
+                                            class="text-xs font-black text-zinc-500 uppercase tracking-tighter"
+                                            >Java {runtime.version}</span
+                                        >
+                                        {#if runtime.is_downloaded}
+                                            <div
+                                                class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"
+                                            ></div>
+                                        {/if}
+                                    </div>
+
+                                    {#if downloadProgress[`java-download-${runtime.version}`]}
+                                        <div
+                                            class="space-y-2 py-1"
+                                            transition:slide
+                                        >
+                                            <div
+                                                class="flex justify-between text-[10px] text-blue-400 font-bold"
+                                            >
+                                                <span class="truncate pr-2"
+                                                    >{downloadProgress[
+                                                        `java-download-${runtime.version}`
+                                                    ].step}</span
+                                                >
+                                                <span
+                                                    >{downloadProgress[
+                                                        `java-download-${runtime.version}`
+                                                    ].progress}%</span
+                                                >
+                                            </div>
+                                            <div
+                                                class="h-1 bg-zinc-800 rounded-full overflow-hidden"
+                                            >
+                                                <div
+                                                    class="h-full bg-blue-500 transition-all duration-300"
+                                                    style="width: {downloadProgress[
+                                                        `java-download-${runtime.version}`
+                                                    ].progress}%"
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    {:else}
+                                        <div class="flex flex-col gap-2">
+                                            {#if runtime.is_downloaded}
+                                                <button
+                                                    onclick={() =>
+                                                        useJavaRuntime(
+                                                            runtime.path,
+                                                        )}
+                                                    disabled={formSettings.java_path ===
+                                                        runtime.path}
+                                                    class="w-full py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all
+                                                           {formSettings.java_path ===
+                                                    runtime.path
+                                                        ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                                                        : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'}"
+                                                >
+                                                    {formSettings.java_path ===
+                                                    runtime.path
+                                                        ? "En uso"
+                                                        : "Usar"}
+                                                </button>
+                                            {:else}
+                                                <button
+                                                    onclick={() =>
+                                                        handleDownloadJava(
+                                                            runtime.version,
+                                                        )}
+                                                    class="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold uppercase tracking-wider transition-all shadow-lg shadow-blue-600/20"
+                                                >
+                                                    Descargar
+                                                </button>
+                                            {/if}
+                                        </div>
+                                    {/if}
+                                </div>
+                            {/each}
+                        </div>
+                        <p class="text-[10px] text-zinc-500 px-1 italic">
+                            Los Javas se descargan en <code
+                                class="text-zinc-400 bg-black/20 px-1 rounded"
+                                >%APPDATA%/AnvilCraft/runtimes</code
+                            >
+                        </p>
                     </div>
                 </div>
 
-                <!-- Reset Buttons -->
-                <div class="pt-4 flex justify-end gap-3">
-                    <button
-                        onclick={resetGeneralSettingsForm}
+                <!-- Java Args -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <label
+                            for="java-args"
+                            class="text-xs font-bold text-zinc-400 uppercase tracking-wider"
+                            >Argumentos Java</label
+                        >
+                        <button
+                            onclick={resetGeneralSettingsForm}
+                            disabled={isServerRunning}
+                            class="text-[10px] font-bold text-zinc-500 hover:text-yellow-500 transition-colors uppercase tracking-widest px-2 py-1 rounded hover:bg-yellow-500/5"
+                        >
+                            Restaurar Valores
+                        </button>
+                    </div>
+                    <input
+                        id="java-args"
+                        type="text"
+                        bind:value={formSettings.args}
+                        oninput={markDirty}
                         disabled={isServerRunning}
-                        class="px-4 py-2 rounded-lg text-xs font-bold text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
-                    >
-                        Restaurar Valores
-                    </button>
+                        placeholder="-XX:+UseG1GC..."
+                        class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl px-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 placeholder:text-zinc-700 shadow-inner"
+                    />
                 </div>
             </div>
         </div>

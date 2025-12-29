@@ -201,6 +201,7 @@
             }}
             onmouseenter={(e) => handleMouseEnter(e, "Configuración")}
             onmouseleave={handleMouseLeave}
+            style="margin-bottom: 5px;"
         >
             <div class="icon settings-icon">
                 <svg

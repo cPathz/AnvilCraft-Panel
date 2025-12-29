@@ -1,4 +1,5 @@
 use crate::models::InstanceInstallProgress;
+use chrono::Local;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -157,6 +158,7 @@ pub async fn download_file(
     path: &std::path::Path,
     id: &str,
     known_size: Option<u64>,
+    log_path: Option<&std::path::Path>,
 ) -> Result<(), String> {
     let client = reqwest::Client::builder()
         .user_agent("AnvilCraft/1.0")
@@ -165,6 +167,22 @@ pub async fn download_file(
         .map_err(|e| e.to_string())?;
 
     println!("[DEBUG] Downloading: {}", url);
+    let mut log_file = log_path.and_then(|p| {
+        fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(p)
+            .ok()
+    });
+
+    if let Some(ref mut f) = log_file {
+        let _ = writeln!(
+            f,
+            "[{}] Starting download: {}",
+            Local::now().format("%H:%M:%S"),
+            url
+        );
+    }
 
     let _ = app.emit(
         "install-progress",
@@ -198,7 +216,20 @@ pub async fn download_file(
 
         if let Some(size) = total_size {
             let progress = (downloaded as f64 / size as f64 * 100.0) as u64;
-            // Emit sparingly? No, frontend handles it.
+            // Emit sparingly
+            if downloaded % (1024 * 1024) == 0 || downloaded == size {
+                // Log every MB
+                if let Some(ref mut f) = log_file {
+                    let _ = writeln!(
+                        f,
+                        "[{}] Progress: {}% ({} bytes)",
+                        Local::now().format("%H:%M:%S"),
+                        progress,
+                        downloaded
+                    );
+                }
+            }
+
             let _ = app.emit(
                 "install-progress",
                 InstanceInstallProgress {
@@ -210,6 +241,14 @@ pub async fn download_file(
                 },
             );
         }
+    }
+
+    if let Some(ref mut f) = log_file {
+        let _ = writeln!(
+            f,
+            "[{}] Download finished.",
+            Local::now().format("%H:%M:%S")
+        );
     }
 
     let _ = app.emit(
@@ -226,12 +265,33 @@ pub async fn download_file(
     Ok(())
 }
 
+pub fn write_eula_txt(path: std::path::PathBuf, accept: bool) -> Result<(), String> {
+    if !accept {
+        return Ok(());
+    }
+    let timestamp = Local::now().format("%a %b %d %H:%M:%S %Z %Y").to_string();
+    let content = format!(
+        "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://aka.ms/MinecraftEULA).\n#{}\neula=true",
+        timestamp
+    );
+
+    // Ensure parent directory exists
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+    }
+
+    fs::write(path, content).map_err(|e| e.to_string())
+}
+
 // Helpers
 pub async fn install_vanilla(
     app: &tauri::AppHandle,
     id: &str,
     version: &str,
     path: &std::path::Path,
+    accept_eula: bool,
 ) -> Result<(), String> {
     // 1. Get Manifest
     let manifest_url = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
@@ -265,11 +325,26 @@ pub async fn install_vanilla(
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
 
-    download_file(app, &server_dl.url, &jar_path, id, Some(server_dl.size)).await?;
+    let log_file = path.join("install.log");
+    download_file(
+        app,
+        &server_dl.url,
+        &jar_path,
+        id,
+        Some(server_dl.size),
+        Some(&log_file),
+    )
+    .await?;
 
     // 4. EULA
-    let eula_path = path.join(".minecraft").join("eula.txt");
-    fs::write(eula_path, "eula=true").map_err(|e| e.to_string())?;
+    if let Ok(mut f) = fs::OpenOptions::new().append(true).open(&log_file) {
+        let _ = writeln!(
+            f,
+            "[{}] Setting up EULA...",
+            Local::now().format("%H:%M:%S")
+        );
+    }
+    write_eula_txt(path.join(".minecraft").join("eula.txt"), accept_eula)?;
 
     // 5. Done
     let _ = app.emit(
@@ -293,6 +368,7 @@ pub async fn install_project_server(
     id: String,
     project: String,
     custom_url: Option<String>,
+    accept_eula: bool,
 ) -> Result<(), String> {
     // Determine Download URL
     // If Custom URL is present, Use it.
@@ -344,9 +420,21 @@ pub async fn install_project_server(
         fs::create_dir_all(p).map_err(|e| e.to_string())?;
     }
 
-    download_file(&app, &download_url, &jar_path, &id, None).await?;
+    let log_file = install_dir
+        .parent()
+        .unwrap_or(&install_dir)
+        .join("install.log");
+
+    download_file(&app, &download_url, &jar_path, &id, None, Some(&log_file)).await?;
 
     // Rename to server.jar for consistency?
+    if let Ok(mut f) = fs::OpenOptions::new().append(true).open(&log_file) {
+        let _ = writeln!(
+            f,
+            "[{}] Finalizing server.jar...",
+            Local::now().format("%H:%M:%S")
+        );
+    }
     // Or update instance settings to point to this jar?
     // In create_instance we default settings.jar_file to "server.jar".
     // If we use "paper-ver-build.jar", we must update the instance settings.
@@ -360,8 +448,7 @@ pub async fn install_project_server(
     fs::rename(jar_path, server_jar).map_err(|e| e.to_string())?;
 
     // EULA
-    let eula_path = install_dir.join("eula.txt");
-    fs::write(eula_path, "eula=true").map_err(|e| e.to_string())?;
+    write_eula_txt(install_dir.join("eula.txt"), accept_eula)?;
 
     let _ = app.emit(
         "install-progress",

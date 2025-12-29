@@ -17,6 +17,7 @@
         appState.instances.find((i) => i.id === instanceId),
     );
     let currentVersion = $derived(instance?.version);
+    let consoleSettings = $derived(appState.settings.console);
 
     // Local State
     let commandInput = $state("");
@@ -57,9 +58,17 @@
         });
     }
 
-    function clearLogs() {
+    export function clearLogs() {
         const r = appState.getRuntime(instanceId);
         if (r) r.logs = [];
+    }
+
+    export function toggleNoise() {
+        hideNoise = !hideNoise;
+    }
+
+    export function getHideNoise() {
+        return hideNoise;
     }
 
     function getLogLevel(log: string): string {
@@ -300,7 +309,7 @@
                             ...data
                                 .filter((item) => {
                                     if (
-                                        !item.id.startsWith(
+                                        !item.id.includes(
                                             currentTyped.toLowerCase(),
                                         )
                                     )
@@ -320,7 +329,7 @@
                         const data = rawData as string[];
                         possible.push(
                             ...data.filter((item) =>
-                                item.startsWith(currentTyped.toLowerCase()),
+                                item.includes(currentTyped.toLowerCase()),
                             ),
                         );
                     }
@@ -330,7 +339,7 @@
             }
 
             const matches = possible.filter(
-                (p) => p.startsWith(currentTyped) || p.startsWith("<"),
+                (p) => p.includes(currentTyped) || p.startsWith("<"),
             );
             if (matches.length > 0) {
                 console.log(
@@ -480,7 +489,12 @@
 <div class="flex-1 min-h-0 flex flex-col relative group">
     <!-- Logs Area -->
     <div
-        class="flex-1 overflow-y-auto p-4 font-jetbrains text-sm space-y-0.5 custom-scrollbar relative"
+        class="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar relative flex flex-col justify-start bg-[#1e293b]/80 backdrop-blur-md rounded-xl border border-white/10 ml-0 mr-0 mt-4"
+        style:font-family={consoleSettings.fontFamily}
+        style:font-size="{consoleSettings.fontSize}px"
+        style:line-height={consoleSettings.lineHeight}
+        style:letter-spacing="{consoleSettings.letterSpacing}px"
+        style:font-weight={consoleSettings.fontWeight}
         bind:this={consoleContainer}
         role="group"
         onmouseenter={() => (showConsoleToolbar = true)}
@@ -488,62 +502,13 @@
     >
         <!-- Floating Toolbar (Inside Scroll Area but fixed? No, sticky or absolute top right of container) -->
         <div
-            class="sticky top-0 right-0 z-30 flex justify-end mb-2 pointer-events-none"
+            class="absolute top-2 right-4 z-30 flex justify-end pointer-events-none"
         >
             <div
                 class="pointer-events-auto transition-all duration-200 transform translate-x-2 -translate-y-2"
                 class:opacity-0={!showConsoleToolbar && hideNoise}
                 class:opacity-100={showConsoleToolbar || !hideNoise}
-            >
-                <div
-                    class="flex items-center gap-1 bg-[#0f172a]/90 backdrop-blur-md p-1 rounded-lg border border-white/10 shadow-lg"
-                >
-                    <button
-                        onclick={() => (hideNoise = !hideNoise)}
-                        title={hideNoise
-                            ? "Mostrar todo (ruido incluido)"
-                            : "Ocultar ruido"}
-                        class="p-1.5 rounded-md transition-colors {hideNoise
-                            ? 'text-zinc-400 hover:text-white hover:bg-white/10'
-                            : 'text-green-400 bg-green-400/10'}"
-                    >
-                        <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            ><path d="M2 12h5" /><path d="M17 12h5" /><path
-                                d="M7 12l5-5 5 5"
-                            /><path d="M7 12l5 5 5-5" /></svg
-                        >
-                    </button>
-                    <button
-                        onclick={clearLogs}
-                        title="Limpiar consola"
-                        class="p-1.5 rounded-md text-zinc-400 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                    >
-                        <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            ><path d="M3 6h18" /><path
-                                d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"
-                            /><path
-                                d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"
-                            /></svg
-                        >
-                    </button>
-                </div>
-            </div>
+            ></div>
         </div>
 
         {#each logs as log}
@@ -599,13 +564,13 @@
     </div>
 
     <!-- Command Input Area (Discord Style) -->
-    <div class="p-4 bg-transparent relative z-20">
+    <div class="pl-0 pr-0 pt-4 pb-3 bg-transparent relative z-20">
         <div
             class="relative bg-[#1e293b]/80 backdrop-blur-md rounded-xl border border-white/10 flex items-center shadow-lg transition-colors focus-within:border-blue-500/50 focus-within:bg-[#1e293b] focus-within:ring-1 focus-within:ring-blue-500/50"
         >
             <!-- Styled Console Input Area -->
             <div
-                class="relative w-full flex items-center px-4 py-3 min-h-[48px]"
+                class="relative w-full flex items-center px-4 py-1.5 min-h-[32px]"
             >
                 <!-- Autocomplete Popup (Moved here for better relative positioning context) -->
                 {#if FEATURES.CONSOLE.AUTOCOMPLETE && showAutocomplete && autocompleteSuggestions.length > 0}
@@ -616,15 +581,18 @@
                             <!-- svelte-ignore a11y_click_events_have_key_events -->
                             <div
                                 id="autocomplete-item-{i}"
-                                class="px-3 py-2 text-sm font-jetbrains cursor-pointer rounded-lg transition-colors flex items-center justify-between {i ===
+                                class="px-3 py-2 text-sm cursor-pointer rounded-lg transition-colors flex items-center justify-between {i ===
                                 autocompleteIndex
                                     ? 'bg-blue-600 text-white'
                                     : 'text-zinc-400 hover:bg-white/5'}"
+                                style:font-family={consoleSettings.fontFamily}
                                 role="button"
                                 tabindex="0"
                                 onclick={() => applyAutocomplete(cmd, "Click")}
                             >
-                                <span class="font-medium">{cmd}</span>
+                                <span class="font-medium"
+                                    >{cmd.replace("minecraft:", "")}</span
+                                >
                                 {#if cmd.startsWith("<")}
                                     <span
                                         class="text-[10px] opacity-70 uppercase tracking-wider font-bold"
@@ -640,14 +608,25 @@
                         </div>
                     </div>
                 {/if}
-                <span
-                    class="text-zinc-500 select-none text-lg mr-3 pointer-events-none"
-                    >{"> "}</span
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="text-zinc-500 mr-2 select-none pointer-events-none opacity-80"
                 >
-                <div class="relative flex-1 h-12 flex items-center">
+                    <path d="m9 18 6-6-6-6" />
+                </svg>
+                <div class="relative flex-1 h-7 flex items-center">
                     <!-- Highlight Layer -->
                     <div
-                        class="absolute inset-0 w-full h-full font-jetbrains text-sm leading-relaxed whitespace-pre flex items-center pointer-events-none z-10"
+                        class="absolute inset-0 w-full h-full text-[15px] leading-normal whitespace-pre flex items-center pointer-events-none z-10"
+                        style:font-family={consoleSettings.fontFamily}
                         aria-hidden="true"
                     >
                         {@html coloredHtml}
@@ -658,7 +637,8 @@
                         bind:value={commandInput}
                         onkeydown={handleConsoleKeydown}
                         placeholder={coloredHtml ? "" : "Escribe un comando..."}
-                        class="absolute inset-0 w-full h-full bg-transparent text-transparent caret-blue-400 font-jetbrains text-sm leading-relaxed outline-none z-20 border-none ring-0 p-0 m-0 focus:ring-0 placeholder:text-zinc-600"
+                        class="absolute inset-0 w-full h-full bg-transparent text-transparent caret-blue-400 text-[15px] leading-normal outline-none z-20 border-none ring-0 p-0 m-0 focus:ring-0 placeholder:text-zinc-600"
+                        style:font-family={consoleSettings.fontFamily}
                         autocomplete="off"
                         spellcheck="false"
                         autocorrect="off"

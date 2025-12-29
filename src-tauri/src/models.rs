@@ -46,6 +46,7 @@ pub struct InstanceSettings {
     pub port: u16,
     pub args: String,
     pub jar_file: String,
+    pub java_path: Option<String>,
 }
 
 impl Default for InstanceSettings {
@@ -56,6 +57,7 @@ impl Default for InstanceSettings {
             port: 25565,
             args: String::new(),
             jar_file: String::from("server.jar"),
+            java_path: None,
         }
     }
 }

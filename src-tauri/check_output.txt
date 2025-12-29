@@ -1,59 +1,85 @@
     Checking anvil-craft v0.1.0 (D:\Usuarios\Luis Macias\Documentos\Proyectos\AnvilCraft\src-tauri)
-warning: unused import: `PathBuf`
- --> src\commands\dev.rs:4:23
-  |
-4 | use std::path::{Path, PathBuf};
-  |                       ^^^^^^^
-  |
-  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+error[E0432]: unresolved imports `sysinfo::ProcessExt`, `sysinfo::SystemExt`
+  --> src\commands\instance.rs:10:15
+   |
+10 | use sysinfo::{ProcessExt, System, SystemExt};
+   |               ^^^^^^^^^^          ^^^^^^^^^ no `SystemExt` in the root
+   |               |
+   |               no `ProcessExt` in the root
+   |
+help: a similar name exists in the module
+   |
+10 - use sysinfo::{ProcessExt, System, SystemExt};
+10 + use sysinfo::{Process, System, SystemExt};
+   |
+help: a similar name exists in the module
+   |
+10 - use sysinfo::{ProcessExt, System, SystemExt};
+10 + use sysinfo::{ProcessExt, System, System};
+   |
 
-warning: unused import: `chrono::Utc`
- --> src\commands\server.rs:2:5
-  |
-2 | use chrono::Utc;
-  |     ^^^^^^^^^^^
+error[E0061]: this method takes 2 arguments but 0 arguments were supplied
+   --> src\commands\instance.rs:244:13
+    |
+244 |         sys.refresh_processes();
+    |             ^^^^^^^^^^^^^^^^^-- two arguments of type `ProcessesToUpdate<'_>` and `bool` are missing
+    |
+note: method defined here
+   --> C:\Users\luism\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\sysinfo-0.37.2\src\common\system.rs:309:12
+    |
+309 |     pub fn refresh_processes(
+    |            ^^^^^^^^^^^^^^^^^
+help: provide the arguments
+    |
+244 |         sys.refresh_processes(/* ProcessesToUpdate<'_> */, /* bool */);
+    |                               +++++++++++++++++++++++++++++++++++++++
 
-warning: unused import: `InstanceEngine`
- --> src\commands\versions.rs:1:21
-  |
-1 | use crate::models::{InstanceEngine, InstanceInstallProgress};
-  |                     ^^^^^^^^^^^^^^
+error[E0599]: no method named `to_lowercase` found for reference `&OsStr` in the current scope
+   --> src\commands\instance.rs:248:31
+    |
+248 |             if process.name().to_lowercase().contains("java") {
+    |                               ^^^^^^^^^^^^
+    |
+help: there is a method `to_ascii_lowercase` with a similar name
+    |
+248 |             if process.name().to_ascii_lowercase().contains("java") {
+    |                                  ++++++
 
-error[E0599]: no method named `path` found for struct `AppHandle<R>` in the current scope
-   --> src\commands\dev.rs:42:30
-    |
- 42 |     let binding = app_handle.path().app_config_dir().unwrap(); // Just to get a handle context, but we need relative path to project root
-    |                              ^^^^ method not found in `AppHandle`
-    |
-   ::: C:\Users\luism\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.9.5\src\lib.rs:772:6
-    |
-772 |   fn path(&self) -> &crate::path::PathResolver<R> {
-    |      ---- the method is available for `AppHandle` here
-    |
-    = help: items from traits can only be used if the trait is in scope
-help: trait `Manager` which provides `path` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use tauri::Manager;
-    |
+error[E0599]: no method named `to_string_lossy` found for enum `std::option::Option<T>` in the current scope
+    --> src\commands\instance.rs:250:47
+     |
+ 250 |                 let cwd_match = process.cwd().to_string_lossy().contains(&target_path_str);
+     |                                               ^^^^^^^^^^^^^^^ method not found in `std::option::Option<&std::path::Path>`
+     |
+note: the method `to_string_lossy` exists on the type `&std::path::Path`
+    --> C:\Users\luism\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib/rustlib/src/rust\library\std\src\path.rs:2456:5
+     |
+2456 |     pub fn to_string_lossy(&self) -> Cow<'_, str> {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider using `Option::expect` to unwrap the `&std::path::Path` value, panicking if the value is an `Option::None`
+     |
+ 250 |                 let cwd_match = process.cwd().expect("REASON").to_string_lossy().contains(&target_path_str);
+     |                                              +++++++++++++++++
 
-error[E0599]: no method named `flatten` found for enum `Result<ReadDir, std::io::Error>` in the current scope
-   --> src\commands\server.rs:137:54
+error[E0599]: no method named `contains` found for reference `&OsString` in the current scope
+   --> src\commands\instance.rs:255:36
     |
-137 |             for entry in fs::read_dir(instances_dir).flatten().flatten() {
-    |                                                      ^^^^^^^ `Result<ReadDir, std::io::Error>` is not an iterator
-    |
-help: call `.into_iter()` first
-    |
-137 |             for entry in fs::read_dir(instances_dir).into_iter().flatten().flatten() {
-    |                                                      ++++++++++++
+255 |                     .any(|arg| arg.contains(&target_path_str));
+    |                                    ^^^^^^^^ method not found in `&OsString`
 
-error[E0282]: type annotations needed
-   --> src\commands\server.rs:138:33
+error[E0277]: `OsStr` doesn't implement `std::fmt::Display`
+   --> src\commands\instance.rs:258:65
     |
-138 |                 let json_path = entry.path().join("instance.json");
-    |                                 ^^^^^ cannot infer type
+258 |                     println!("Killing orphan process: {} ({})", process.name(), pid);
+    |                                                       --        ^^^^^^^^^^^^^^ `OsStr` cannot be formatted with the default formatter
+    |                                                       |
+    |                                                       required by this formatting parameter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `OsStr`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+    = note: required for `&OsStr` to implement `std::fmt::Display`
+    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-Some errors have detailed explanations: E0282, E0599.
-For more information about an error, try `rustc --explain E0282`.
-warning: `anvil-craft` (lib) generated 3 warnings
-error: could not compile `anvil-craft` (lib) due to 3 previous errors; 3 warnings emitted
+Some errors have detailed explanations: E0061, E0277, E0432, E0599.
+For more information about an error, try `rustc --explain E0061`.
+error: could not compile `anvil-craft` (lib) due to 6 previous errors

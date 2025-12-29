@@ -3,6 +3,7 @@ use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use sysinfo::System;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 #[tauri::command]
@@ -45,7 +46,12 @@ pub async fn start_instance(
     }
 
     // Java Command
-    let mut cmd = Command::new("java");
+    let java_cmd = settings
+        .java_path
+        .filter(|p| !p.trim().is_empty())
+        .unwrap_or_else(|| "java".to_string());
+
+    let mut cmd = Command::new(java_cmd);
     cmd.current_dir(instance_path.join(".minecraft"));
 
     cmd.arg(format!("-Xms{}M", settings.min_ram));
@@ -164,26 +170,82 @@ pub async fn stop_instance(
 
 #[tauri::command]
 pub async fn force_kill_instance(
+    app: AppHandle,
     state: State<'_, ChildProcessMap>,
     id: String,
 ) -> Result<(), String> {
-    // Note: command name changed from kill_instance to force_kill_instance to match frontend expectations if necessary
-    // But frontend calls "kill_instance". I should probably keep it "kill_instance" or update frontend.
-    // Keeping it "kill_instance" in Export, but function name can be anything.
-    // Wait, the tauri command name IS the function name unless specified.
-    // I will rename this to kill_instance to match lib.rs original.
+    // 1. Kill known child process (if any)
     let mut map = state.0.lock().map_err(|_| "Failed to lock state")?;
     if let Some(child) = map.get_mut(&id) {
         let _ = child.kill();
+        // Remove from map immediately
         map.remove(&id);
     }
+    // Release lock before doing IO/Sysinfo
+    drop(map);
+
+    // 2. Resolve Instance Path to scan for Zombies
+    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let instances_dir = app_data.join("instances");
+
+    let mut target_path = PathBuf::new();
+    // Ideally we should have a helper to get_instance_path_by_id, but iterating is fine for now
+    if instances_dir.exists() {
+        for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let json_path = entry.path().join("instance.json");
+            if json_path.exists() {
+                let content = fs::read_to_string(json_path).unwrap_or_default();
+                if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
+                    if inst.id == id {
+                        target_path = entry.path();
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Sysinfo Kill scan
+    if target_path.exists() {
+        let sys = System::new_all();
+        let target_path_str = target_path.to_string_lossy().to_string();
+
+        for (_pid, process) in sys.processes() {
+            if process
+                .name()
+                .to_string_lossy()
+                .to_lowercase()
+                .contains("java")
+            {
+                let cwd_match = process
+                    .cwd()
+                    .map_or(false, |p| p.to_string_lossy().contains(&target_path_str));
+
+                let args_match = process
+                    .cmd()
+                    .iter()
+                    .any(|arg| arg.to_string_lossy().contains(&target_path_str));
+
+                if cwd_match || args_match {
+                    process.kill();
+                }
+            }
+        }
+    }
+
     Ok(())
 }
 
-// Rename for export correctness
+// Wrapper for frontend
 #[tauri::command]
-pub async fn kill_instance(state: State<'_, ChildProcessMap>, id: String) -> Result<(), String> {
-    force_kill_instance(state, id).await
+pub async fn kill_instance(
+    app: AppHandle,
+    state: State<'_, ChildProcessMap>,
+    id: String,
+) -> Result<(), String> {
+    // We pass app handle now
+    force_kill_instance(app, state, id).await
 }
 
 #[tauri::command]

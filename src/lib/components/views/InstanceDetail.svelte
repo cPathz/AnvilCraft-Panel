@@ -84,13 +84,14 @@
         }
     }
 
+    let showKillConfirm = $state(false);
+
     async function forceKill() {
-        if (
-            !confirm(
-                "¿Estás seguro de que quieres forzar el cierre? Esto podría corromper datos.",
-            )
-        )
-            return;
+        showKillConfirm = true;
+    }
+
+    async function confirmForceKill() {
+        showKillConfirm = false;
         try {
             await invoke("kill_instance", { id: instance.id });
         } catch (e) {
@@ -98,6 +99,8 @@
             alert("Error killing server: " + e);
         }
     }
+
+    let consoleView = $state<any>();
 
     let showDeleteModal = $state(false);
     async function deleteInstance() {
@@ -163,12 +166,12 @@
     <div
         class="h-20 border-b border-[#1e293b] flex items-center justify-between px-6 shrink-0 bg-[#0f172a]/50 backdrop-blur-md z-20"
     >
-        <div class="flex items-center gap-5">
+        <div class="flex items-center gap-3">
             <!-- Icon -->
             <div class="relative group shrink-0">
                 <button
                     onclick={() => (showIconPicker = true)}
-                    class="w-12 h-12 rounded-2xl bg-[#1e293b] flex items-center justify-center overflow-hidden border border-white/10 shadow-lg transition-transform active:scale-95 group-hover:border-blue-500/50"
+                    class="w-[58px] h-[58px] rounded-2xl bg-[#1e293b] flex items-center justify-center overflow-hidden border border-white/10 shadow-lg transition-transform active:scale-95 group-hover:border-blue-500/50 select-none"
                 >
                     {#if instance.icon}
                         <img
@@ -204,22 +207,20 @@
             </div>
 
             <!-- Info -->
-            <div class="flex flex-col justify-center">
+            <div class="flex flex-col justify-center gap-1">
+                <h1
+                    class="text-[22px] translate-y-[3px] font-bold text-white leading-none tracking-tight shadow-black drop-shadow-sm mb-1"
+                >
+                    {instance.name}
+                </h1>
                 <div class="flex items-center gap-3">
-                    <h1
-                        class="text-xl font-bold text-white leading-none tracking-tight shadow-black drop-shadow-sm"
-                    >
-                        {instance.name}
-                    </h1>
                     <span
-                        class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-white/5 text-zinc-400 border border-white/5 backdrop-blur-sm"
+                        class="-ml-0.5 translate-y-[4px] px-2 py-0.5 rounded-md text-[11px] font-bold capitalize tracking-wider bg-white/5 text-zinc-400 border border-white/5 backdrop-blur-sm"
                     >
                         {instance.loader || "Vanilla"}
                         {instance.version}
                     </span>
-                </div>
 
-                <div class="flex items-center gap-3 mt-1.5">
                     <!-- Status -->
                     <span
                         class="flex items-center gap-1.5 text-xs font-medium backdrop-blur-sm px-2 py-0.5 rounded-full bg-black/20 border border-white/5 {instance.state ===
@@ -284,6 +285,66 @@
                         </svg>
                         Carpeta
                     </button>
+
+                    <!-- Console Controls (Only when tab is console) -->
+                    {#if activeTab === "console" && consoleView}
+                        <span class="w-1 h-1 rounded-full bg-zinc-700"></span>
+
+                        <!-- Toggle Noise -->
+                        <button
+                            onclick={() => consoleView.toggleNoise()}
+                            class="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1.5"
+                            title={consoleView.getHideNoise()
+                                ? "Mostrar todo (incluido ruido)"
+                                : "Ocultar ruido (filtro inteligente)"}
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                {#if consoleView.getHideNoise()}
+                                    <path
+                                        d="M4 12v-3a3 3 0 0 1 3 -3h13m-3 -3l3 3l-3 3"
+                                    /><path
+                                        d="M20 12v3a3 3 0 0 1 -3 3h-13m3 3l-3 -3l3 -3"
+                                    />
+                                {:else}
+                                    <path d="M7 12l5-5 5 5" /><path
+                                        d="M7 12l5 5 5-5"
+                                    />
+                                {/if}
+                            </svg>
+                        </button>
+
+                        <!-- Clear Console -->
+                        <button
+                            onclick={() => consoleView.clearLogs()}
+                            class="text-xs text-zinc-500 hover:text-red-400 transition-colors flex items-center gap-1.5"
+                            title="Limpiar consola"
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                ><path d="M3 6h18" /><path
+                                    d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"
+                                /><path
+                                    d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"
+                                /></svg
+                            >
+                        </button>
+                    {/if}
                 </div>
             </div>
         </div>
@@ -304,19 +365,21 @@
                         stroke-width="2"
                         stroke-linecap="round"
                         stroke-linejoin="round"
-                        ><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line
-                            x1="12"
-                            y1="2"
-                            x2="12"
-                            y2="12"
-                        ></line></svg
                     >
+                        <circle cx="9" cy="12" r="1" />
+                        <circle cx="15" cy="12" r="1" />
+                        <path d="M8 20v2h8v-2" />
+                        <path d="M12.5 17l-.5-1-.5 1h1z" />
+                        <path
+                            d="M16 20a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20"
+                        />
+                    </svg>
                 </button>
             {/if}
 
             <button
                 onclick={toggleServer}
-                class="h-10 px-6 rounded-xl font-bold text-sm shadow-xl transition-all flex items-center gap-2 active:scale-95 {instance.state ===
+                class="h-10 w-32 justify-center rounded-xl font-bold text-sm shadow-xl transition-all flex items-center gap-2 active:scale-95 select-none {instance.state ===
                     'Running' || instance.state === 'Starting'
                     ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white shadow-red-500/20'
                     : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white shadow-green-500/20'}"
@@ -353,12 +416,12 @@
 
     <!-- Navigation Tabs -->
     <div
-        class="px-6 pt-4 flex items-center justify-between border-b border-white/5 relative z-10"
+        class="h-[46px] shrink-0 px-6 flex items-end justify-between border-b border-white/5 relative z-10"
     >
         <div class="flex gap-6">
             <button
                 onclick={() => handleTabChange("console")}
-                class="pb-3 text-sm font-bold relative transition-colors {activeTab ===
+                class="pb-2 text-sm font-bold relative transition-colors select-none {activeTab ===
                 'console'
                     ? 'text-white'
                     : 'text-zinc-500 hover:text-zinc-300'}"
@@ -373,7 +436,7 @@
             </button>
             <button
                 onclick={() => handleTabChange("settings")}
-                class="pb-3 text-sm font-bold relative transition-colors {activeTab ===
+                class="pb-2 text-sm font-bold relative transition-colors select-none {activeTab ===
                 'settings'
                     ? 'text-white'
                     : 'text-zinc-500 hover:text-zinc-300'}"
@@ -391,7 +454,7 @@
         {#if !isServerRunning}
             <button
                 onclick={() => (showDeleteModal = true)}
-                class="mb-2 text-xs font-bold text-red-500/50 hover:text-red-500 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2"
+                class="mb-2 text-xs font-bold text-red-500/50 hover:text-red-500 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 select-none"
             >
                 <svg
                     width="14"
@@ -413,10 +476,10 @@
     <div class="flex-1 min-h-0 flex flex-col relative overflow-hidden z-10">
         {#if activeTab === "console"}
             <div
-                class="absolute inset-0 p-6 flex flex-col"
+                class="absolute inset-0 pl-5 pr-6 pb-2 pt-0 flex flex-col"
                 transition:fade={{ duration: 150 }}
             >
-                <ConsoleView instanceId={instance.id} />
+                <ConsoleView instanceId={instance.id} bind:this={consoleView} />
             </div>
         {:else if activeTab === "settings"}
             <div
@@ -503,4 +566,57 @@
         onclose={() => (showIconPicker = false)}
         onselect={handleIconSelected}
     />
+{/if}
+{#if showKillConfirm}
+    <div
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+    >
+        <div
+            class="bg-[#1e293b] rounded-2xl border border-red-500/20 shadow-2xl max-w-sm w-full overflow-hidden"
+        >
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-4 text-red-400">
+                    <svg
+                        width="28"
+                        height="28"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path
+                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+                        />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    <h2 class="text-xl font-bold">Forzar Detención</h2>
+                </div>
+                <p class="text-zinc-400 text-sm leading-relaxed mb-6">
+                    Estás a punto de "matar" el proceso del servidor. Esto puede
+                    ocasionar
+                    <strong class="text-white">pérdida de datos</strong> si el
+                    servidor estaba guardando información.
+                    <br /><br />
+                    ¿Deseas continuar?
+                </p>
+                <div class="flex justify-end gap-3">
+                    <button
+                        onclick={() => (showKillConfirm = false)}
+                        class="px-4 py-2 rounded-lg font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onclick={confirmForceKill}
+                        class="px-4 py-2 rounded-lg font-bold bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 transition-all"
+                    >
+                        ¡Matar proceso!
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 {/if}

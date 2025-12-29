@@ -1,0 +1,75 @@
+    Checking anvil-craft v0.1.0 (D:\Usuarios\Luis Macias\Documentos\Proyectos\AnvilCraft\src-tauri)
+error[E0252]: the name `System` is defined multiple times
+  --> src\commands\instance.rs:14:27
+   |
+10 | use sysinfo::{ProcessExt, System, SystemExt}; // SystemExt needed for new_all() trait?
+   |                           ------ previous import of the type `System` here
+...
+14 | use sysinfo::{ProcessExt, System, SystemExt}; // Standard set
+   |                           ^^^^^^--
+   |                           |
+   |                           `System` reimported here
+   |                           help: remove unnecessary import
+   |
+   = note: `System` must be defined only once in the type namespace of this module
+
+error[E0432]: unresolved imports `sysinfo::ProcessExt`, `sysinfo::SystemExt`
+  --> src\commands\instance.rs:10:15
+   |
+10 | use sysinfo::{ProcessExt, System, SystemExt}; // SystemExt needed for new_all() trait?
+   |               ^^^^^^^^^^          ^^^^^^^^^ no `SystemExt` in the root
+   |               |
+   |               no `ProcessExt` in the root
+   |
+help: a similar name exists in the module
+   |
+10 - use sysinfo::{ProcessExt, System, SystemExt}; // SystemExt needed for new_all() trait?
+10 + use sysinfo::{Process, System, SystemExt}; // SystemExt needed for new_all() trait?
+   |
+help: a similar name exists in the module
+   |
+10 - use sysinfo::{ProcessExt, System, SystemExt}; // SystemExt needed for new_all() trait?
+10 + use sysinfo::{ProcessExt, System, System}; // SystemExt needed for new_all() trait?
+   |
+
+error[E0432]: unresolved imports `sysinfo::ProcessExt`, `sysinfo::SystemExt`
+  --> src\commands\instance.rs:14:15
+   |
+14 | use sysinfo::{ProcessExt, System, SystemExt}; // Standard set
+   |               ^^^^^^^^^^          ^^^^^^^^^ no `SystemExt` in the root
+   |               |
+   |               no `ProcessExt` in the root
+   |
+help: a similar name exists in the module
+   |
+14 - use sysinfo::{ProcessExt, System, SystemExt}; // Standard set
+14 + use sysinfo::{Process, System, SystemExt}; // Standard set
+   |
+help: a similar name exists in the module
+   |
+14 - use sysinfo::{ProcessExt, System, SystemExt}; // Standard set
+14 + use sysinfo::{ProcessExt, System, System}; // Standard set
+   |
+
+warning: unused import: `System`
+  --> src\commands\instance.rs:14:27
+   |
+14 | use sysinfo::{ProcessExt, System, SystemExt}; // Standard set
+   |                           ^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> src\commands\instance.rs:247:13
+    |
+247 |         let mut sys = System::new_all();
+    |             ----^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+Some errors have detailed explanations: E0252, E0432.
+For more information about an error, try `rustc --explain E0252`.
+warning: `anvil-craft` (lib) generated 2 warnings
+error: could not compile `anvil-craft` (lib) due to 3 previous errors; 2 warnings emitted

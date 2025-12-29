@@ -1,6 +1,8 @@
 use crate::models::{ChildProcessMap, Instance, InstanceEngine, InstanceSettings, InstanceState};
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use sysinfo::System;
@@ -71,6 +73,9 @@ pub async fn start_instance(
     cmd.stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+
+    #[cfg(windows)]
+    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
 
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
 

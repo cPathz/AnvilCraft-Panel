@@ -4,6 +4,8 @@ use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};
 
 pub mod commands;
+mod version;
+
 pub mod models;
 
 use models::ChildProcessMap;
@@ -60,6 +62,8 @@ pub fn run() {
             // Java
             commands::java::get_available_java_versions,
             commands::java::download_java_runtime,
+            // Version
+            commands::version::get_app_version,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

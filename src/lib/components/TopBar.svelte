@@ -1,6 +1,13 @@
 <script lang="ts">
     import { appState as store } from "$lib/runes/store.svelte";
-    import es from "$lib/i18n/es.json"; // Asegúrate de importar esto si usas textos
+    import es from "$lib/i18n/es.json";
+    import { onMount } from "svelte";
+    import { invoke } from "@tauri-apps/api/core";
+
+    let appVersion = "";
+    onMount(() => {
+        invoke<string>("get_app_version").then((v) => (appVersion = v));
+    });
 </script>
 
 <div
@@ -14,7 +21,7 @@
             <span
                 class="text-[10px] font-normal text-yellow-500/80 uppercase tracking-wider bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20"
             >
-                v0.1.0 Copia de Evaluación
+                v{appVersion} Copia de Evaluación
             </span>
         </h1>
 

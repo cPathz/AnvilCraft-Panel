@@ -1,5 +1,11 @@
 <script lang="ts">
     import InstanceSettings from "./InstanceSettings.svelte";
+    import { onMount } from "svelte";
+    import { invoke } from "@tauri-apps/api/core";
+    let appVersion = "";
+    onMount(() => {
+        invoke<string>("get_app_version").then((v) => (appVersion = v));
+    });
 </script>
 
 <div class="h-full flex flex-col bg-[#192232]">
@@ -54,13 +60,18 @@
 
             <div class="flex flex-col items-center gap-2 text-base">
                 <span class="text-white font-mono font-bold text-xl"
-                    >AnvilCraft v0.1.0-alpha</span
+                    >AnvilCraft v{appVersion}</span
                 >
 
                 <span
                     class="text-yellow-500 font-bold text-xs bg-yellow-500/10 px-2.5 py-1 rounded border border-yellow-500/20 uppercase tracking-wide my-1"
                 >
-                    DEV BUILD
+                    AnvilCRAFT Panel
+                    <span
+                        class="text-[10px] font-normal text-yellow-500/80 uppercase tracking-wider bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20"
+                    >
+                        v{appVersion} Copia de Evaluación
+                    </span>
                 </span>
 
                 <div class="flex items-center gap-2 mt-1">

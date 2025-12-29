@@ -7,6 +7,8 @@ use chrono::Utc;
 use slug::slugify;
 use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use sysinfo::System;
 use tauri::{Emitter, Manager, State};
@@ -564,14 +566,18 @@ pub async fn create_instance_from_path(
                     },
                 );
 
-                let child = std::process::Command::new("java")
-                    .arg("-jar")
+                let mut cmd = std::process::Command::new("java");
+                cmd.arg("-jar")
                     .arg(&installer_filename)
                     .arg("--installServer")
                     .current_dir(&working_dir)
                     .stdout(std::process::Stdio::piped())
-                    .stderr(std::process::Stdio::piped())
-                    .spawn();
+                    .stderr(std::process::Stdio::piped());
+
+                #[cfg(windows)]
+                cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+
+                let child = cmd.spawn();
 
                 match child {
                     Ok(mut child) => {

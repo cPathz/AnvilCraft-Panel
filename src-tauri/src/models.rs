@@ -53,7 +53,7 @@ impl Default for InstanceSettings {
     fn default() -> Self {
         Self {
             min_ram: 1024,
-            max_ram: 2048,
+            max_ram: 4096,
             port: 25565,
             args: String::new(),
             jar_file: String::from("server.jar"),

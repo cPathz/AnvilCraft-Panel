@@ -1,9 +1,3 @@
-# AnvilCraft Panel
-
-![Status](https://img.shields.io/badge/Status-Beta-purple?style=flat-square)
-![Version](https://img.shields.io/badge/Version-v0.1.1-blue?style=flat-square)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
-
 ## 💡 Note from the Author
 
 > **Disclaimer:** This project was developed with the assistance of **Google Antigravity** code editor and **Google Gemini** for code generation. I mention this upfront for those who may have reservations about AI-assisted development.
@@ -11,6 +5,15 @@
 This is a personal project born from the need to move away from using `.bat` files to start my Minecraft servers on Windows. My goal was to have all instances centralized and managed in a single, unified interface. Identifying a gap in existing solutions for my specific needs, I decided to build it myself. As a **Computer Engineer** (though not a professional programmer), I leveraged AI tools to bring this software to life.
 
 I am completely open to feedback regarding **design, security, code structure, or functionality**. If you find this tool useful for your own personal use, please feel free to use it!
+
+Special thanks to Bertware for the inspiration with their program called **BukkitGUI & bukkitgui2**.
+`https://github.com/Bertware/`
+
+# AnvilCraft Panel
+
+![Status](https://img.shields.io/badge/Status-Beta-purple?style=flat-square)
+![Version](https://img.shields.io/badge/Version-v0.1.1-blue?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
 **AnvilCraft Panel** is a modern, high-performance Minecraft server manager built for power users and administrators. It provides a sleek, "premium" interface to create, manage, and monitor multiple Minecraft instances with ease.
 
@@ -93,4 +96,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
-**Developed by Luis Macias (cPathz)**
+***Developed by Luis Macias (cPathz)**

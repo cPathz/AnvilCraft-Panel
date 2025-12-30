@@ -76,6 +76,14 @@ Prerequisites:
 *   **Permissions:** Minimal capability set (ACL) configured in `default.json`.
 *   **Isolation:** Instances run in isolated processes.
 
+## 💡 Note from the Author
+
+> **Disclaimer:** This project was developed with the assistance of **Google Antigravity** code editor and **Google Gemini** for code generation. I mention this upfront for those who may have reservations about AI-assisted development.
+
+This is a personal project born from the need to move away from using `.bat` files to start my Minecraft servers on Windows. My goal was to have all instances centralized and managed in a single, unified interface. Identifying a gap in existing solutions for my specific needs, I decided to build it myself. As a **Computer Engineer** (though not a professional programmer), I leveraged AI tools to bring this software to life.
+
+I am completely open to feedback regarding **design, security, code structure, or functionality**. If you find this tool useful for your own personal use, please feel free to use it!
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

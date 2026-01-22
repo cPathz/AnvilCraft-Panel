@@ -155,7 +155,7 @@
             <img
                 src={instance.icon}
                 alt=""
-                class="w-full h-full object-cover opacity-10 blur-3xl scale-150 transition-all duration-700"
+                class="w-full h-full object-cover opacity-5 blur-md scale-150 transition-all duration-700"
             />
             <div
                 class="absolute inset-0 bg-gradient-to-b from-[#0f172a]/90 to-[#0f172a]/95"

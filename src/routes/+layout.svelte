@@ -43,7 +43,12 @@
                         const [id, line] = event.payload;
                         appState.ensureRuntime(id);
                         const runtime = appState.getRuntime(id);
-                        if (runtime) runtime.logs.push(line);
+                        if (runtime) {
+                            runtime.logs.push(line);
+                            if (runtime.logs.length > 1000) {
+                                runtime.logs = runtime.logs.slice(-1000);
+                            }
+                        }
                     },
                 );
 
@@ -216,11 +221,6 @@
         <!-- Gradient from #223049 (Bg) to #192232 (Bars) -->
         <div
             class="absolute inset-0 bg-gradient-to-br from-[#223049] to-[#192232]"
-        ></div>
-
-        <!-- Subtle noise texture overlay for professional finish (Optional but recommended) -->
-        <div
-            class="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDAlJyBoZWlnaHQ9JzEwMCUnPjxmaWx0ZXIgaWQ9J25vaXNlJz48ZmVUdXJidWxlbmNlIHR5cGU9J2ZyYWN0YWxOb2lzZScgYmFzZUZyZXF1ZW5jeT0nMC42JyBzdGl0Y2hUaWxlcz0nc3RpdGNoJy8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsdGVyPSd1cmwoI25vaXNlKScgb3BhY2l0eT0nMC41Jy8+PC9zdmc+')] mix-blend-overlay"
         ></div>
     </div>
 

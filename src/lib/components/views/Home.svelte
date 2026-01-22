@@ -3,7 +3,7 @@
     import { appState } from "$lib/runes/store.svelte";
 
     // "Rising Particles" Logic (Adapted from SCSS loop)
-    const particles = Array.from({ length: 100 }).map((_, i) => ({
+    const particles = Array.from({ length: 20 }).map((_, i) => ({
         id: i,
         size: Math.random() * 5 + 1, // 1px to 6px
         startX: Math.random() * 100, // 0vw to 100vw
@@ -57,13 +57,14 @@
             animation-delay: var(--delay);
             /* Start below screen */
             transform: translate3d(var(--start-x), 110vh, 0);
+            will-change: transform;
         }
 
         .circle {
             width: 100%;
             height: 100%;
             border-radius: 50%;
-            mix-blend-mode: screen;
+            /* mix-blend-mode: screen; Removed for performance */
             background-image: radial-gradient(
                 hsl(180, 100%, 80%),
                 hsl(180, 100%, 80%) 10%,

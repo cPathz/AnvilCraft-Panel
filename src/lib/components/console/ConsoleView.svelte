@@ -488,8 +488,9 @@
 
 <div class="flex-1 min-h-0 flex flex-col relative group">
     <!-- Logs Area -->
+    <!-- Logs Area -->
     <div
-        class="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar relative flex flex-col justify-start bg-[#1e293b]/80 backdrop-blur-md rounded-xl border border-white/10 ml-0 mr-0 mt-4"
+        class="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar relative flex flex-col justify-start bg-[#1e293b]/95 rounded-xl border border-white/10 ml-0 mr-0 mt-4"
         style:font-family={consoleSettings.fontFamily}
         style:font-size="{consoleSettings.fontSize}px"
         style:line-height={consoleSettings.lineHeight}
@@ -511,7 +512,7 @@
             ></div>
         </div>
 
-        {#each logs as log}
+        {#each logs.slice(-200) as log}
             {@const formatted = formatLog(log)}
             <div
                 class="break-words leading-tight hover:bg-white/5 px-2 rounded -mx-2 group/log relative"
@@ -566,7 +567,7 @@
     <!-- Command Input Area (Discord Style) -->
     <div class="pl-0 pr-0 pt-4 pb-3 bg-transparent relative z-20">
         <div
-            class="relative bg-[#1e293b]/80 backdrop-blur-md rounded-xl border border-white/10 flex items-center shadow-lg transition-colors focus-within:border-blue-500/50 focus-within:bg-[#1e293b] focus-within:ring-1 focus-within:ring-blue-500/50"
+            class="relative bg-[#1e293b]/95 rounded-xl border border-white/10 flex items-center shadow-lg transition-colors focus-within:border-blue-500/50 focus-within:bg-[#1e293b] focus-within:ring-1 focus-within:ring-blue-500/50"
         >
             <!-- Styled Console Input Area -->
             <div

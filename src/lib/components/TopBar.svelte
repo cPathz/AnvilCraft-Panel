@@ -1,13 +1,6 @@
 <script lang="ts">
     import { appState as store } from "$lib/runes/store.svelte";
-    import es from "$lib/i18n/es.json";
-    import { onMount } from "svelte";
-    import { invoke } from "@tauri-apps/api/core";
-
-    let appVersion = "";
-    onMount(() => {
-        invoke<string>("get_app_version").then((v) => (appVersion = v));
-    });
+    import { _ } from "svelte-i18n";
 </script>
 
 <div
@@ -17,11 +10,11 @@
         <h1
             class="text-xl font-bold text-white tracking-wide flex items-center gap-2"
         >
-            AnvilCRAFT Panel
+            {$_("topbar.title")}
             <span
                 class="text-[10px] font-normal text-yellow-500/80 uppercase tracking-wider bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20"
             >
-                v{appVersion} Copia de Evaluación
+                v{store.appInfo.version} ({store.appInfo.tag}) - {$_("settings.eval_copy_branding")}
             </span>
         </h1>
 

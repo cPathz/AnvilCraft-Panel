@@ -26,6 +26,13 @@ class AppState {
     refreshing = $state<boolean>(false);
     creatingInstance = $state<boolean>(false);
 
+    // App Identity
+    appInfo = $state({
+        version: "0.1.2",
+        tag: "Beta",
+        isEvalCopy: true
+    });
+
     // Runtime state (Logs, active tabs, etc)
     instanceRuntime = $state<Record<string, { logs: string[], activeTab: "console" | "settings", commandHistory: string[] }>>({});
 

@@ -3,6 +3,9 @@
     import { invoke } from "@tauri-apps/api/core";
     import { tick } from "svelte";
     import { fade } from "svelte/transition";
+    import { _ } from "svelte-i18n";
+    import { get } from "svelte/store";
+    import { toast } from "$lib/runes/toast.svelte";
     import IconPicker from "$lib/components/modals/IconPicker.svelte";
 
     // Decomposed Components
@@ -73,7 +76,7 @@
                 await invoke("start_instance", { id: instance.id });
             } catch (e) {
                 console.error(e);
-                alert("Error starting server: " + e);
+                toast.error(get(_)("instance_detail.toast_start_error") + e);
             }
         } else {
             try {
@@ -96,7 +99,7 @@
             await invoke("kill_instance", { id: instance.id });
         } catch (e) {
             console.error(e);
-            alert("Error killing server: " + e);
+            toast.error(get(_)("instance_detail.toast_kill_error") + e);
         }
     }
 
@@ -113,7 +116,7 @@
             appState.view = "instances";
         } catch (e) {
             console.error("Failed to delete instance:", e);
-            alert("Error al eliminar la instancia: " + e);
+            toast.error(get(_)("instance_detail.toast_delete_error") + e);
         } finally {
             showDeleteModal = false;
         }
@@ -253,12 +256,12 @@
                             ></span>
                         </span>
                         {instance.state === "Running"
-                            ? "En línea"
+                            ? $_("instance_detail.status_online")
                             : instance.state === "Starting"
-                              ? "Iniciando..."
+                              ? $_("instance_detail.status_starting")
                               : instance.state === "Error"
-                                ? "Error"
-                                : "Detenido"}
+                                ? $_("instance_detail.status_error")
+                                : $_("instance_detail.status_stopped")}
                     </span>
 
                     <!-- Separator -->
@@ -283,7 +286,7 @@
                                 d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
                             />
                         </svg>
-                        Carpeta
+                        {$_("instance_detail.btn_folder")}
                     </button>
 
                     <!-- Console Controls (Only when tab is console) -->
@@ -295,8 +298,8 @@
                             onclick={() => consoleView.toggleNoise()}
                             class="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1.5"
                             title={consoleView.getHideNoise()
-                                ? "Mostrar todo (incluido ruido)"
-                                : "Ocultar ruido (filtro inteligente)"}
+                                ? $_("instance_detail.btn_noise_show")
+                                : $_("instance_detail.btn_noise_hide")}
                         >
                             <svg
                                 width="14"
@@ -326,7 +329,7 @@
                         <button
                             onclick={() => consoleView.clearLogs()}
                             class="text-xs text-zinc-500 hover:text-red-400 transition-colors flex items-center gap-1.5"
-                            title="Limpiar consola"
+                            title={$_("instance_detail.btn_clear_console")}
                         >
                             <svg
                                 width="14"
@@ -354,7 +357,7 @@
                 <button
                     onclick={forceKill}
                     class="p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all border border-red-500/20 active:scale-95"
-                    title="Forzar Detención"
+                    title={$_("instance_detail.btn_force_stop")}
                 >
                     <svg
                         width="18"
@@ -399,7 +402,7 @@
                             rx="1"
                         /></svg
                     >
-                    Detener
+                    {$_("instance_detail.btn_stop")}
                 {:else}
                     <svg
                         width="16"
@@ -408,7 +411,7 @@
                         fill="currentColor"
                         stroke="none"><path d="M5 3l14 9-14 9V3z" /></svg
                     >
-                    Iniciar
+                    {$_("instance_detail.btn_start")}
                 {/if}
             </button>
         </div>
@@ -426,7 +429,7 @@
                     ? 'text-white'
                     : 'text-zinc-500 hover:text-zinc-300'}"
             >
-                Consola
+                {$_("instance_detail.tab_console")}
                 {#if activeTab === "console"}
                     <div
                         class="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
@@ -441,7 +444,7 @@
                     ? 'text-white'
                     : 'text-zinc-500 hover:text-zinc-300'}"
             >
-                Ajustes
+                {$_("instance_detail.tab_settings")}
                 {#if activeTab === "settings"}
                     <div
                         class="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
@@ -467,7 +470,7 @@
                         d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"
                     /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg
                 >
-                Eliminar
+                {$_("instance_detail.btn_delete")}
             </button>
         {/if}
     </div>
@@ -506,24 +509,23 @@
             class="bg-[#1e293b] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl relative overflow-hidden"
         >
             <h2 class="text-xl font-bold text-white mb-2">
-                Eliminar Instancia
+                {$_("instance_detail.modal_delete_title")}
             </h2>
             <p class="text-zinc-400 text-sm mb-6">
-                ¿Estás seguro de eliminar <span class="text-white font-bold"
+                {$_("instance_detail.modal_delete_desc1")}<span class="text-white font-bold"
                     >{instance.name}</span
-                >? Esta acción no se puede deshacer y borrará todos los archivos
-                del servidor.
+                >{$_("instance_detail.modal_delete_desc2")}
             </p>
             <div class="flex justify-end gap-3">
                 <button
                     onclick={() => (showDeleteModal = false)}
                     class="px-4 py-2 rounded-xl text-sm font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
-                    >Cancelar</button
+                    >{$_("instance_detail.btn_cancel")}</button
                 >
                 <button
                     onclick={deleteInstance}
                     class="px-4 py-2 rounded-xl text-sm font-bold bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 transition-all"
-                    >Eliminar Definitivamente</button
+                    >{$_("instance_detail.btn_delete_confirm")}</button
                 >
             </div>
         </div>
@@ -539,22 +541,21 @@
             class="bg-[#1e293b] w-full max-w-md p-6 rounded-2xl border border-white/10 shadow-2xl"
         >
             <h3 class="text-xl font-bold text-white mb-2">
-                Cambios sin guardar
+                {$_("instance_detail.modal_unsaved_title")}
             </h3>
             <p class="text-zinc-400 text-sm mb-6">
-                Tienes cambios pendientes en la configuración. ¿Quieres
-                descartarlos y salir?
+                {$_("instance_detail.modal_unsaved_desc")}
             </p>
             <div class="flex justify-end gap-3">
                 <button
                     onclick={cancelDiscard}
                     class="px-4 py-2 rounded-lg text-zinc-400 hover:bg-white/10 transition-colors text-sm font-bold"
-                    >Cancelar</button
+                    >{$_("instance_detail.btn_cancel")}</button
                 >
                 <button
                     onclick={confirmDiscard}
                     class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors text-sm font-bold shadow-lg shadow-red-500/20"
-                    >Descartar y Salir</button
+                    >{$_("instance_detail.btn_discard")}</button
                 >
             </div>
         </div>
@@ -592,28 +593,26 @@
                         <line x1="12" y1="9" x2="12" y2="13" />
                         <line x1="12" y1="17" x2="12.01" y2="17" />
                     </svg>
-                    <h2 class="text-xl font-bold">Forzar Detención</h2>
+                    <h2 class="text-xl font-bold">{$_("instance_detail.modal_kill_title")}</h2>
                 </div>
                 <p class="text-zinc-400 text-sm leading-relaxed mb-6">
-                    Estás a punto de "matar" el proceso del servidor. Esto puede
-                    ocasionar
-                    <strong class="text-white">pérdida de datos</strong> si el
-                    servidor estaba guardando información.
+                    {$_("instance_detail.modal_kill_desc1")}
+                    <strong class="text-white">{$_("instance_detail.modal_kill_desc2")}</strong> {$_("instance_detail.modal_kill_desc3")}
                     <br /><br />
-                    ¿Deseas continuar?
+                    {$_("instance_detail.modal_kill_desc4")}
                 </p>
                 <div class="flex justify-end gap-3">
                     <button
                         onclick={() => (showKillConfirm = false)}
                         class="px-4 py-2 rounded-lg font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
                     >
-                        Cancelar
+                        {$_("instance_detail.btn_cancel")}
                     </button>
                     <button
                         onclick={confirmForceKill}
                         class="px-4 py-2 rounded-lg font-bold bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 transition-all"
                     >
-                        ¡Matar proceso!
+                        {$_("instance_detail.btn_kill_confirm")}
                     </button>
                 </div>
             </div>

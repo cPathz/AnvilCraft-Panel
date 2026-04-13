@@ -4,9 +4,14 @@
 
 <script lang="ts">
     import { appState, type Instance } from "$lib/runes/store.svelte";
+    import { locale, _ } from "svelte-i18n";
 
     let instances = $derived(appState.instances);
     let selectedId = $derived(appState.selectedInstance?.id);
+
+    function toggleLanguage() {
+        $locale = $locale === 'es' ? 'en' : 'es';
+    }
 
     let hoveredLabel = $state<string | null>(null);
     let tooltipTop = $state(0);
@@ -41,7 +46,7 @@
                 appState.view = "home";
                 appState.selectedInstance = null;
             }}
-            onmouseenter={(e) => handleMouseEnter(e, "Inicio")}
+            onmouseenter={(e) => handleMouseEnter(e, $_("nav.home"))}
             onmouseleave={handleMouseLeave}
         >
             <!-- 5: Barrita indicador (Also for Home) -->
@@ -76,7 +81,7 @@
                 appState.view = "instances";
                 appState.selectedInstance = null;
             }}
-            onmouseenter={(e) => handleMouseEnter(e, "Aplicaciones")}
+            onmouseenter={(e) => handleMouseEnter(e, $_("nav.apps"))}
             onmouseleave={handleMouseLeave}
         >
             <div class="pill"></div>
@@ -137,8 +142,37 @@
 
     <!-- 2 & 1: Contenedor Inferior (Fijo) -->
     <div class="fixed-container bottom">
-        <!-- Dev Mode (Only visible in Development) -->
+        <!-- Language Toggle and Dev Mode (Only visible in Development) -->
         {#if import.meta.env.DEV}
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+                class="icon-wrapper lang-toggle"
+                aria-label="Toggle Language"
+                class:es-active={$locale === "es"}
+                onclick={toggleLanguage}
+                onmouseenter={(e) => handleMouseEnter(e, `Idioma: ${$locale?.toUpperCase()}`)}
+                onmouseleave={handleMouseLeave}
+            >
+                <div class="pill"></div>
+                <div class="icon lang-icon">
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                    </svg>
+                </div>
+            </div>
+
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
@@ -166,7 +200,7 @@
             class="icon-wrapper add-new"
             aria-label="Agregar"
             onclick={() => (appState.creatingInstance = true)}
-            onmouseenter={(e) => handleMouseEnter(e, "Nueva Instancia")}
+            onmouseenter={(e) => handleMouseEnter(e, $_("nav.add_new"))}
             onmouseleave={handleMouseLeave}
         >
             <div class="icon add-icon">
@@ -199,7 +233,7 @@
                 appState.view = "settings";
                 appState.selectedInstance = null;
             }}
-            onmouseenter={(e) => handleMouseEnter(e, "Configuración")}
+            onmouseenter={(e) => handleMouseEnter(e, $_("nav.settings"))}
             onmouseleave={handleMouseLeave}
             style="margin-bottom: 5px;"
         >
@@ -365,6 +399,30 @@
         background-color: rgba(34, 197, 94, 0.2);
         color: #86efac; /* Green-300 */
         box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+        transform: scale(1.05);
+    }
+
+    /* Language Toggle Debug Icon */
+    .lang-toggle .icon {
+        color: #60a5fa; /* Default/English state - Blue-400 */
+        background-color: rgba(59, 130, 246, 0.1);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+    
+    .lang-toggle:hover .icon {
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        transform: scale(1.05);
+    }
+
+    /* Active Spanish State */
+    .lang-toggle.es-active .icon {
+        color: #fbbf24; /* Amber-400 */
+        background-color: rgba(245, 158, 11, 0.1);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+    
+    .lang-toggle.es-active:hover .icon {
+        box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
         transform: scale(1.05);
     }
 

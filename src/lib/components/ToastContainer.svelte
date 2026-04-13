@@ -2,6 +2,7 @@
     import { toast } from "$lib/runes/toast.svelte";
     import { fly, fade } from "svelte/transition";
     import { flip } from "svelte/animate";
+    import { _ } from "svelte-i18n";
 
     // Icons could be imported or inline SVGs
 </script>
@@ -128,12 +129,12 @@
             <div class="flex-1 min-w-0">
                 <p class="font-bold text-sm text-white">
                     {t.type === "success"
-                        ? "Éxito"
+                        ? $_("common.toast_success")
                         : t.type === "error"
-                          ? "Error"
+                          ? $_("common.toast_error")
                           : t.type === "warning"
-                            ? "Advertencia"
-                            : "Información"}
+                            ? $_("common.toast_warning")
+                            : $_("common.toast_info")}
                 </p>
                 <p class="text-xs text-zinc-300 truncate font-medium mt-0.5">
                     {t.message}
@@ -142,7 +143,7 @@
 
             <!-- Close Button -->
             <button
-                aria-label="Cerrar notificación"
+                aria-label={$_("instance_detail.btn_cancel")}
                 onclick={() => toast.remove(t.id)}
                 class="shrink-0 p-1.5 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
             >

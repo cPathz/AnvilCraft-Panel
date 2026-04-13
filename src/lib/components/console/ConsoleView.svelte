@@ -2,6 +2,7 @@
     import { appState } from "$lib/runes/store.svelte";
     import { invoke } from "@tauri-apps/api/core";
     import { tick } from "svelte";
+    import { _ } from "svelte-i18n";
     import { FEATURES } from "$lib/config/features";
     import commandTree from "$lib/data/command_tree.json";
     import argumentData from "$lib/data/arguments.json";
@@ -558,7 +559,7 @@
                     >
                 </div>
                 <span class="text-sm font-medium opacity-50"
-                    >Esperando logs...</span
+                    >{$_("console.waiting")}</span
                 >
             </div>
         {/if}
@@ -605,7 +606,7 @@
                         <div
                             class="px-3 py-1.5 text-[10px] text-zinc-500 font-bold uppercase tracking-wider border-b border-white/10 bg-[#1e293b]/50 backdrop-blur pb-1 mb-1"
                         >
-                            Sugerencias
+                            {$_("console.suggestions")}
                         </div>
                     </div>
                 {/if}
@@ -637,7 +638,7 @@
                         type="text"
                         bind:value={commandInput}
                         onkeydown={handleConsoleKeydown}
-                        placeholder={coloredHtml ? "" : "Escribe un comando..."}
+                        placeholder={coloredHtml ? "" : $_("console.placeholder")}
                         class="absolute inset-0 w-full h-full bg-transparent text-transparent caret-blue-400 text-[15px] leading-normal outline-none z-20 border-none ring-0 p-0 m-0 focus:ring-0 placeholder:text-zinc-600"
                         style:font-family={consoleSettings.fontFamily}
                         autocomplete="off"

@@ -8,7 +8,9 @@
     import { listen } from "@tauri-apps/api/event";
     import { onMount, onDestroy } from "svelte";
     import { fade } from "svelte/transition";
+    import { get } from "svelte/store";
     import { appState } from "$lib/runes/store.svelte";
+    import { _ } from "svelte-i18n";
 
     // "Rising Particles" Logic (Adapted from Home.svelte)
     const particles = Array.from({ length: 100 }).map((_, i) => ({
@@ -60,13 +62,23 @@
     let importReport = $state<ImportReportResult | null>(null);
     let loading = $state(false);
     let progress = $state<ImportProgress | null>(null);
-    let activeTab = $state("Comandos");
+    let activeTab = $state("tab_commands");
     let unlisten: () => void;
 
     onMount(async () => {
         loadStats();
         unlisten = await listen<ImportProgress>("import-progress", (event) => {
-            progress = event.payload;
+            const payload = event.payload;
+            let message = payload.message;
+
+            // Map backend messages to translations
+            if (message.startsWith("Processing")) {
+                message = get(_)("dev.status_importing");
+            } else if (message.startsWith("Starting")) {
+                message = get(_)("dev.status_starting");
+            }
+
+            progress = { ...payload, message };
             if (event.payload.step === 100) {
                 loadStats(); // Refresh stats on completion
             }
@@ -96,7 +108,7 @@
 
         loading = true;
         importReport = null;
-        progress = { message: "Starting...", step: 0, total_steps: 100 };
+        progress = { message: get(_)("dev.status_starting"), step: 0, total_steps: 100 };
 
         try {
             const report = await invoke("import_minecraft_data", {
@@ -152,7 +164,7 @@
             </div>
             <div>
                 <h1 class="text-3xl font-black tracking-tight text-white mb-1">
-                    Developer Dashboard
+                    {$_("dev.title")}
                 </h1>
                 <p
                     class="text-zinc-400 font-medium flex items-center gap-2 text-sm"
@@ -160,7 +172,7 @@
                     <span
                         class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"
                     ></span>
-                    Herramientas internas de desarrollo.
+                    {$_("dev.subtitle")}
                 </p>
             </div>
         </div>
@@ -171,7 +183,7 @@
             <div
                 class="w-48 flex flex-col py-8 px-4 space-y-2 flex-shrink-0 border-r border-zinc-800 relative z-50 bg-[#09090b]/40 backdrop-blur-sm pointer-events-auto"
             >
-                {#each ["Comandos", "Menu 2", "Menu 3", "Menu 4"] as item}
+                {#each ["tab_commands", "tab_menu2", "tab_menu3", "tab_menu4"] as item}
                     <button
                         onclick={() => (activeTab = item)}
                         class="w-full text-left px-5 py-3.5 rounded-xl font-bold relative overflow-hidden group select-none {activeTab ===
@@ -182,7 +194,7 @@
                         <span
                             class="relative z-10 text-[17px] tracking-wide flex items-center justify-between"
                         >
-                            {item}
+                            {$_(`dev.${item}`)}
                             {#if activeTab === item}
                                 <div
                                     class="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white]"
@@ -200,9 +212,9 @@
 
                 <div class="mt-auto px-2">
                     <div
-                        class="p-3 bg-zinc-900/30 rounded-lg border border-zinc-800/50 text-[16px] text-zinc-600 text-center font-mono"
+                        class="p-3 bg-zinc-900/30 rounded-lg border border-zinc-800/50 text-[11px] text-zinc-500 text-center font-mono"
                     >
-                        Build: dev-0.1.0-alpha
+                        {$_("dev.build")}v{appState.appInfo.version}-{appState.appInfo.tag.toLowerCase()}
                     </div>
                 </div>
             </div>
@@ -211,7 +223,7 @@
             <div class="flex-1 overflow-y-auto p-8 relative">
                 <div class="max-w-6xl mr-auto space-y-8">
                     <!-- Tab Content -->
-                    {#if activeTab === "Comandos"}
+                    {#if activeTab === "tab_commands"}
                         <!-- Stats Section -->
                         {#if stats}
                             <section
@@ -227,7 +239,7 @@
                                     ></div>
                                     <span
                                         class="text-zinc-500 text-[14px] font-black uppercase tracking-widest mb-2 opacity-60"
-                                        >VERSIONES CARGADAS</span
+                                        >{$_("dev.stat_loaded")}</span
                                     >
                                     <span
                                         class="text-3xl font-black text-white tracking-tighter"
@@ -244,7 +256,7 @@
                                     ></div>
                                     <span
                                         class="text-zinc-500 text-[14px] font-black uppercase tracking-widest mb-2 opacity-60"
-                                        >ÚLTIMA VERSIÓN</span
+                                        >{$_("dev.stat_latest")}</span
                                     >
                                     <span
                                         class="text-3xl font-black text-green-400 tracking-tighter"
@@ -261,12 +273,12 @@
                                     ></div>
                                     <span
                                         class="text-zinc-500 text-[14px] font-black uppercase tracking-widest mb-2 opacity-60"
-                                        >ESTADO DE DATOS</span
+                                        >{$_("dev.stat_status")}</span
                                     >
                                     <span
                                         class="px-3 py-1 rounded-full text-xs font-black bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.15)]"
                                     >
-                                        READY
+                                        {$_("dev.stat_ready")}
                                     </span>
                                 </div>
                             </section>
@@ -278,7 +290,7 @@
                             >
                                 <span class="text-2xl">📂</span>
                                 <h2 class="text-2xl font-bold">
-                                    Exportar Comandos de Minecraft Vanilla
+                                    {$_("dev.export_title")}
                                 </h2>
                             </div>
 
@@ -294,12 +306,7 @@
                                     <p
                                         class="text-zinc-400 leading-relaxed max-w-2xl"
                                     >
-                                        Selecciona la carpeta <code
-                                            >OUTPUT_DATA</code
-                                        >
-                                        generada por tu script de PowerShell. El
-                                        sistema importará automáticamente las versiones
-                                        nuevas y actualizará el manifiesto global.
+                                        {$_("dev.export_desc")}
                                     </p>
                                 </div>
 
@@ -311,7 +318,7 @@
                                         onclick={selectFolder}
                                         class="px-6 py-3 bg-white text-black hover:bg-zinc-200 rounded-xl font-bold transition-transform active:scale-95 shadow-lg shadow-white/5 flex items-center gap-2"
                                     >
-                                        <span>Browse Folder</span>
+                                        <span>{$_("dev.btn_browse")}</span>
                                     </button>
 
                                     <div
@@ -319,7 +326,7 @@
                                     >
                                         <span class="text-zinc-600 mr-2">$</span
                                         >
-                                        {selectedPath || "No folder selected"}
+                                        {selectedPath || $_("dev.no_folder")}
                                     </div>
                                 </div>
 
@@ -370,9 +377,9 @@
                                             <div
                                                 class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"
                                             ></div>
-                                            <span>Processing...</span>
+                                            <span>{$_("dev.processing")}</span>
                                         {:else}
-                                            <span>Run Import Process</span>
+                                            <span>{$_("dev.btn_run")}</span>
                                             <span class="text-white/30">→</span>
                                         {/if}
                                     </button>
@@ -384,7 +391,7 @@
                         {#if importReport}
                             <section in:fade class="space-y-4 pt-4 pb-20">
                                 <h3 class="text-xl font-bold text-zinc-200">
-                                    Import Report
+                                    {$_("dev.report_title")}
                                 </h3>
 
                                 {#if importReport.error}
@@ -395,7 +402,7 @@
                                         <div>
                                             <strong
                                                 class="block text-red-400 mb-1"
-                                                >Process Failed</strong
+                                                >{$_("dev.report_failed")}</strong
                                             >
                                             {importReport.error}
                                         </div>
@@ -414,18 +421,18 @@
                                             <h4
                                                 class="text-green-400 font-black mb-4 flex items-center text-lg"
                                             >
-                                                Added Versions
+                                                {$_("dev.added_title")}
                                                 <span
                                                     class="ml-auto text-xs bg-green-500/10 text-green-400 px-3 py-1 rounded-full border border-green-500/20"
                                                     >{importReport.added.length}
-                                                    new</span
+                                                    {$_("dev.added_new")}</span
                                                 >
                                             </h4>
                                             {#if importReport.added.length === 0}
                                                 <div
                                                     class="h-32 flex items-center justify-center text-zinc-600 italic border-2 border-dashed border-zinc-800 rounded-xl"
                                                 >
-                                                    No new versions found
+                                                    {$_("dev.added_none")}
                                                 </div>
                                             {:else}
                                                 <ul
@@ -453,18 +460,18 @@
                                             <h4
                                                 class="text-zinc-400 font-black mb-4 flex items-center text-lg"
                                             >
-                                                Skipped
+                                                {$_("dev.skipped_title")}
                                                 <span
                                                     class="ml-auto text-xs bg-zinc-800 text-zinc-400 px-3 py-1 rounded-full border border-zinc-700"
                                                     >{importReport.skipped
-                                                        .length} existing</span
+                                                        .length} {$_("dev.skipped_existing")}</span
                                                 >
                                             </h4>
                                             {#if importReport.skipped.length === 0}
                                                 <div
                                                     class="h-32 flex items-center justify-center text-zinc-600 italic border-2 border-dashed border-zinc-800 rounded-xl"
                                                 >
-                                                    None skipped
+                                                    {$_("dev.skipped_none")}
                                                 </div>
                                             {:else}
                                                 <ul
@@ -493,12 +500,13 @@
                         <div
                             class="flex flex-col items-center justify-center h-[500px] border-2 border-dashed border-zinc-800 rounded-3xl text-zinc-600 bg-zinc-900/10 backdrop-blur-sm"
                         >
+
                             <span class="text-6xl mb-4 opacity-50">🚧</span>
                             <h3 class="text-2xl font-bold text-zinc-500">
-                                Work in Progress
+                                {$_("dev.wip_title")}
                             </h3>
                             <p class="text-zinc-700 mt-2">
-                                {activeTab} section coming soon.
+                                {$_("dev." + activeTab)}{$_("dev.wip_desc")}
                             </p>
                         </div>
                     {/if}

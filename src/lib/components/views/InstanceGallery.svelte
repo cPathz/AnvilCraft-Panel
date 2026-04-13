@@ -1,6 +1,7 @@
 <script lang="ts">
     import { appState, type Instance } from "$lib/runes/store.svelte";
     import { invoke } from "@tauri-apps/api/core";
+    import { _ } from "svelte-i18n";
 
     let instances = $derived(appState.instances);
 
@@ -39,17 +40,17 @@
                 <h2
                     class="text-3xl font-bold text-white tracking-tight leading-none"
                 >
-                    Mis Instancias
+                    {$_("gallery.title")}
                 </h2>
                 <p class="text-zinc-500 text-sm mt-1 font-medium">
-                    Gestiona y lanza tus servidores
+                    {$_("gallery.subtitle")}
                 </p>
             </div>
             <div class="flex items-center gap-2">
                 <button
                     class="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all active:scale-95"
                     onclick={refreshInstances}
-                    title="Actualizar lista"
+                    title={$_("gallery.refresh")}
                 >
                     <svg
                         width="18"
@@ -84,7 +85,7 @@
                             d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2z"
                         ></path></svg
                     >
-                    Carpeta
+                    {$_("gallery.folder")}
                 </button>
             </div>
         </div>
@@ -161,7 +162,7 @@
                                     class:bg-red-500-10={instance.state ===
                                         "Stopped"}
                                 >
-                                    {instance.state}
+                                    {$_(`status.${instance.state.toLowerCase()}`)}
                                 </span>
 
                                 <span

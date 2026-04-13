@@ -4,6 +4,9 @@
     import { listen } from "@tauri-apps/api/event";
     import { open } from "@tauri-apps/plugin-dialog";
     import { openUrl } from "@tauri-apps/plugin-opener";
+    import { toast } from "$lib/runes/toast.svelte";
+    import { _, getLocaleFromNavigator } from "svelte-i18n";
+    import { get } from "svelte/store";
 
     import IconPicker from "./IconPicker.svelte";
 
@@ -52,7 +55,7 @@
 
     let installing = $state(false);
     let installProgress = $state(0);
-    let installStep = $state("Iniciando...");
+    let installStep = $state(get(_)("create_instance.status_starting"));
 
     // File/Import specific
     let sourcePath = $state("");
@@ -109,7 +112,7 @@
 
         installing = true;
         installProgress = 0;
-        installStep = "Preparando...";
+        installStep = get(_)("create_instance.status_preparing");
 
         let unlisten: () => void;
         let createdId: string | null = null;
@@ -120,28 +123,45 @@
                 if (createdId && payload.id !== createdId) return;
 
                 if (payload.step.startsWith("Downloading")) {
-                    installStep = "Descargando servidor...";
+                    installStep = get(_)("create_instance.status_downloading");
                     const formatSize = (bytes: number) =>
                         (bytes / 1024 / 1024).toFixed(1);
 
                     if (payload.total_size) {
-                        installStep = `Descargando... ${formatSize(payload.downloaded)} MB de ${formatSize(payload.total_size)} MB`;
+                        installStep = get(_)("create_instance.status_download_progress", {
+                            values: {
+                                downloaded: formatSize(payload.downloaded),
+                                total: formatSize(payload.total_size)
+                            }
+                        });
                         installProgress = payload.progress;
                     } else {
-                        installStep = `Descargando... ${formatSize(payload.downloaded)} MB`;
+                        installStep = get(_)("create_instance.status_download_simple", {
+                            values: {
+                                downloaded: formatSize(payload.downloaded)
+                            }
+                        });
                         installProgress = payload.progress;
                     }
                 } else if (
                     payload.step === "Done" ||
                     payload.progress === 100
                 ) {
-                    installStep = "Completado";
+                    installStep = get(_)("create_instance.status_completed");
                     installProgress = 100;
                     setTimeout(() => finishInstallation(payload.id), 500);
+                } else if (payload.step === "Creating files...") {
+                    installStep = get(_)("create_instance.status_creating_files");
+                } else if (payload.step === "Finalizing download...") {
+                    installStep = get(_)("create_instance.status_finalizing_download");
+                } else if (payload.step.startsWith("Ejecutando instalador")) {
+                    installStep = get(_)("create_instance.status_executing_installer");
+                } else if (payload.step.startsWith("Instalación completada")) {
+                    installStep = get(_)("create_instance.status_configuring");
                 } else if (payload.step.startsWith("Error")) {
-                    installStep = "Error";
+                    installStep = get(_)("create_instance.status_error");
                     installing = false;
-                    alert("Error en la instalación: " + payload.step);
+                    toast.error(get(_)("create_instance.alert_install_error") + payload.step);
                     if (unlisten) unlisten();
                 } else {
                     installStep = payload.step;
@@ -184,16 +204,15 @@
                 } else {
                     // Direct completion for non-installers
                     installProgress = 100;
-                    installStep = "Completado";
+                    installStep = get(_)("common.status_completed");
                     setTimeout(() => finishInstallation(id), 500);
                 }
             }
-            console.log("Instance created:", createdId);
         } catch (error) {
             console.error("Failed to create instance:", error);
-            alert("Error al crear la instancia: " + error);
+            toast.error(get(_)("create_instance.alert_create_error") + error);
             installing = false;
-            if (unlisten!) unlisten();
+            if (unlisten) unlisten();
         }
     }
 
@@ -295,11 +314,11 @@
         <div
             class="flex items-center justify-between px-6 py-4 border-b border-zinc-800/50"
         >
-            <h2 class="text-lg font-bold text-white">Crear nueva instancia</h2>
+            <h2 class="text-lg font-bold text-white">{$_("create_instance.title")}</h2>
             <button
                 onclick={close}
                 class="text-zinc-400 hover:text-white transition-colors"
-                aria-label="Cerrar"
+                aria-label={$_("icon_picker.aria_label_close")}
             >
                 <svg
                     width="20"
@@ -332,11 +351,7 @@
                             : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'}"
                         onclick={() => (activeTab = tab as any)}
                     >
-                        {tab === "custom"
-                            ? "Custom"
-                            : tab === "file"
-                              ? "From File"
-                              : "Import"}
+                        {$_(`create_instance.tab_${tab}`)}
                     </button>
                 {/each}
             </div>
@@ -350,7 +365,7 @@
                     onmouseenter={() => (hoveredIcon = true)}
                     onmouseleave={() => (hoveredIcon = false)}
                     onclick={() => (showIconPicker = true)}
-                    aria-label="Seleccionar icono"
+                    aria-label={$_("icon_picker.aria_label_select")}
                 >
                     <img
                         src={selectedIcon}
@@ -362,7 +377,7 @@
                             class="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px] pointer-events-none"
                         >
                             <span class="text-xs text-white font-medium"
-                                >Editar</span
+                                >{$_("create_instance.edit_icon")}</span
                             >
                         </div>
                     {/if}
@@ -372,7 +387,7 @@
                 <div class="flex-1 space-y-1.5 pt-1">
                     <label
                         class="text-xs font-bold text-white tracking-wider"
-                        for="instance-name">Nombre</label
+                        for="instance-name">{$_("create_instance.label_name")}</label
                     >
                     <input
                         id="instance-name"
@@ -385,7 +400,7 @@
                                 instanceName = instanceName.trimStart();
                             }
                         }}
-                        placeholder="Mi Nuevo Servidor"
+                        placeholder={$_("create_instance.placeholder_name")}
                         class="w-full bg-black/20 border border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all font-bold text-base tracking-wide"
                     />
                 </div>
@@ -399,7 +414,7 @@
                         <div class="space-y-1.5 relative">
                             <span
                                 class="text-xs font-bold text-white tracking-wider"
-                                >Loader</span
+                                >{$_("create_instance.loader")}</span
                             >
                             <button
                                 type="button"
@@ -481,13 +496,13 @@
                                     for="accept-eula-custom"
                                     class="text-xs text-zinc-500 select-none cursor-pointer flex items-center gap-1.5"
                                 >
-                                    Aceptar EULA
+                                    {$_("create_instance.accept_eula")}
                                     <a
                                         href="https://www.minecraft.net/eula"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         class="text-zinc-500 hover:text-green-500 transition-colors"
-                                        title="Visitar https://www.minecraft.net/eula"
+                                        title={$_("create_instance.accept_eula") + " (https://www.minecraft.net/eula)"}
                                         onclick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
@@ -525,7 +540,7 @@
                         <div class="space-y-1.5 relative">
                             <span
                                 class="text-xs font-bold text-white tracking-wider"
-                                >Versión del Juego</span
+                                >{$_("create_instance.game_version")}</span
                             >
 
                             <button
@@ -586,7 +601,7 @@
                                     <label
                                         for="snapshots"
                                         class="text-xs text-zinc-500 select-none cursor-pointer"
-                                        >Mostrar Snapshots</label
+                                        >{$_("create_instance.show_snapshots")}</label
                                     >
                                 </div>
                             {/if}
@@ -599,8 +614,8 @@
                             <span
                                 class="text-xs font-bold text-white tracking-wider"
                                 >{activeTab === "file"
-                                    ? "Seleccionar JAR"
-                                    : "Seleccionar Carpeta"}</span
+                                    ? $_("create_instance.select_jar")
+                                    : $_("create_instance.select_folder")}</span
                             >
                             <div class="flex gap-2">
                                 <button
@@ -609,12 +624,12 @@
                                 >
                                     {sourcePath
                                         ? sourcePath
-                                        : "Click para explorar..."}
+                                        : $_("create_instance.click_to_browse")}
                                 </button>
                                 {#if sourcePath}
                                     <button
                                         onclick={() => (sourcePath = "")}
-                                        aria-label="Limpiar selección"
+                                        aria-label={$_("icon_picker.aria_label_close")}
                                         class="p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 hover:bg-red-500/20 transition-colors"
                                     >
                                         <svg
@@ -642,7 +657,7 @@
                         <div class="space-y-1.5">
                             <span
                                 class="text-xs font-bold text-white tracking-wider"
-                                >Versión detectada</span
+                                >{$_("create_instance.detected_version")}</span
                             >
                             <div class="relative">
                                 <input
@@ -663,8 +678,7 @@
                                 {/if}
                             </div>
                             <p class="text-[10px] text-zinc-500 italic">
-                                Si la detección falló, ingresa la versión
-                                manualmente.
+                                {$_("create_instance.detection_tip")}
                             </p>
                         </div>
 
@@ -680,13 +694,13 @@
                                 for="accept-eula-file"
                                 class="text-xs text-zinc-500 select-none cursor-pointer flex items-center gap-1.5"
                             >
-                                Aceptar EULA
+                                {$_("create_instance.accept_eula")}
                                 <a
                                     href="https://www.minecraft.net/eula"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     class="text-zinc-500 hover:text-green-500 transition-colors"
-                                    title="Visitar https://www.minecraft.net/eula"
+                                    title={$_("create_instance.accept_eula") + " (https://www.minecraft.net/eula)"}
                                     onclick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
@@ -733,7 +747,7 @@
                         <div class="flex flex-col gap-1 overflow-hidden">
                             <span
                                 class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold"
-                                >Estado:</span
+                                >{$_("create_instance.status_label")}</span
                             >
                             <span
                                 class="break-all line-clamp-2 min-h-[2.5rem] leading-tight text-zinc-300 transition-all duration-200"
@@ -763,7 +777,7 @@
                     onclick={close}
                     class="px-4 py-2 rounded-lg text-sm font-bold text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-colors"
                 >
-                    Cancelar
+                    {$_("create_instance.btn_cancel")}
                 </button>
                 <button
                     onclick={handleCreate}
@@ -774,7 +788,7 @@
                         (activeTab !== "custom" && !gameVersion) ||
                         (useCustomUrl && !customUrl)}
                 >
-                    Crear Instancia
+                    {$_("create_instance.btn_create")}
                 </button>
             {/if}
         </div>

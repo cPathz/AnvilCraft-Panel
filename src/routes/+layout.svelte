@@ -13,6 +13,13 @@
     import { listen } from "@tauri-apps/api/event";
     import { getCurrentWindow } from "@tauri-apps/api/window";
 
+    import { setupI18n } from "$lib/i18n";
+    import { isLoading, _ } from "svelte-i18n";
+    import { get } from "svelte/store";
+    import { toast } from "$lib/runes/toast.svelte";
+
+    setupI18n();
+
     // Global UI state for close warning and force‑close handling
     let showCloseWarning = $state(false);
     let isForceClosing = $state(false);
@@ -118,7 +125,7 @@
             await getCurrentWindow().close();
         } catch (e) {
             console.error("Force close failed:", e);
-            alert("Error al forzar cierre: " + e);
+            toast.error(get(_)("settings.toast_force_close_error") + e);
             isForceClosing = false;
         }
     }
@@ -232,7 +239,9 @@
             <div
                 class="flex-1 w-full relative overflow-y-auto z-10 flex flex-col"
             >
-                {@render children()}
+                {#if !$isLoading}
+                    {@render children()}
+                {/if}
             </div>
         </div>
     </div>

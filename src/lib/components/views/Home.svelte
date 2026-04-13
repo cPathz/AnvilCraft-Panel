@@ -1,5 +1,5 @@
 <script lang="ts">
-    import es from "$lib/i18n/es.json";
+    import { _ } from "svelte-i18n";
     import { appState } from "$lib/runes/store.svelte";
 
     // "Rising Particles" Logic (Adapted from SCSS loop)
@@ -187,16 +187,16 @@
         <h1
             class="text-4xl md:text-5xl font-extrabold text-[#FFFFFF] text-center tracking-tight drop-shadow-md animate-enter delay-100 select-none pb-2"
         >
-            {es.dashboard?.welcome || "Bienvenido a AnvilCraft"}
+            {$_("home.welcome")}
         </h1>
 
         <!-- Subtitle -->
         <p
             class="text-xl text-[#D0D0D0] font-medium text-center max-w-lg leading-relaxed animate-enter delay-200 select-none mt-6 drop-shadow-sm"
         >
-            Gestiona tus servidores locales de Minecraft
+            {$_("home.subtitle_1")}
             <span class="block mt-1 text-[#D0D0D0]/80"
-                >Simple, rápido y potente.</span
+                >{$_("home.subtitle_2")}</span
             >
         </p>
 
@@ -222,7 +222,7 @@
                         y2="12"
                     ></line></svg
                 >
-                {es.home?.create || "Crear Nueva Instancia"}
+                {$_("home.create")}
             </span>
         </button>
     </div>

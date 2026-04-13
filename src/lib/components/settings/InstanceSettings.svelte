@@ -6,6 +6,8 @@
     import { onMount, tick } from "svelte";
     import { fade, slide } from "svelte/transition";
     import { listen } from "@tauri-apps/api/event";
+    import { _ } from "svelte-i18n";
+    import { get } from "svelte/store";
 
     let {
         instance,
@@ -80,8 +82,23 @@
         unlistenProgress = await listen<any>("install-progress", (event) => {
             const payload = event.payload;
             if (payload.id.startsWith("java-download-")) {
+                let step = payload.step;
+                
+                // Map backend steps to translations
+                if (step.startsWith("Downloading")) {
+                    step = get(_)("common.status_downloading");
+                } else if (step === "Done" || payload.progress === 100) {
+                    step = get(_)("common.status_completed");
+                } else if (step === "Preparing") {
+                    step = get(_)("common.status_preparing");
+                } else if (step === "Creating files...") {
+                    step = get(_)("create_instance.status_creating_files");
+                } else if (step === "Finalizing download...") {
+                    step = get(_)("create_instance.status_finalizing_download");
+                }
+
                 downloadProgress[payload.id] = {
-                    step: payload.step,
+                    step,
                     progress: payload.progress,
                 };
                 if (payload.step === "Done") {
@@ -108,17 +125,17 @@
 
     async function handleDownloadJava(version: number) {
         const id = `java-download-${version}`;
-        downloadProgress[id] = { step: "Iniciando...", progress: 0 };
+        downloadProgress[id] = { step: get(_)("common.status_starting"), progress: 0 };
         try {
             const path = await invoke<string>("download_java_runtime", {
                 version,
             });
             formSettings.java_path = path;
             markDirty();
-            toast.success(`Java ${version} descargado y configurado`);
+            toast.success(get(_)("instance_settings.toast_java_downloaded", { values: { version } }));
         } catch (e) {
             console.error(e);
-            toast.error(`Error descargando Java ${version}: ${e}`);
+            toast.error(get(_)("instance_settings.toast_java_error", { values: { version } }) + e);
             delete downloadProgress[id];
         }
     }
@@ -126,7 +143,7 @@
     function useJavaRuntime(path: string) {
         formSettings.java_path = path;
         markDirty();
-        toast.success("Ruta de Java actualizada");
+        toast.success(get(_)("instance_settings.toast_java_path"));
     }
 
     // Sync form when instance changes
@@ -183,10 +200,10 @@
                 appState.selectedInstance.settings = { ...formSettings };
             }
             originalSettings = { ...formSettings };
-            toast.success("¡Configuración guardada correctamente!");
+            toast.success(get(_)("instance_settings.toast_save_success"));
         } catch (e) {
             console.error(e);
-            toast.error("Error al guardar: " + e);
+            toast.error(get(_)("instance_settings.toast_save_error") + e);
         }
     }
 
@@ -231,7 +248,7 @@
             }
         } catch (e) {
             console.error(e);
-            toast.error("Error al abrir el selector: " + e);
+            toast.error(get(_)("instance_settings.toast_picker_error") + e);
         }
     }
 
@@ -268,20 +285,20 @@
                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                     /></svg
                 >
-                Cambios sin guardar
+                {$_("instance_settings.unsaved_title")}
             </span>
             <div class="flex gap-2">
                 <button
                     onclick={discardChanges}
                     class="px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
                 >
-                    Descartar
+                    {$_("instance_settings.btn_discard")}
                 </button>
                 <button
                     onclick={saveSettings}
                     class="px-4 py-1.5 rounded-lg text-xs font-bold text-[#0f172a] bg-yellow-400 hover:bg-yellow-300 transition-colors shadow-lg shadow-yellow-400/20"
                 >
-                    Guardar Cambios
+                    {$_("instance_settings.btn_save")}
                 </button>
             </div>
         </div>
@@ -316,11 +333,10 @@
                     </div>
                     <div>
                         <h3 class="font-bold text-yellow-500">
-                            Servidor en Ejecución
+                            {$_("instance_settings.running_title")}
                         </h3>
                         <p class="text-sm text-yellow-200/70">
-                            Detén el servidor para modificar la configuración
-                            avanzada.
+                            {$_("instance_settings.running_desc")}
                         </p>
                     </div>
                 </div>
@@ -337,7 +353,7 @@
                             <label
                                 for="min-ram"
                                 class="text-xs font-bold text-zinc-400 uppercase tracking-wider"
-                                >RAM Mínima (MB)</label
+                                >{$_("instance_settings.min_ram")}</label
                             >
                             <div></div>
 
@@ -366,8 +382,8 @@
                                     onclick={toggleLink}
                                     class="p-1.5 rounded-full hover:bg-white/5 transition-colors group"
                                     title={linkMemory
-                                        ? "Desvincular"
-                                        : "Vincular"}
+                                        ? $_("instance_settings.tooltip_unlink")
+                                        : $_("instance_settings.tooltip_link")}
                                 >
                                     <svg
                                         width="18"
@@ -396,7 +412,7 @@
                             <label
                                 for="max-ram"
                                 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mt-2"
-                                >RAM Máxima (MB)</label
+                                >{$_("instance_settings.max_ram")}</label
                             >
                             <div></div>
 
@@ -422,7 +438,7 @@
                             <div
                                 class="col-span-2 flex justify-between text-xs text-zinc-500 mt-4 pr-1"
                             >
-                                <span>Sistema: {formatBytes(systemRam)}</span>
+                                <span>{$_("instance_settings.system_ram")}{formatBytes(systemRam)}</span>
                                 <span
                                     class={formSettings.max_ram >
                                     (systemRam / 1024 / 1024) * 0.8
@@ -433,7 +449,7 @@
                                         (formSettings.max_ram /
                                             (systemRam / 1024 / 1024)) *
                                             100,
-                                    )}% del total
+                                    )}{$_("instance_settings.of_total")}
                                 </span>
                             </div>
                         </div>
@@ -445,7 +461,7 @@
                             <label
                                 for="jar-file"
                                 class="text-xs font-bold text-zinc-400 uppercase tracking-wider"
-                                >Archivo JAR</label
+                                >{$_("instance_settings.jar_file")}</label
                             >
                             <div class="relative group">
                                 <div
@@ -481,7 +497,7 @@
                             <label
                                 for="server-port"
                                 class="text-xs font-bold text-zinc-400 uppercase tracking-wider"
-                                >Puerto</label
+                                >{$_("instance_settings.port")}</label
                             >
                             <div class="relative group">
                                 <div
@@ -531,7 +547,7 @@
                     <label
                         for="java-path"
                         class="text-xs font-bold text-zinc-400 uppercase tracking-wider"
-                        >Ruta de Java (Opcional)</label
+                        >{$_("instance_settings.java_path")}</label
                     >
                     <div class="flex gap-2">
                         <div class="relative flex-1 group">
@@ -563,7 +579,7 @@
                                 bind:value={formSettings.java_path}
                                 oninput={markDirty}
                                 disabled={isServerRunning}
-                                placeholder="Por defecto (java)"
+                                placeholder={$_("instance_settings.java_default")}
                                 class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl pl-12 pr-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 placeholder:text-zinc-700 shadow-inner"
                             />
                         </div>
@@ -585,7 +601,7 @@
                             >
                             <span
                                 class="text-xs font-bold uppercase tracking-widest"
-                                >Explorar</span
+                                >{$_("instance_settings.btn_browse")}</span
                             >
                         </button>
                     </div>
@@ -612,8 +628,7 @@
                                     y2="16"
                                 /></svg
                             >
-                            Tip: Esta versión suele requerir Java 8 para funcionar
-                            correctamente.
+                            {$_("instance_settings.tip_java8")}
                         </p>
                     {:else if instance.version.includes("1.16.5")}
                         <p
@@ -638,8 +653,7 @@
                                     y2="16"
                                 /></svg
                             >
-                            Tip: Para 1.16.5 se recomienda Java 11 o 16. Java 17+
-                            puede dar errores.
+                            {$_("instance_settings.tip_java11")}
                         </p>
                     {/if}
                 </div>
@@ -675,7 +689,7 @@
                                 >
                             </div>
                             <h3 class="text-sm font-bold text-zinc-200">
-                                Java Portátil (Adoptium)
+                                {$_("instance_settings.java_portable")}
                             </h3>
                         </div>
                     </div>
@@ -749,8 +763,8 @@
                                                 >
                                                     {formSettings.java_path ===
                                                     runtime.path
-                                                        ? "En uso"
-                                                        : "Usar"}
+                                                        ? $_("instance_settings.java_in_use")
+                                                        : $_("instance_settings.java_use")}
                                                 </button>
                                             {:else}
                                                 <button
@@ -760,7 +774,7 @@
                                                         )}
                                                     class="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold uppercase tracking-wider transition-all shadow-lg shadow-blue-600/20"
                                                 >
-                                                    Descargar
+                                                    {$_("instance_settings.java_download")}
                                                 </button>
                                             {/if}
                                         </div>
@@ -769,7 +783,7 @@
                             {/each}
                         </div>
                         <p class="text-[10px] text-zinc-500 px-1 italic">
-                            Los Javas se descargan en <code
+                            {$_("instance_settings.java_folder_info")}<code
                                 class="text-zinc-400 bg-black/20 px-1 rounded"
                                 >%APPDATA%/AnvilCraft/runtimes</code
                             >
@@ -783,14 +797,14 @@
                         <label
                             for="java-args"
                             class="text-xs font-bold text-zinc-400 uppercase tracking-wider"
-                            >Argumentos Java</label
+                            >{$_("instance_settings.java_args")}</label
                         >
                         <button
                             onclick={resetGeneralSettingsForm}
                             disabled={isServerRunning}
                             class="text-[10px] font-bold text-zinc-500 hover:text-yellow-500 transition-colors uppercase tracking-widest px-2 py-1 rounded hover:bg-yellow-500/5"
                         >
-                            Restaurar Valores
+                            {$_("instance_settings.btn_reset")}
                         </button>
                     </div>
                     <input

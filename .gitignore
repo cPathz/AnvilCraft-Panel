@@ -22,3 +22,6 @@ _backup/
 
 # Ignore raw data for dev use only
 src/lib/data/minecraft/
+
+# Registro de desarrollo local
+dev_log.md

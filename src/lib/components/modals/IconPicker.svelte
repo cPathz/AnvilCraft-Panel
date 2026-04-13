@@ -1,5 +1,6 @@
 <script lang="ts">
     import iconList from "$lib/data/icons.json";
+    import { _ } from "svelte-i18n";
 
     let { onselect, onclose } = $props<{
         onselect: (icon: string) => void;
@@ -68,13 +69,13 @@
                     type="text"
                     bind:value={searchQuery}
                     autocomplete="off"
-                    placeholder="Buscar icono (ej. grass, diamond, sword)..."
+                    placeholder={$_("icon_picker.search_placeholder")}
                     class="w-full bg-zinc-900 border border-zinc-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-all font-medium"
                 />
             </div>
             <button
                 onclick={onclose}
-                aria-label="Cerrar"
+                aria-label={$_("icon_picker.aria_label_close")}
                 class="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
             >
                 <svg
@@ -100,7 +101,7 @@
                 <div
                     class="flex flex-col items-center justify-center h-full text-zinc-500"
                 >
-                    <p>No se encontraron iconos</p>
+                    <p>{$_("icon_picker.no_results")}</p>
                 </div>
             {:else}
                 <div
@@ -134,8 +135,7 @@
                             onclick={loadMore}
                             class="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-full text-sm font-medium transition-colors shadow-lg border border-zinc-700 hover:border-zinc-600"
                         >
-                            Cargar más iconos ({filteredIcons.length -
-                                displayedIcons.length} restantes)
+                            {$_("icon_picker.btn_load_more", { values: { remaining: filteredIcons.length - displayedIcons.length } })}
                         </button>
                     </div>
                 {/if}
@@ -146,9 +146,9 @@
         <div
             class="p-2 px-4 border-t border-zinc-800 text-xs text-zinc-600 bg-[#18181b] flex justify-between"
         >
-            <span>{iconList.length} iconos disponibles</span>
+            <span>{$_("icon_picker.available_count", { values: { count: iconList.length } })}</span>
             <span
-                >Mostrando {displayedIcons.length} de {filteredIcons.length}</span
+                >{$_("icon_picker.showing_count", { values: { displayed: displayedIcons.length, filtered: filteredIcons.length } })}</span
             >
         </div>
     </div>

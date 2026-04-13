@@ -1,5 +1,6 @@
 <script lang="ts">
     import { appState } from "$lib/runes/store.svelte";
+    import { _ } from "svelte-i18n";
 
     // Options
     const fonts = [
@@ -26,15 +27,15 @@
 <div class="p-6 w-full max-w-full space-y-6 animate-fade-in-up">
     <!-- Header -->
     <div>
-        <h2 class="text-2xl font-bold text-white mb-1">Terminal</h2>
+        <h2 class="text-2xl font-bold text-white mb-1">{$_("terminal.title")}</h2>
         <p class="text-zinc-400 text-sm">
-            Personaliza la apariencia de la consola
+            {$_("terminal.desc")}
         </p>
     </div>
 
     <!-- Live Preview -->
     <div class="space-y-3">
-        <span class="text-sm font-medium text-zinc-300 ml-1">Vista Previa</span>
+        <span class="text-sm font-medium text-zinc-300 ml-1">{$_("terminal.preview")}</span>
         <div
             class="w-full h-48 bg-[#0f1520] rounded-xl border border-white/10 shadow-xl overflow-hidden p-4 select-none transition-all duration-200"
             style:font-family={settings.fontFamily}
@@ -70,16 +71,16 @@
 
     <!-- Settings Controls -->
     <div class="space-y-4">
-        <span class="text-sm font-medium text-zinc-300 ml-1">Texto</span>
+        <span class="text-sm font-medium text-zinc-300 ml-1">{$_("terminal.text_section")}</span>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Font Family -->
             <div
                 class="bg-zinc-800/50 border border-white/5 rounded-xl p-4 flex flex-col gap-3"
-                title="La tipografía utilizada en los logs"
+                title={$_("terminal.font_family_title")}
             >
                 <span class="font-medium text-white text-sm"
-                    >Tipo de fuente</span
+                    >{$_("terminal.font_family")}</span
                 >
                 <select
                     bind:value={appState.settings.console.fontFamily}
@@ -96,10 +97,10 @@
             <!-- Font Size -->
             <div
                 class="bg-zinc-800/50 border border-white/5 rounded-xl p-4 flex flex-col gap-3"
-                title="Tamaño en píxeles (px)"
+                title={$_("terminal.font_size_title")}
             >
                 <span class="font-medium text-white text-sm"
-                    >Tamaño de la fuente</span
+                    >{$_("terminal.font_size")}</span
                 >
                 <div class="flex items-center gap-3">
                     <input
@@ -123,9 +124,9 @@
             <!-- Line Height -->
             <div
                 class="bg-zinc-800/50 border border-white/5 rounded-xl p-4 flex flex-col gap-3"
-                title="Espaciado vertical entre líneas (Multiplicador)"
+                title={$_("terminal.line_height_title")}
             >
-                <span class="font-medium text-white text-sm">Alto de línea</span
+                <span class="font-medium text-white text-sm">{$_("terminal.line_height")}</span
                 >
                 <div class="flex items-center gap-3">
                     <input
@@ -151,10 +152,10 @@
             <!-- Letter Spacing -->
             <div
                 class="bg-zinc-800/50 border border-white/5 rounded-xl p-4 flex flex-col gap-3"
-                title="Separación horizontal entre caracteres (px)"
+                title={$_("terminal.letter_spacing_title")}
             >
                 <span class="font-medium text-white text-sm"
-                    >Espaciado (Letter Spacing)</span
+                    >{$_("terminal.letter_spacing")}</span
                 >
                 <div class="flex items-center gap-3">
                     <input
@@ -178,10 +179,10 @@
             <!-- Font Weight (New Row logically, but grid auto-flows) -->
             <div
                 class="bg-zinc-800/50 border border-white/5 rounded-xl p-4 flex flex-col gap-3"
-                title="Grosor de los caracteres"
+                title={$_("terminal.font_weight_title")}
             >
                 <span class="font-medium text-white text-sm"
-                    >Espesor de la fuente</span
+                    >{$_("terminal.font_weight")}</span
                 >
                 <select
                     bind:value={appState.settings.console.fontWeight}

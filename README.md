@@ -64,8 +64,8 @@ Prerequisites:
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/cPathz/anvil-craft-panel.git
-    cd anvil-craft-panel
+    git clone https://github.com/cPathz/AnvilCraft-Panel.git
+    cd AnvilCraft-Panel
     ```
 
 2.  **Install dependencies:**

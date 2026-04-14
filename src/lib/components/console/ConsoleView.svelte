@@ -33,6 +33,15 @@
     let hideNoise = $state(true);
     let showConsoleToolbar = $state(false);
 
+    let inputElement = $state<HTMLInputElement>();
+    let highlightElement = $state<HTMLDivElement>();
+
+    function syncScroll() {
+        if (inputElement && highlightElement) {
+            highlightElement.scrollLeft = inputElement.scrollLeft;
+        }
+    }
+
     // --- Logic ---
 
     function escapeHtml(unsafe: string) {
@@ -624,10 +633,11 @@
                 >
                     <path d="m9 18 6-6-6-6" />
                 </svg>
-                <div class="relative flex-1 h-7 flex items-center">
+                <div class="relative flex-1 h-7 flex items-center overflow-hidden">
                     <!-- Highlight Layer -->
                     <div
-                        class="absolute inset-0 w-full h-full text-[15px] leading-normal whitespace-pre flex items-center pointer-events-none z-10"
+                        bind:this={highlightElement}
+                        class="absolute inset-0 w-full h-full text-[15px] leading-normal whitespace-pre flex items-center pointer-events-none z-10 overflow-x-hidden"
                         style:font-family={consoleSettings.fontFamily}
                         aria-hidden="true"
                     >
@@ -635,9 +645,12 @@
                     </div>
                     <!-- Transparent Input Layer -->
                     <input
+                        bind:this={inputElement}
                         type="text"
                         bind:value={commandInput}
                         onkeydown={handleConsoleKeydown}
+                        oninput={syncScroll}
+                        onscroll={syncScroll}
                         placeholder={coloredHtml ? "" : $_("console.placeholder")}
                         class="absolute inset-0 w-full h-full bg-transparent text-transparent caret-blue-400 text-[15px] leading-normal outline-none z-20 border-none ring-0 p-0 m-0 focus:ring-0 placeholder:text-zinc-600"
                         style:font-family={consoleSettings.fontFamily}

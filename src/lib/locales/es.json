@@ -108,9 +108,12 @@
     "tip_java8": "Tip: Esta versión suele requerir Java 8 para funcionar correctamente.",
     "tip_java11": "Tip: Para 1.16.5 se recomienda Java 11 o 16. Java 17+ puede dar errores.",
     "java_portable": "Java Portátil (Adoptium)",
+    "java_portable_desc": "Descarga entornos Java oficiales (Temurin) que se ejecutan de forma aislada. No requieren instalación en el sistema y se guardan en la carpeta de datos de AnvilCraft.",
     "java_in_use": "En uso",
     "java_use": "Usar",
     "java_download": "Descargar",
+    "java_retired": "Retirado",
+    "java_retired_tip": "Esta versión ha sido retirada por Adoptium. Se recomienda usar Java 17.",
     "java_folder_info": "Los Javas se descargan en ",
     "java_args": "Argumentos Java",
     "btn_reset": "Restaurar Valores"

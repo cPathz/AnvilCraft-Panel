@@ -364,16 +364,96 @@ pub async fn save_instance_settings(
             let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
             if let Ok(mut inst) = serde_json::from_str::<Instance>(&content) {
                 if inst.id == instance_id {
-                    inst.settings = settings;
+                    inst.settings = settings.clone();
                     let new_json =
                         serde_json::to_string_pretty(&inst).map_err(|e| e.to_string())?;
                     fs::write(json_path, new_json).map_err(|e| e.to_string())?;
+
+                    // Sync server.properties
+                    let props_path = entry.path().join(".minecraft").join("server.properties");
+                    let _ = sync_server_properties(&props_path, settings.port);
+
                     return Ok(());
                 }
             }
         }
     }
     Err("Instance not found".to_string())
+}
+
+#[tauri::command]
+pub async fn get_instance_port(app: tauri::AppHandle, id: String) -> Result<u16, String> {
+    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let instances_dir = app_data.join("instances");
+
+    if instances_dir.exists() {
+        for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let json_path = entry.path().join("instance.json");
+            if json_path.exists() {
+                let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
+                if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
+                    if inst.id == id {
+                        let props_path = entry.path().join(".minecraft").join("server.properties");
+                        if props_path.exists() {
+                            if let Ok(props) = fs::read_to_string(props_path) {
+                                for line in props.lines() {
+                                    if line.starts_with("server-port=") {
+                                        if let Ok(p) = line
+                                            .replace("server-port=", "")
+                                            .trim()
+                                            .parse::<u16>()
+                                        {
+                                            return Ok(p);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        return Ok(inst.settings.port);
+                    }
+                }
+            }
+        }
+    }
+    Err("Instance not found".to_string())
+}
+
+fn sync_server_properties(path: &std::path::Path, port: u16) -> Result<(), String> {
+    if !path.exists() {
+        // Create basic template if it doesn't exist
+        fs::write(
+            path,
+            format!("server-port={}\nquery.port={}\n", port, port),
+        )
+        .map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
+    let mut found_port = false;
+    let mut found_query = false;
+
+    for line in lines.iter_mut() {
+        if line.trim().starts_with("server-port=") {
+            *line = format!("server-port={}", port);
+            found_port = true;
+        } else if line.trim().starts_with("query.port=") {
+            *line = format!("query.port={}", port);
+            found_query = true;
+        }
+    }
+
+    if !found_port {
+        lines.push(format!("server-port={}", port));
+    }
+    if !found_query {
+        lines.push(format!("query.port={}", port));
+    }
+
+    fs::write(path, lines.join("\n") + "\n").map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]

@@ -45,6 +45,7 @@ pub fn run() {
             commands::instance::open_instances_folder,
             commands::instance::detect_minecraft_version,
             commands::instance::create_instance_from_path,
+            commands::instance::get_instance_port,
             // Server
             commands::server::start_instance,
             commands::server::stop_instance,

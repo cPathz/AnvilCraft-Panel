@@ -153,6 +153,14 @@
                 formSettings = { ...instance.settings };
                 originalSettings = { ...instance.settings };
                 lastSyncedId = instance.id;
+
+                // Sync actual port from server.properties
+                invoke<number>("get_instance_port", { id: instance.id })
+                    .then((actualPort) => {
+                        formSettings.port = actualPort;
+                        originalSettings.port = actualPort;
+                    })
+                    .catch((e) => console.error("Failed to sync actual port", e));
             }
         }
     });

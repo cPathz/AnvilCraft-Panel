@@ -457,9 +457,10 @@ fn sync_server_properties(path: &std::path::Path, port: u16) -> Result<(), Strin
 }
 
 #[tauri::command]
-pub async fn open_instances_folder(app: tauri::AppHandle, slug: String) -> Result<(), String> {
+pub async fn open_instances_folder(app: tauri::AppHandle, slug: Option<String>) -> Result<(), String> {
     let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instance_root = app_data.join("instances").join(slug);
+    let slug_val = slug.unwrap_or_default();
+    let instance_root = app_data.join("instances").join(slug_val);
     let dot_minecraft = instance_root.join(".minecraft");
 
     let path = if dot_minecraft.exists() {

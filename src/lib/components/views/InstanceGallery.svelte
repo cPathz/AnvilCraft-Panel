@@ -11,18 +11,27 @@
 
     async function openFolder() {
         try {
-            await invoke("open_instances_folder");
+            // Updated to handle optional slug (opens root if empty/none)
+            await invoke("open_instances_folder", { slug: null });
         } catch (e) {
             console.error(e);
         }
     }
 
     async function refreshInstances() {
+        if (appState.refreshing) return;
+        appState.refreshing = true;
         try {
-            const instances = await invoke("read_instances");
-            appState.instances = instances as Instance[];
+            // Minimum delay to make the interaction feel real
+            const [instancesData] = await Promise.all([
+                invoke("read_instances"),
+                new Promise((resolve) => setTimeout(resolve, 800)),
+            ]);
+            appState.instances = instancesData as Instance[];
         } catch (e) {
             console.error(e);
+        } finally {
+            appState.refreshing = false;
         }
     }
 </script>
@@ -61,6 +70,7 @@
                         stroke-width="2"
                         stroke-linecap="round"
                         stroke-linejoin="round"
+                        class={appState.refreshing ? "animate-spin-once" : ""}
                         ><path
                             d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
                         /><path d="M3 3v5h5" /><path
@@ -180,3 +190,13 @@
         </div>
     </div>
 </div>
+
+<style>
+    @keyframes spin-once {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    .animate-spin-once {
+        animation: spin-once 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+</style>

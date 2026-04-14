@@ -17,7 +17,7 @@ pub async fn get_available_java_versions(app: AppHandle) -> Result<Vec<JavaRunti
     let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let runtimes_dir = app_data.join("runtimes").join("java");
 
-    let versions = vec![8, 11, 16, 17, 21];
+    let versions = vec![8, 11, 16, 17, 21, 25];
     let mut info = Vec::new();
 
     for v in versions {
@@ -92,10 +92,17 @@ pub async fn download_java_runtime(app: AppHandle, version: u8) -> Result<String
         "aarch64"
     };
 
-    let url = format!(
-        "https://api.adoptium.net/v3/binary/latest/{}/ga/{}/{}/jre/hotspot/normal/eclipse",
-        version, os, arch
-    );
+    let url = if version == 16 {
+        format!(
+            "https://api.adoptium.net/v3/binary/version/jdk-16.0.2+7/{}/{}/jdk/hotspot/normal/eclipse",
+            os, arch
+        )
+    } else {
+        format!(
+            "https://api.adoptium.net/v3/binary/latest/{}/ga/{}/{}/jre/hotspot/normal/eclipse",
+            version, os, arch
+        )
+    };
 
     let client = reqwest::Client::new();
     let response = client.get(&url).send().await.map_err(|e| e.to_string())?;

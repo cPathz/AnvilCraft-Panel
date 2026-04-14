@@ -688,9 +688,14 @@
                                     /></svg
                                 >
                             </div>
-                            <h3 class="text-sm font-bold text-zinc-200">
-                                {$_("instance_settings.java_portable")}
-                            </h3>
+                            <div class="flex flex-col gap-0.5">
+                                <h3 class="text-base font-bold text-zinc-200">
+                                    {$_("instance_settings.java_portable")}
+                                </h3>
+                                <p class="text-xs text-zinc-500 font-medium max-w-lg">
+                                    {$_("instance_settings.java_portable_desc")}
+                                </p>
+                            </div>
                         </div>
                     </div>
                     <div class="p-4 space-y-4">
@@ -704,10 +709,13 @@
                                     <div
                                         class="flex items-center justify-between"
                                     >
-                                        <span
-                                            class="text-xs font-black text-zinc-500 uppercase tracking-tighter"
-                                            >Java {runtime.version}</span
-                                        >
+                                        <div class="flex items-center gap-2">
+                                            <span
+                                                class="text-xs font-black uppercase tracking-tighter transition-colors {runtime.version === 16 ? 'text-yellow-500/60 cursor-help' : 'text-zinc-500'}"
+                                                title={runtime.version === 16 ? $_("instance_settings.java_retired_tip") : null}
+                                                >Java {runtime.version}</span
+                                            >
+                                        </div>
                                         {#if runtime.is_downloaded}
                                             <div
                                                 class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"
@@ -782,7 +790,7 @@
                                 </div>
                             {/each}
                         </div>
-                        <p class="text-[10px] text-zinc-500 px-1 italic">
+                        <p class="text-xs text-zinc-500 px-1 italic">
                             {$_("instance_settings.java_folder_info")}<code
                                 class="text-zinc-400 bg-black/20 px-1 rounded"
                                 >%APPDATA%/AnvilCraft/runtimes</code

@@ -793,7 +793,7 @@
                         <p class="text-xs text-zinc-500 px-1 italic">
                             {$_("instance_settings.java_folder_info")}<code
                                 class="text-zinc-400 bg-black/20 px-1 rounded"
-                                >%APPDATA%/AnvilCraft/runtimes</code
+                                >%APPDATA%/AnvilCraftPanel/runtimes</code
                             >
                         </p>
                     </div>

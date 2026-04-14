@@ -271,7 +271,7 @@
                     <button
                         onclick={openFolder}
                         class="text-xs text-zinc-500 hover:text-blue-400 transition-colors flex items-center gap-1.5 group/folder"
-                        title="Abrir carpeta de la instancia"
+                        title={$_("instance_detail.tooltip_folder")}
                     >
                         <svg
                             class="w-3.5 h-3.5 group-hover/folder:stroke-blue-400 transition-colors"

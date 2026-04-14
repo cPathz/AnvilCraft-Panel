@@ -49,6 +49,7 @@
     "status_error": "Error",
     "status_stopped": "Stopped",
     "btn_folder": "Folder",
+    "tooltip_folder": "Open instance folder",
     "btn_noise_show": "Show all (including noise)",
     "btn_noise_hide": "Hide noise (smart filter)",
     "btn_clear_console": "Clear console",

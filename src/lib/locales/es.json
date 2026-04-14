@@ -49,6 +49,7 @@
     "status_error": "Error",
     "status_stopped": "Detenido",
     "btn_folder": "Carpeta",
+    "tooltip_folder": "Abrir carpeta de la instancia",
     "btn_noise_show": "Mostrar todo (incluido ruido)",
     "btn_noise_hide": "Ocultar ruido (filtro inteligente)",
     "btn_clear_console": "Limpiar consola",

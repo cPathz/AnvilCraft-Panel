@@ -321,6 +321,34 @@ pub async fn delete_instance(
 }
 
 #[tauri::command]
+pub async fn update_instance_name(
+    app: tauri::AppHandle,
+    id: String,
+    name: String,
+) -> Result<(), String> {
+    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let instances_dir = app_data.join("instances");
+
+    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let json_path = entry.path().join("instance.json");
+        if json_path.exists() {
+            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
+            if let Ok(mut inst) = serde_json::from_str::<Instance>(&content) {
+                if inst.id == id {
+                    inst.name = name.clone();
+                    let new_json =
+                        serde_json::to_string_pretty(&inst).map_err(|e| e.to_string())?;
+                    fs::write(json_path, new_json).map_err(|e| e.to_string())?;
+                    return Ok(());
+                }
+            }
+        }
+    }
+    Err("Instance not found".to_string())
+}
+
+#[tauri::command]
 pub async fn update_instance_icon(
     app: tauri::AppHandle,
     id: String,

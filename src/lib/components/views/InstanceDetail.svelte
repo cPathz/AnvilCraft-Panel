@@ -147,6 +147,48 @@
             console.error(e);
         }
     }
+
+    // --- Renaming Logic ---
+    let isEditingName = $state(false);
+    let editedName = $state("");
+
+    function startEditName() {
+        editedName = instance.name;
+        isEditingName = true;
+    }
+
+    function cancelEditName() {
+        isEditingName = false;
+    }
+
+    async function saveName() {
+        if (!editedName.trim() || editedName === instance.name) {
+            isEditingName = false;
+            return;
+        }
+
+        try {
+            await invoke("update_instance_name", {
+                id: instance.id,
+                name: editedName,
+            });
+            
+            // Update local state
+            if (appState.selectedInstance) {
+                appState.selectedInstance.name = editedName;
+            }
+
+            // Sync globally
+            const idx = appState.instances.findIndex(i => i.id === instance.id);
+            if (idx !== -1) appState.instances[idx].name = editedName;
+
+            isEditingName = false;
+            toast.success(get(_)("instance_detail.toast_name_updated"));
+        } catch (e) {
+            console.error(e);
+            toast.error(get(_)("instance_detail.toast_name_error") + e);
+        }
+    }
 </script>
 
 <div
@@ -211,11 +253,48 @@
 
             <!-- Info -->
             <div class="flex flex-col justify-center gap-1">
-                <h1
-                    class="text-[22px] translate-y-[3px] font-bold text-white leading-none tracking-tight shadow-black drop-shadow-sm mb-1"
-                >
-                    {instance.name}
-                </h1>
+                {#if isEditingName}
+                    <div class="flex items-center gap-2 mb-1" transition:fade>
+                        <input
+                            type="text"
+                            bind:value={editedName}
+                            onkeydown={(e) => {
+                                if (e.key === "Enter") saveName();
+                                if (e.key === "Escape") cancelEditName();
+                            }}
+                            autocomplete="off"
+                            autofocus
+                            class="bg-[#0f172a] border-2 border-blue-500/50 rounded-lg px-2 py-1 text-[20px] font-bold text-white focus:outline-none shadow-[0_0_15px_rgba(59,130,246,0.2)] w-64"
+                        />
+                        <button 
+                            onclick={saveName}
+                            class="p-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg transition-colors shadow-lg shadow-blue-500/20"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </button>
+                        <button 
+                            onclick={cancelEditName}
+                            class="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded-lg transition-colors"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                {:else}
+                    <div class="flex items-center gap-2 group/name">
+                        <h1
+                            class="text-[22px] translate-y-[3px] font-bold text-white leading-none tracking-tight shadow-black drop-shadow-sm mb-1"
+                        >
+                            {instance.name}
+                        </h1>
+                        <button
+                            onclick={startEditName}
+                            class="p-1 rounded-md text-zinc-600 hover:text-blue-400 hover:bg-blue-400/10 opacity-0 group-hover/name:opacity-100 transition-all active:scale-90"
+                            title={$_("instance_detail.tooltip_rename")}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                    </div>
+                {/if}
                 <div class="flex items-center gap-3">
                     <span
                         class="-ml-0.5 translate-y-[4px] px-2 py-0.5 rounded-md text-[11px] font-bold capitalize tracking-wider bg-white/5 text-zinc-400 border border-white/5 backdrop-blur-sm"

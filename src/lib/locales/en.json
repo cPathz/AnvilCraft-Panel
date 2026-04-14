@@ -62,6 +62,7 @@
     "btn_delete": "Delete",
     "toast_name_updated": "Name updated successfully",
     "toast_name_error": "Failed to update name: ",
+    "toast_name_too_long": "Name is too long (max 30)",
     "modal_delete_title": "Delete Instance",
     "modal_delete_desc1": "Are you sure you want to delete ",
     "modal_delete_desc2": "? This action cannot be undone and will erase all server files.",

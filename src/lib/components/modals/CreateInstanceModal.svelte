@@ -393,7 +393,7 @@
                         id="instance-name"
                         type="text"
                         bind:value={instanceName}
-                        maxlength="22"
+                        maxlength="30"
                         autocomplete="off"
                         oninput={(e) => {
                             if (instanceName.startsWith(" ")) {

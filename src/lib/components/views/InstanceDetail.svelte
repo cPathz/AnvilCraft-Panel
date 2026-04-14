@@ -162,15 +162,21 @@
     }
 
     async function saveName() {
-        if (!editedName.trim() || editedName === instance.name) {
+        const trimmedName = editedName.trim();
+        if (!trimmedName || trimmedName === instance.name) {
             isEditingName = false;
+            return;
+        }
+
+        if (trimmedName.length > 30) {
+            toast.error(get(_)("instance_detail.toast_name_too_long"));
             return;
         }
 
         try {
             await invoke("update_instance_name", {
                 id: instance.id,
-                name: editedName,
+                name: trimmedName,
             });
             
             // Update local state
@@ -262,6 +268,7 @@
                                 if (e.key === "Enter") saveName();
                                 if (e.key === "Escape") cancelEditName();
                             }}
+                            maxlength="30"
                             autocomplete="off"
                             autofocus
                             class="bg-[#0f172a] border-2 border-blue-500/50 rounded-lg px-2 py-1 text-[20px] font-bold text-white focus:outline-none shadow-[0_0_15px_rgba(59,130,246,0.2)] w-64"

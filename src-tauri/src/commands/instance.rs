@@ -326,6 +326,9 @@ pub async fn update_instance_name(
     id: String,
     name: String,
 ) -> Result<(), String> {
+    if name.trim().len() > 30 {
+        return Err("Name too long".to_string());
+    }
     let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let instances_dir = app_data.join("instances");
 

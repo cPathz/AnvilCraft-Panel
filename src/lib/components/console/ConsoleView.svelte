@@ -1,7 +1,7 @@
 <script lang="ts">
     import { appState } from "$lib/runes/store.svelte";
     import { invoke } from "@tauri-apps/api/core";
-    import { tick } from "svelte";
+    import { tick, onMount } from "svelte";
     import { slide } from "svelte/transition";
     import { _ } from "svelte-i18n";
     import { FEATURES } from "$lib/config/features";
@@ -40,8 +40,28 @@
     // Players Panel State
     let showPlayers = $state(true);
     let players = $derived(runtime?.players || []);
+    let maxPlayers = $state(20);
+
+    async function fetchMaxPlayers() {
+        try {
+            const max = await invoke("get_instance_max_players", { id: instanceId });
+            maxPlayers = max as number;
+        } catch (e) {
+            console.error("Failed to get max players:", e);
+        }
+    }
+
+    onMount(fetchMaxPlayers);
+
+    // Auto-refresh stats when server starts
+    $effect(() => {
+        if (instance?.state === 'Running') {
+            fetchMaxPlayers();
+        }
+    });
 
     async function refreshPlayers() {
+        fetchMaxPlayers(); // Also refresh limit
         try {
             await invoke("send_command", {
                 id: instanceId,
@@ -608,13 +628,13 @@
             <!-- Header -->
             <div class="px-4 py-3 border-b border-white/5 bg-white/5 flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Usuarios</span>
+                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">{$_("console.users_panel_title")}</span>
                     <span class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold">{players.length}</span>
                 </div>
                 <button
                     onclick={refreshPlayers}
                     class="p-1.5 rounded-md text-zinc-500 hover:text-white hover:bg-white/5 transition-all active:rotate-180 duration-500"
-                    title="Actualizar Lista"
+                    title={$_("gallery.refresh")}
                 >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
@@ -642,7 +662,7 @@
                         <div class="flex flex-col min-w-0">
                             <span class="text-[15px] font-bold text-white truncate leading-tight">{player}</span>
                             <div class="flex items-center gap-1.5">
-                                <span class="text-[11px] text-zinc-500 font-black uppercase tracking-widest">Player</span>
+                                <span class="text-[14px] text-zinc-500 font-black uppercase tracking-widest">{$_("console.player_role")}</span>
                             </div>
                         </div>
 
@@ -654,16 +674,16 @@
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                         </svg>
-                        <span class="text-[10px] font-bold uppercase tracking-widest mt-2 text-center px-4">Sin usuarios activos</span>
+                        <span class="text-[13px] font-bold uppercase tracking-widest mt-2 text-center px-4">{$_("console.users_no_active")}</span>
                     </div>
                 {/each}
             </div>
 
             <!-- Footer Stats -->
             <div class="p-3 border-t border-white/5 bg-black/20">
-                <div class="flex items-center justify-between text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
-                    <span>Espacios</span>
-                    <span class="text-zinc-400 font-mono">{players.length}/20</span>
+                <div class="flex items-center justify-between text-[13px] text-zinc-500 font-bold uppercase tracking-widest">
+                    <span>{$_("console.users_slots")}</span>
+                    <span class="text-zinc-400 font-mono text-[13px]">{players.length}/{maxPlayers}</span>
                 </div>
             </div>
         </div>

@@ -84,7 +84,11 @@
   "console": {
     "waiting": "Esperando logs...",
     "placeholder": "Escribe un comando...",
-    "suggestions": "Sugerencias"
+    "suggestions": "Sugerencias",
+    "users_panel_title": "Usuarios",
+    "users_no_active": "Sin usuarios activos",
+    "users_slots": "Espacios",
+    "player_role": "Jugador"
   },
   "instance_settings": {
     "toast_java_downloaded": "Java {version} descargado y configurado",

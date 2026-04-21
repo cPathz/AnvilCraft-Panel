@@ -14,7 +14,7 @@
     import { getCurrentWindow } from "@tauri-apps/api/window";
 
     import { setupI18n } from "$lib/i18n";
-    import { isLoading, _ } from "svelte-i18n";
+    import { isLoading, _, locale } from "svelte-i18n";
     import { get } from "svelte/store";
     import { toast } from "$lib/runes/toast.svelte";
 
@@ -23,6 +23,12 @@
     // Global UI state for close warning and force‑close handling
     let showCloseWarning = $state(false);
     let isForceClosing = $state(false);
+    
+    // Safety flag to force render after a timeout
+    let forceRender = $state(false);
+    onMount(() => {
+        setTimeout(() => { forceRender = true; }, 1500);
+    });
 
     let { children } = $props();
 
@@ -30,16 +36,39 @@
         let unlisten: () => void;
 
         // Close prevention logic
-        // (inner duplicate state removed, using outer definitions)
         async function setupCloseHandler() {
-            const un = await listen("app-close-forbidden", () => {
-                showCloseWarning = true;
-            });
-            return un;
+            try {
+                const un = await listen("app-close-forbidden", () => {
+                    showCloseWarning = true;
+                });
+                return un;
+            } catch (e) {
+                console.error("Failed to setup close handler:", e);
+            }
         }
 
         let unlistenClose: any;
         setupCloseHandler().then((u) => (unlistenClose = u));
+
+        async function refreshInstances() {
+            try {
+                appState.refreshing = true;
+                const instances = await invoke<Instance[]>("read_instances");
+                appState.instances = instances;
+
+                // Sync selectedInstance if active
+                if (appState.selectedInstance) {
+                    const updated = instances.find(
+                        (i) => i.id === appState.selectedInstance!.id,
+                    );
+                    if (updated) appState.selectedInstance = updated;
+                }
+            } catch (error) {
+                console.error("Failed to load instances:", error);
+            } finally {
+                appState.refreshing = false;
+            }
+        }
 
         const init = async () => {
             // Global Log Listener
@@ -66,11 +95,12 @@
                         await refreshInstances();
                     },
                 );
+
                 // Combine cleanup
                 const oldUnlisten = unlisten;
                 unlisten = () => {
-                    oldUnlisten();
-                    unlistenUpdate();
+                    if (typeof oldUnlisten === "function") oldUnlisten();
+                    if (typeof unlistenUpdate === "function") unlistenUpdate();
                 };
             } catch (e) {
                 console.error("Failed to setup listeners:", e);
@@ -79,31 +109,11 @@
             await refreshInstances();
         };
 
-        async function refreshInstances() {
-            try {
-                appState.refreshing = true;
-                const instances = await invoke<Instance[]>("read_instances");
-                appState.instances = instances;
-
-                // Sync selectedInstance if active
-                if (appState.selectedInstance) {
-                    const updated = instances.find(
-                        (i) => i.id === appState.selectedInstance!.id,
-                    );
-                    if (updated) appState.selectedInstance = updated;
-                }
-            } catch (error) {
-                console.error("Failed to load instances:", error);
-            } finally {
-                appState.refreshing = false;
-            }
-        }
-
         init();
 
         return () => {
-            if (unlisten) unlisten();
-            if (unlistenClose) unlistenClose();
+            if (typeof unlisten === "function") unlisten();
+            if (typeof unlistenClose === "function") unlistenClose();
         };
     });
 
@@ -223,24 +233,22 @@
     </div>
 {/if}
 
-<div class="relative flex h-screen w-screen text-white overflow-hidden">
-    <!-- Global User Requested Background (Darkened +30%) -->
-    <div class="absolute inset-0 z-0 bg-[#223049]">
-        <!-- Gradient from #223049 (Bg) to #192232 (Bars) -->
-        <div
-            class="absolute inset-0 bg-gradient-to-br from-[#223049] to-[#192232]"
-        ></div>
-    </div>
-
-    <!-- Layout Content (Z-Index 10 to sit above background) -->
-    <div class="relative z-10 flex w-full h-full">
+<div class="h-screen w-screen overflow-hidden bg-[#223049] relative">
+    <!-- Main Content Area -->
+    <div class="absolute inset-0 flex">
         <NavigationRail />
 
         <div class="flex-1 flex flex-col min-w-0 relative">
-            <div
-                class="flex-1 w-full relative overflow-y-auto z-10 flex flex-col"
-            >
-                {#if !$isLoading}
+            <div class="flex-1 w-full relative overflow-y-auto flex flex-col">
+                {#if ($isLoading || !$locale) && !forceRender}
+                    <!-- Fallback while loading -->
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="animate-pulse flex flex-col items-center gap-4">
+                            <div class="w-12 h-12 rounded-full border-4 border-blue-500/20 border-t-blue-500 animate-spin"></div>
+                            <span class="text-zinc-500 font-medium">Cargando...</span>
+                        </div>
+                    </div>
+                {:else}
                     {@render children()}
                 {/if}
             </div>

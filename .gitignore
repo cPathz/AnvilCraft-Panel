@@ -26,3 +26,6 @@ src/lib/data/minecraft/
 # Registro de desarrollo local
 dev_log.md
 DB_EXPERIMENTAL.md
+
+# Tauri Signer
+/.tauri/

@@ -67,45 +67,49 @@
     });
 
     // Initialization
-    onMount(async () => {
-        try {
-            systemRam = await invoke<number>("get_system_memory");
-        } catch (e) {
-            console.error("Failed to get system memory", e);
-        }
-        await loadJavaRuntimes();
-
-        // Listen for Java download progress
-        unlistenProgress = await listen<any>("install-progress", (event) => {
-            const payload = event.payload;
-            if (payload.id.startsWith("java-download-")) {
-                let step = payload.step;
-                
-                // Map backend steps to translations
-                if (step.startsWith("Downloading")) {
-                    step = get(_)("common.status_downloading");
-                } else if (step === "Done" || payload.progress === 100) {
-                    step = get(_)("common.status_completed");
-                } else if (step === "Preparing") {
-                    step = get(_)("common.status_preparing");
-                } else if (step === "Creating files...") {
-                    step = get(_)("create_instance.status_creating_files");
-                } else if (step === "Finalizing download...") {
-                    step = get(_)("create_instance.status_finalizing_download");
-                }
-
-                downloadProgress[payload.id] = {
-                    step,
-                    progress: payload.progress,
-                };
-                if (payload.step === "Done") {
-                    loadJavaRuntimes();
-                    setTimeout(() => {
-                        delete downloadProgress[payload.id];
-                    }, 3000);
-                }
+    onMount(() => {
+        const init = async () => {
+            try {
+                systemRam = await invoke<number>("get_system_memory");
+            } catch (e) {
+                console.error("Failed to get system memory", e);
             }
-        });
+            await loadJavaRuntimes();
+
+            // Listen for Java download progress
+            unlistenProgress = await listen<any>("install-progress", (event) => {
+                const payload = event.payload;
+                if (payload.id.startsWith("java-download-")) {
+                    let step = payload.step;
+                    
+                    // Map backend steps to translations
+                    if (step.startsWith("Downloading")) {
+                        step = get(_)("common.status_downloading");
+                    } else if (step === "Done" || payload.progress === 100) {
+                        step = get(_)("common.status_completed");
+                    } else if (step === "Preparing") {
+                        step = get(_)("common.status_preparing");
+                    } else if (step === "Creating files...") {
+                        step = get(_)("create_instance.status_creating_files");
+                    } else if (step === "Finalizing download...") {
+                        step = get(_)("create_instance.status_finalizing_download");
+                    }
+
+                    downloadProgress[payload.id] = {
+                        step,
+                        progress: payload.progress,
+                    };
+                    if (payload.step === "Done") {
+                        loadJavaRuntimes();
+                        setTimeout(() => {
+                            delete downloadProgress[payload.id];
+                        }, 3000);
+                    }
+                }
+            });
+        };
+
+        init();
 
         return () => {
             if (unlistenProgress) unlistenProgress();
@@ -494,7 +498,7 @@
                                     id="jar-file"
                                     type="text"
                                     bind:value={formSettings.jar_file}
-                                    oninput={markDirty}
+                                    oninput={null}
                                     disabled={isServerRunning}
                                     class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl pl-12 pr-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 shadow-inner"
                                 />
@@ -542,7 +546,7 @@
                                     id="server-port"
                                     type="number"
                                     bind:value={formSettings.port}
-                                    oninput={markDirty}
+                                    oninput={null}
                                     disabled={isServerRunning}
                                     class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl pl-12 pr-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 shadow-inner"
                                 />
@@ -586,7 +590,7 @@
                                 id="java-path"
                                 type="text"
                                 bind:value={formSettings.java_path}
-                                oninput={markDirty}
+                                oninput={null}
                                 disabled={isServerRunning}
                                 placeholder={$_("instance_settings.java_default")}
                                 class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl pl-12 pr-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 placeholder:text-zinc-700 shadow-inner"
@@ -828,7 +832,7 @@
                         id="java-args"
                         type="text"
                         bind:value={formSettings.args}
-                        oninput={markDirty}
+                        oninput={null}
                         disabled={isServerRunning}
                         placeholder="-XX:+UseG1GC..."
                         class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl px-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 placeholder:text-zinc-700 shadow-inner"

@@ -15,6 +15,8 @@ Special thanks to Bertware for the inspiration with their program called **Bukki
 ![Version](https://img.shields.io/badge/Version-v0.1.2-blue?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
+**Come join our Discord community:** https://discord.gg/4BcbbgBQRP
+
 **AnvilCraft Panel** is a modern, high-performance Minecraft server manager built for power users and administrators. It provides a sleek, "premium" interface to create, manage, and monitor multiple Minecraft instances with ease.
 
 Built with **Tauri v2** (Rust) and **SvelteKit**, AnvilCraft combines the performance of native code with the flexibility of modern web technologies.

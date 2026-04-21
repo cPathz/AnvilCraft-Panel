@@ -7,9 +7,11 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **Console Player Panel**: 
     - Real-time player tracking by parsing server logs (Join/Leave/List events).
+    - **Reactive Sync**: Automatically detects and refreshes `max-players` limit from `server.properties` on server start and manual refresh.
+    - **Full i18n Support**: All labels (Users, Slots, Roles) localized in English and Spanish.
     - Robust log parser supporting ANSI escape code stripping and multiple log formats.
     - High-resolution player avatars (64px) powered by MCHeads API.
-    - Manual refresh button that triggers the `/list` command to sync player state.
+    - UI Refinements: Increased typography sizes (+3px) for improved dashboard readability.
     - Compact and refined side panel design (`w-52`) with "Pixel Perfect" alignment.
 
 ## [0.1.3] - 2026-04-13

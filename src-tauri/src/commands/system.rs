@@ -1,9 +1,9 @@
 use sysinfo::System;
 
 #[tauri::command]
-pub fn get_system_memory() -> u64 {
+pub async fn get_system_memory() -> u64 {
     let mut sys = System::new_all();
-    sys.refresh_all();
+    sys.refresh_memory();
     sys.total_memory()
 }
 

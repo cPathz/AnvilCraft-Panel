@@ -21,7 +21,13 @@
         { label: "Extra Bold", value: "800" },
     ];
 
-    let settings = $derived(appState.settings.console);
+    let settings = $derived(appState.settings?.console || {
+        fontFamily: "JetBrains Mono",
+        fontSize: 14,
+        lineHeight: 1.5,
+        letterSpacing: 0,
+        fontWeight: "400"
+    });
 </script>
 
 <div class="p-6 w-full max-w-full space-y-6 animate-fade-in-up">

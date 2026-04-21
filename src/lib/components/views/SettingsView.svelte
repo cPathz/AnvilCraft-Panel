@@ -1,5 +1,5 @@
 <script lang="ts">
-    import InstanceSettings from "./InstanceSettings.svelte";
+    import AppearanceSettings from "./AppearanceSettings.svelte";
     import { appState } from "$lib/runes/store.svelte";
     import { locale, _ } from "svelte-i18n";
 </script>
@@ -61,7 +61,7 @@
             </div>
         </div>
 
-        <InstanceSettings />
+        <AppearanceSettings />
 
         <!-- Ultra-Compact Modern Footer -->
         <div class="mt-12 pb-24 flex flex-col items-center justify-center text-center">

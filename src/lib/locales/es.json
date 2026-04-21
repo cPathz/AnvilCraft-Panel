@@ -88,7 +88,9 @@
     "users_panel_title": "Usuarios",
     "users_no_active": "Sin usuarios activos",
     "users_slots": "Espacios",
-    "player_role": "Jugador"
+    "player_role": "Jugador",
+    "users_show": "Mostrar Jugadores",
+    "users_hide": "Ocultar Jugadores"
   },
   "instance_settings": {
     "toast_java_downloaded": "Java {version} descargado y configurado",

@@ -215,7 +215,7 @@
     {/if}
     <!-- Header -->
     <div
-        class="h-20 border-b border-[#1e293b] flex items-center justify-between px-6 shrink-0 bg-[#0f172a]/50 backdrop-blur-md z-20"
+        class="h-20 border-b border-[#1e293b] flex items-center justify-between px-6 shrink-0 bg-[#0f172a]/50 backdrop-blur-md z-30"
     >
         <div class="flex items-center gap-3">
             <!-- Icon -->
@@ -505,7 +505,7 @@
 
     <!-- Navigation Tabs -->
     <div
-        class="h-[46px] shrink-0 px-6 flex items-end justify-between border-b border-white/5 relative z-10"
+        class="h-[46px] shrink-0 px-6 flex items-end justify-between border-b border-white/5 relative z-20"
     >
         <div class="flex gap-6">
             <button

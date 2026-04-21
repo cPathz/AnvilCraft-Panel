@@ -114,7 +114,7 @@
         installProgress = 0;
         installStep = get(_)("create_instance.status_preparing");
 
-        let unlisten: () => void;
+        let unlisten: (() => void) | null = null;
         let createdId: string | null = null;
 
         try {

@@ -1,5 +1,6 @@
 <script>
     import { appState } from "$lib/runes/store.svelte";
+    import { _ } from "svelte-i18n";
 </script>
 
 <div
@@ -8,7 +9,7 @@
 >
     {#if appState.appInfo.isEvalCopy}
         <span class="font-bold tracking-widest uppercase"
-            >AnvilCraft - Copia de Evaluación</span
+            >{$_("settings.eval_copy_branding")}</span
         >
     {/if}
     <span>v{appState.appInfo.version} ({appState.appInfo.tag})</span>

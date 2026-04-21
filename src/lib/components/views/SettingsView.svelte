@@ -1,7 +1,32 @@
 <script lang="ts">
     import AppearanceSettings from "./AppearanceSettings.svelte";
+    import UpdateModal from "../modals/UpdateModal.svelte";
     import { appState } from "$lib/runes/store.svelte";
     import { locale, _ } from "svelte-i18n";
+    import { check } from "@tauri-apps/plugin-updater";
+    import { toast } from "$lib/runes/toast.svelte";
+
+    let checking = $state(false);
+    let pendingUpdate = $state<any>(null);
+    let lastCheck = $state(false);
+
+    async function checkUpdates() {
+        try {
+            checking = true;
+            lastCheck = false;
+            const update = await check();
+            if (update) {
+                pendingUpdate = update;
+            } else {
+                lastCheck = true;
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error($_('settings.update_error') + ": " + e);
+        } finally {
+            checking = false;
+        }
+    }
 </script>
 
 <div class="h-full flex flex-col bg-[#192232]">
@@ -60,6 +85,48 @@
                 </select>
             </div>
         </div>
+
+        <!-- Update Section -->
+        <div class="bg-black/20 border border-white/5 rounded-xl overflow-hidden m-4">
+            <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                <div>
+                    <h3 class="text-base font-semibold text-white">{$_('settings.updates_title')}</h3>
+                    <p class="text-sm text-zinc-400">{$_('settings.updates_desc')}</p>
+                </div>
+            </div>
+            <div class="p-6 flex items-center gap-4">
+                <button 
+                    onclick={checkUpdates}
+                    disabled={checking}
+                    class="bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 disabled:text-zinc-500 text-white px-6 py-2 rounded-lg font-bold transition-all flex items-center gap-2 active:scale-95 shadow-lg shadow-blue-900/20"
+                >
+                    {#if checking}
+                        <div class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                        {$_('settings.checking_updates')}
+                    {:else}
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        {$_('settings.check_updates')}
+                    {/if}
+                </button>
+                
+                {#if lastCheck && !pendingUpdate && !checking}
+                    <span class="text-xs text-zinc-500 italic">
+                        {$_('settings.no_updates')}
+                    </span>
+                {/if}
+            </div>
+        </div>
+
+        {#if pendingUpdate}
+            <UpdateModal 
+                bind:update={pendingUpdate} 
+                onDone={() => pendingUpdate = null} 
+            />
+        {/if}
 
         <AppearanceSettings />
 

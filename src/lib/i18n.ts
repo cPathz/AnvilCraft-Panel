@@ -13,14 +13,18 @@ const fallbackLocale = 'en';
 export function setupI18n() {
 	let initialLocale = browser ? getLocaleFromNavigator() : fallbackLocale;
 
-	// Normalizar el locale para que coincida con nuestras traducciones (solo parte principal)
-	// Ej: es-MX -> es, en-US -> en
 	if (initialLocale && initialLocale.includes('-')) {
 		initialLocale = initialLocale.split('-')[0];
 	}
 
+	// Ensure the initial locale is supported, otherwise use fallback
+	const supportedLocales = ['en', 'es'];
+	if (!initialLocale || !supportedLocales.includes(initialLocale)) {
+		initialLocale = fallbackLocale;
+	}
+
 	init({
 		fallbackLocale,
-		initialLocale: initialLocale || fallbackLocale,
+		initialLocale,
 	});
 }

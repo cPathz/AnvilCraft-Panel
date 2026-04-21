@@ -1,6 +1,6 @@
 <script>
     import { appState } from "$lib/runes/store.svelte";
-    import { _ } from "svelte-i18n";
+    import { _, locale } from "svelte-i18n";
 </script>
 
 <div
@@ -8,9 +8,9 @@
     style="text-shadow: 0px 1px 1px rgba(0,0,0,0.5);"
 >
     {#if appState.appInfo.isEvalCopy}
-        <span class="font-bold tracking-widest uppercase"
-            >{$_("settings.eval_copy_branding")}</span
-        >
+        <span class="font-bold tracking-widest uppercase">
+            {$locale && $_ ? $_("settings.eval_copy_branding") : "AnvilCraft Panel"}
+        </span>
     {/if}
     <span>v{appState.appInfo.version} ({appState.appInfo.tag})</span>
     <span>Dev: cPathz</span>

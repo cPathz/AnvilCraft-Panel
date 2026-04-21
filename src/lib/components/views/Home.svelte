@@ -187,16 +187,16 @@
         <h1
             class="text-4xl md:text-5xl font-extrabold text-[#FFFFFF] text-center tracking-tight drop-shadow-md animate-enter delay-100 select-none pb-2"
         >
-            {$_("home.welcome")}
+            {$_ ? $_("home.welcome") : "Welcome"}
         </h1>
 
         <!-- Subtitle -->
         <p
             class="text-xl text-[#D0D0D0] font-medium text-center max-w-lg leading-relaxed animate-enter delay-200 select-none mt-6 drop-shadow-sm"
         >
-            {$_("home.subtitle_1")}
+            {$_ ? $_("home.subtitle_1") : "Managing your instances"}
             <span class="block mt-1 text-[#D0D0D0]/80"
-                >{$_("home.subtitle_2")}</span
+                >{$_ ? $_("home.subtitle_2") : "made simple."}</span
             >
         </p>
 
@@ -222,7 +222,7 @@
                         y2="12"
                     ></line></svg
                 >
-                {$_("home.create")}
+                {$_ ? $_("home.create") : "Create Instance"}
             </span>
         </button>
     </div>

@@ -48,16 +48,13 @@
     let unlistenProgress: any = null;
 
     // derived max allowed RAM (75% of system RAM, at least 512 MB)
+    // Fallback to 65536 MB (64 GB) when systemRam is unknown to prevent
+    // HTML range inputs from clamping formSettings values via bind:value.
     let maxAllowed = $derived.by(() => {
-        if (!systemRam) return 512;
+        if (!systemRam) return 65536;
         const totalMb = Math.floor(systemRam / 1024 / 1024);
         return Math.max(512, Math.floor(totalMb * 0.75));
     });
-
-    // Helper to mark component dirty
-    function markDirty() {
-        isDirty = true;
-    }
 
     let internalIsDirty = $derived(
         originalSettings &&
@@ -131,7 +128,6 @@
                 version,
             });
             formSettings.java_path = path;
-            markDirty();
             toast.success(get(_)("instance_settings.toast_java_downloaded", { values: { version } }));
         } catch (e) {
             console.error(e);
@@ -142,7 +138,6 @@
 
     function useJavaRuntime(path: string) {
         formSettings.java_path = path;
-        markDirty();
         toast.success(get(_)("instance_settings.toast_java_path"));
     }
 
@@ -153,6 +148,9 @@
                 formSettings = { ...instance.settings };
                 originalSettings = { ...instance.settings };
                 lastSyncedId = instance.id;
+
+                // Derive link state from loaded values
+                linkMemory = instance.settings.min_ram === instance.settings.max_ram;
 
                 // Sync actual port from server.properties
                 invoke<number>("get_instance_port", { id: instance.id })
@@ -171,11 +169,9 @@
         if (linkMemory) {
             formSettings.min_ram = formSettings.max_ram;
         }
-        markDirty();
     }
 
     function handleMinInput() {
-        markDirty();
         if (linkMemory) {
             formSettings.max_ram = formSettings.min_ram;
         } else if (formSettings.min_ram > formSettings.max_ram) {
@@ -184,7 +180,6 @@
     }
 
     function handleMaxInput() {
-        markDirty();
         if (linkMemory) {
             formSettings.min_ram = formSettings.max_ram;
         } else if (formSettings.max_ram < formSettings.min_ram) {
@@ -236,7 +231,6 @@
             formSettings.min_ram = 2048;
             formSettings.max_ram = 2048;
         }
-        markDirty();
     }
 
     async function selectJavaPath() {
@@ -252,7 +246,6 @@
             });
             if (selected && typeof selected === "string") {
                 formSettings.java_path = selected;
-                markDirty();
             }
         } catch (e) {
             console.error(e);
@@ -400,17 +393,23 @@
                                         fill="none"
                                         stroke="currentColor"
                                         stroke-width="2.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
                                         class={linkMemory
                                             ? "text-blue-500"
                                             : "text-zinc-600 opacity-50"}
                                     >
-                                        <path
-                                            d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
-                                        ></path>
                                         {#if linkMemory}
+                                            <path
+                                                d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                                            ></path>
                                             <path
                                                 d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
                                             ></path>
+                                        {:else}
+                                            <path d="M18.84 12.25l1.72-1.71a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                            <path d="M5.16 11.75l-1.72 1.71a5 5 0 0 0 7.07 7.07l1.72-1.71"></path>
+                                            <line x1="2" y1="2" x2="22" y2="22"></line>
                                         {/if}
                                     </svg>
                                 </button>
@@ -447,18 +446,20 @@
                                 class="col-span-2 flex justify-between text-xs text-zinc-500 mt-4 pr-1"
                             >
                                 <span>{$_("instance_settings.system_ram")}{formatBytes(systemRam)}</span>
-                                <span
-                                    class={formSettings.max_ram >
-                                    (systemRam / 1024 / 1024) * 0.8
-                                        ? "text-yellow-500"
-                                        : ""}
-                                >
-                                    {Math.round(
-                                        (formSettings.max_ram /
-                                            (systemRam / 1024 / 1024)) *
-                                            100,
-                                    )}{$_("instance_settings.of_total")}
-                                </span>
+                                {#if systemRam > 0}
+                                    <span
+                                        class={formSettings.max_ram >
+                                        (systemRam / 1024 / 1024) * 0.8
+                                            ? "text-yellow-500"
+                                            : ""}
+                                    >
+                                        {Math.round(
+                                            (formSettings.max_ram /
+                                                (systemRam / 1024 / 1024)) *
+                                                100,
+                                        )}{$_("instance_settings.of_total")}
+                                    </span>
+                                {/if}
                             </div>
                         </div>
                     </div>

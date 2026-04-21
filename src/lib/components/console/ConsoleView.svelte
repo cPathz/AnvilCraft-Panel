@@ -2,6 +2,7 @@
     import { appState } from "$lib/runes/store.svelte";
     import { invoke } from "@tauri-apps/api/core";
     import { tick } from "svelte";
+    import { slide } from "svelte/transition";
     import { _ } from "svelte-i18n";
     import { FEATURES } from "$lib/config/features";
     import commandTree from "$lib/data/command_tree.json";
@@ -35,6 +36,21 @@
 
     let inputElement = $state<HTMLInputElement>();
     let highlightElement = $state<HTMLDivElement>();
+
+    // Players Panel State
+    let showPlayers = $state(true);
+    let players = $derived(runtime?.players || []);
+
+    async function refreshPlayers() {
+        try {
+            await invoke("send_command", {
+                id: instanceId,
+                command: "list",
+            });
+        } catch (e) {
+            console.error("Failed to send list command:", e);
+        }
+    }
 
     function syncScroll() {
         if (inputElement && highlightElement) {
@@ -497,82 +513,162 @@
 </script>
 
 <div class="flex-1 min-h-0 flex flex-col relative group">
-    <!-- Logs Area -->
-    <!-- Logs Area -->
-    <div
-        class="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar relative flex flex-col justify-start bg-[#1e293b]/95 rounded-xl border border-white/10 ml-0 mr-0 mt-4"
-        style:font-family={consoleSettings.fontFamily}
-        style:font-size="{consoleSettings.fontSize}px"
-        style:line-height={consoleSettings.lineHeight}
-        style:letter-spacing="{consoleSettings.letterSpacing}px"
-        style:font-weight={consoleSettings.fontWeight}
-        bind:this={consoleContainer}
-        role="group"
-        onmouseenter={() => (showConsoleToolbar = true)}
-        onmouseleave={() => (showConsoleToolbar = false)}
-    >
-        <!-- Floating Toolbar (Inside Scroll Area but fixed? No, sticky or absolute top right of container) -->
-        <div
-            class="absolute top-2 right-4 z-30 flex justify-end pointer-events-none"
+    <div class="flex-1 min-h-0 flex flex-row gap-4 mt-4">
+        <!-- Logs Area -->
+        <div 
+            class="flex-1 relative flex flex-col bg-[#1e293b]/95 rounded-xl border border-white/10 overflow-hidden"
+            onmouseenter={() => (showConsoleToolbar = true)}
+            onmouseleave={() => (showConsoleToolbar = false)}
         >
+            <!-- Floating Toolbar (Fixed) -->
             <div
-                class="pointer-events-auto transition-all duration-200 transform translate-x-2 -translate-y-2"
-                class:opacity-0={!showConsoleToolbar && hideNoise}
-                class:opacity-100={showConsoleToolbar || !hideNoise}
-            ></div>
+                class="absolute top-3 right-4 z-30 flex justify-end gap-2"
+            >
+                <button
+                    onclick={() => showPlayers = !showPlayers}
+                    class="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all active:scale-95 shadow-lg backdrop-blur-md"
+                    title={showPlayers ? "Ocultar Jugadores" : "Mostrar Jugadores"}
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Scrollable Logs -->
+            <div
+                class="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar flex flex-col justify-start relative"
+                style:font-family={consoleSettings.fontFamily}
+                style:font-size="{consoleSettings.fontSize}px"
+                style:line-height={consoleSettings.lineHeight}
+                style:letter-spacing="{consoleSettings.letterSpacing}px"
+                style:font-weight={consoleSettings.fontWeight}
+                bind:this={consoleContainer}
+                role="group"
+            >
+                {#each logs.slice(-200) as log}
+                    {@const formatted = formatLog(log)}
+                    <div
+                        class="break-words leading-tight hover:bg-white/5 px-2 rounded -mx-2 group/log relative"
+                    >
+                        {#if formatted.level !== "RAW"}
+                            <span
+                                class="text-[#565f89] text-xs mr-2 select-none font-bold"
+                                >[{formatted.level}]</span
+                            >
+                        {/if}
+                        <span
+                            class={formatted.level === "ERROR"
+                                ? "text-red-400"
+                                : formatted.level === "WARN"
+                                  ? "text-yellow-400"
+                                  : formatted.level === "INFO"
+                                    ? "text-zinc-300"
+                                    : "text-zinc-400"}>{formatted.text}</span
+                        >
+                    </div>
+                {/each}
+
+                {#if logs.length === 0}
+                    <div
+                        class="absolute inset-0 flex flex-col items-center justify-center text-zinc-700 pointer-events-none select-none"
+                    >
+                        <div class="bg-white/5 p-4 rounded-3xl mb-4">
+                            <svg
+                                width="48"
+                                height="48"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="opacity-50"
+                                ><rect width="18" height="18" x="2" y="4" rx="2" /><path
+                                    d="m10 10-6 6"
+                                /><path d="m6 10 6 6" /><path d="m14 10 2 2 2-2" /><path
+                                    d="m14 14 2-2 2 2"
+                                /></svg
+                            >
+                        </div>
+                        <span class="text-sm font-medium opacity-50"
+                            >{$_("console.waiting")}</span
+                        >
+                    </div>
+                {/if}
+            </div>
         </div>
 
-        {#each logs.slice(-200) as log}
-            {@const formatted = formatLog(log)}
-            <div
-                class="break-words leading-tight hover:bg-white/5 px-2 rounded -mx-2 group/log relative"
-            >
-                {#if formatted.level !== "RAW"}
-                    <span
-                        class="text-[#565f89] text-xs mr-2 select-none font-bold"
-                        >[{formatted.level}]</span
-                    >
-                {/if}
-                <span
-                    class={formatted.level === "ERROR"
-                        ? "text-red-400"
-                        : formatted.level === "WARN"
-                          ? "text-yellow-400"
-                          : formatted.level === "INFO"
-                            ? "text-zinc-300"
-                            : "text-zinc-400"}>{formatted.text}</span
-                >
-            </div>
-        {/each}
-
-        {#if logs.length === 0}
-            <div
-                class="absolute inset-0 flex flex-col items-center justify-center text-zinc-700 pointer-events-none select-none"
-            >
-                <div class="bg-white/5 p-4 rounded-3xl mb-4">
-                    <svg
-                        width="48"
-                        height="48"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        class="opacity-50"
-                        ><rect width="18" height="18" x="2" y="4" rx="2" /><path
-                            d="m10 10-6 6"
-                        /><path d="m6 10 6 6" /><path d="m14 10 2 2 2-2" /><path
-                            d="m14 14 2-2 2 2"
-                        /></svg
-                    >
+    <!-- Players Side Panel -->
+    {#if showPlayers}
+        <div
+            transition:slide={{ axis: 'x', duration: 300 }}
+            class="w-52 bg-[#1e293b]/95 rounded-xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative"
+        >
+            <!-- Header -->
+            <div class="px-4 py-3 border-b border-white/5 bg-white/5 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Usuarios</span>
+                    <span class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold">{players.length}</span>
                 </div>
-                <span class="text-sm font-medium opacity-50"
-                    >{$_("console.waiting")}</span
+                <button
+                    onclick={refreshPlayers}
+                    class="p-1.5 rounded-md text-zinc-500 hover:text-white hover:bg-white/5 transition-all active:rotate-180 duration-500"
+                    title="Actualizar Lista"
                 >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
+                    </svg>
+                </button>
             </div>
-        {/if}
-    </div>
+
+            <!-- Players List -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-1.5 space-y-1">
+                {#each players as player}
+                    <div class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-all group/player cursor-default relative">
+                        <!-- Avatar -->
+                        <div class="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center overflow-hidden shadow-lg border border-white/5 group-hover/player:scale-105 transition-transform shrink-0">
+                            <img 
+                                src="https://mc-heads.net/avatar/{player}/64" 
+                                alt={player}
+                                class="w-full h-full object-contain"
+                                onerror={(e) => {
+                                    const target = e.currentTarget as HTMLImageElement;
+                                    target.src = "https://mc-heads.net/avatar/MHF_Steve/64";
+                                }}
+                            />
+                        </div>
+                        
+                        <div class="flex flex-col min-w-0">
+                            <span class="text-[15px] font-bold text-white truncate leading-tight">{player}</span>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[11px] text-zinc-500 font-black uppercase tracking-widest">Player</span>
+                            </div>
+                        </div>
+
+                        <!-- Status Indicator (Correctly anchored now) -->
+                        <div class="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
+                    </div>
+                {:else}
+                    <div class="flex flex-col items-center justify-center py-8 opacity-20 select-none">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        <span class="text-[10px] font-bold uppercase tracking-widest mt-2 text-center px-4">Sin usuarios activos</span>
+                    </div>
+                {/each}
+            </div>
+
+            <!-- Footer Stats -->
+            <div class="p-3 border-t border-white/5 bg-black/20">
+                <div class="flex items-center justify-between text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+                    <span>Espacios</span>
+                    <span class="text-zinc-400 font-mono">{players.length}/20</span>
+                </div>
+            </div>
+        </div>
+    {/if}
+</div>
 
     <!-- Command Input Area (Discord Style) -->
     <div class="pl-0 pr-0 pt-4 pb-3 bg-transparent relative z-20">

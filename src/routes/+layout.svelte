@@ -52,6 +52,7 @@
                         const runtime = appState.getRuntime(id);
                         if (runtime) {
                             runtime.logs.push(line);
+                            appState.parseLog(id, line);
                             if (runtime.logs.length > 1000) {
                                 runtime.logs = runtime.logs.slice(-1000);
                             }

@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4] - 2026-04-20
+
+### Added
+- **Console Player Panel**: 
+    - Real-time player tracking by parsing server logs (Join/Leave/List events).
+    - Robust log parser supporting ANSI escape code stripping and multiple log formats.
+    - High-resolution player avatars (64px) powered by MCHeads API.
+    - Manual refresh button that triggers the `/list` command to sync player state.
+    - Compact and refined side panel design (`w-52`) with "Pixel Perfect" alignment.
+
+## [0.1.3] - 2026-04-13
+
+### Added
+- **Java Environments**: Added support for **Java 25 (LTS)** in portable environments.
+- **Port Management**: Bidirectional synchronization between the UI and `server.properties`.
+
+### Changed
+- **Instance Management**: 
+    - In-place renaming of display names in the instance detail view.
+    - Professional unification of app identifier (`AnvilCraftPanel`).
+- **Java Support**: Fixed Java 16 downloads via archived JDK binaries.
+- **Console**: Fixed overflow issues and scroll synchronization.
+
 ## [0.1.2] - 2026-04-12
 
 ### Added

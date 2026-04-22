@@ -11,7 +11,7 @@
     "dialog:default",
     "updater:allow-check",
     "updater:allow-download-and-install",
-    "process:allow-relaunch",
+    "process:default",
     "core:window:allow-start-dragging",
     "core:window:allow-close"
   ]

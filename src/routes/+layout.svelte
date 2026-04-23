@@ -93,6 +93,15 @@
                     "instance-update",
                     async () => {
                         await refreshInstances();
+                        // Clear player list for any instance that has stopped
+                        appState.instances.forEach((inst) => {
+                            if (inst.state === "Stopped" || inst.state === "Error") {
+                                const runtime = appState.getRuntime(inst.id);
+                                if (runtime && runtime.players.length > 0) {
+                                    runtime.players = [];
+                                }
+                            }
+                        });
                     },
                 );
 

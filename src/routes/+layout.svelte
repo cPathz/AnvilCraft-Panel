@@ -168,17 +168,16 @@
                         <line x1="12" y1="9" x2="12" y2="13" />
                         <line x1="12" y1="17" x2="12.01" y2="17" />
                     </svg>
-                    <h2 class="text-xl font-bold">¡Servidores Activos!</h2>
+                    <h2 class="text-xl font-bold">{$_("layout.modal_close_active_title")}</h2>
                 </div>
                 <p class="text-zinc-300 leading-relaxed mb-6">
-                    No puedes cerrar AnvilCraft mientras hay servidores en
-                    ejecución para evitar corrupción de datos.
+                    {$_("layout.modal_close_active_desc")}
                 </p>
                 <div
                     class="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-6"
                 >
                     <p class="text-xs text-red-300 font-mono">
-                        Servers: {appState.instances
+                        {$_("layout.modal_close_active_list")} {appState.instances
                             .filter(
                                 (i) =>
                                     i.state !== "Stopped" &&
@@ -194,7 +193,7 @@
                         onclick={() => (showCloseWarning = false)}
                         class="px-4 py-2 rounded-lg font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
                     >
-                        Cancelar
+                        {$_("instance_detail.btn_cancel")}
                     </button>
                     <button
                         onclick={forceCloseAll}
@@ -222,9 +221,9 @@
                                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                 ></path>
                             </svg>
-                            Cerrando...
+                            {$_("layout.btn_closing")}
                         {:else}
-                            Forzar Cierre Total
+                            {$_("layout.btn_force_close")}
                         {/if}
                     </button>
                 </div>
@@ -245,7 +244,7 @@
                     <div class="flex-1 flex items-center justify-center">
                         <div class="animate-pulse flex flex-col items-center gap-4">
                             <div class="w-12 h-12 rounded-full border-4 border-blue-500/20 border-t-blue-500 animate-spin"></div>
-                            <span class="text-zinc-500 font-medium">Cargando...</span>
+                            <span class="text-zinc-500 font-medium">{$_("layout.loading")}</span>
                         </div>
                     </div>
                 {:else}

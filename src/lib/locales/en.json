@@ -13,12 +13,6 @@
     "toast_warning": "Warning",
     "toast_info": "Information"
   },
-  "settings": {
-    "global_title": "Global Settings",
-    "global_desc": "Application Preferences (English)",
-    "language_title": "Language / Idioma",
-    "language_desc": "Select the interface language"
-  },
   "nav": {
     "home": "Home",
     "apps": "Instances",
@@ -238,5 +232,13 @@
     "showing_count": "Showing {displayed} of {filtered}",
     "aria_label_close": "Close",
     "aria_label_select": "Select icon"
+  },
+  "layout": {
+    "loading": "Loading...",
+    "modal_close_active_title": "Active Servers!",
+    "modal_close_active_desc": "You cannot close AnvilCraft while servers are running to prevent data corruption.",
+    "modal_close_active_list": "Servers:",
+    "btn_force_close": "Force Close All",
+    "btn_closing": "Closing..."
   }
 }

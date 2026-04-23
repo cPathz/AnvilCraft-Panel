@@ -13,12 +13,6 @@
     "toast_warning": "Advertencia",
     "toast_info": "Información"
   },
-  "settings": {
-    "global_title": "Configuración General",
-    "global_desc": "Preferencias de la aplicación (Español)",
-    "language_title": "Idioma / Language",
-    "language_desc": "Selecciona el idioma de la interfaz"
-  },
   "nav": {
     "home": "Inicio",
     "apps": "Instancias",
@@ -238,5 +232,13 @@
     "showing_count": "Mostrando {displayed} de {filtered}",
     "aria_label_close": "Cerrar",
     "aria_label_select": "Seleccionar icono"
+  },
+  "layout": {
+    "loading": "Cargando...",
+    "modal_close_active_title": "¡Servidores Activos!",
+    "modal_close_active_desc": "No puedes cerrar AnvilCraft mientras hay servidores en ejecución para evitar corrupción de datos.",
+    "modal_close_active_list": "Servidores:",
+    "btn_force_close": "Forzar Cierre Total",
+    "btn_closing": "Cerrando..."
   }
 }

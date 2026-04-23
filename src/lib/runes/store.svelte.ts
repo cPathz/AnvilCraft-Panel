@@ -75,15 +75,18 @@ class AppState {
         // Strip ANSI escape codes first
         const cleanLine = line.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').trim();
         
-        // Flexible split: Find the first ": " after the timestamp/level headers
-        // Format can be [HH:mm:ss INFO]: or [HH:mm:ss] [Server thread/INFO]:
-        const match = cleanLine.match(/^\[\d{2}:\d{2}:\d{2}.*?\]:?\s+(.*)/);
-        if (!match) return;
+        // Flexible extraction: Handle [HH:mm:ss] [Level]: Msg OR [Level]: Msg OR just Msg
+        // We look for the message after the last ": " or after the last "]: "
+        let msg = cleanLine;
+        const headerMatch = cleanLine.match(/^(?:\[.*?\]\s*)+(?::\s*)?(.*)/);
+        if (headerMatch && headerMatch[1]) {
+            msg = headerMatch[1].trim();
+        }
 
-        const msg = match[1].trim();
-
-        // Join detection
-        const joinMatch = msg.match(/^(.*) joined the game$/);
+        // Join detection (Vanilla, Forge, ES)
+        const joinMatch = msg.match(/^(.*) joined the game$/) || 
+                          msg.match(/^(.*)\[\/.*\] logged in with entity id/) ||
+                          msg.match(/^(.*) se ha unido al juego$/);
         if (joinMatch) {
             const name = joinMatch[1].trim();
             if (!runtime.players.includes(name)) {
@@ -91,8 +94,9 @@ class AppState {
             }
         }
 
-        // Leave detection
-        const leaveMatch = msg.match(/^(.*) left the game$/);
+        // Leave detection (EN, ES)
+        const leaveMatch = msg.match(/^(.*) left the game$/) ||
+                           msg.match(/^(.*) ha abandonado el juego$/);
         if (leaveMatch) {
             const name = leaveMatch[1].trim();
             runtime.players = runtime.players.filter(p => p !== name);

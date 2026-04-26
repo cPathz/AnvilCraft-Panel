@@ -201,12 +201,13 @@ pub async fn read_instances(
                 if let Ok(content) = fs::read_to_string(json_path) {
                     if let Ok(mut instance) = serde_json::from_str::<Instance>(&content) {
                         // Sync state
-                        if map.contains_key(&instance.id) {
-                            instance.state = InstanceState::Running;
-                        } else if instance.state == InstanceState::Running
-                            || instance.state == InstanceState::Starting
-                        {
-                            instance.state = InstanceState::Stopped;
+                        if !map.contains_key(&instance.id) {
+                            if instance.state == InstanceState::Running
+                                || instance.state == InstanceState::Starting
+                                || instance.state == InstanceState::Stopping
+                            {
+                                instance.state = InstanceState::Stopped;
+                            }
                         }
                         instances.push(instance);
                     }
@@ -368,6 +369,54 @@ pub async fn update_instance_icon(
             if let Ok(mut inst) = serde_json::from_str::<Instance>(&content) {
                 if inst.id == id {
                     inst.icon = icon.clone();
+                    let new_json =
+                        serde_json::to_string_pretty(&inst).map_err(|e| e.to_string())?;
+                    fs::write(json_path, new_json).map_err(|e| e.to_string())?;
+                    return Ok(());
+                }
+            }
+        }
+    }
+    Err("Instance not found".to_string())
+}
+
+#[tauri::command]
+pub async fn update_instance_version(
+    app: tauri::AppHandle,
+    id: String,
+    version: String,
+    build: Option<String>,
+    loader: Option<String>,
+) -> Result<(), String> {
+    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let instances_dir = app_data.join("instances");
+
+    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let json_path = entry.path().join("instance.json");
+        if json_path.exists() {
+            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
+            if let Ok(mut inst) = serde_json::from_str::<Instance>(&content) {
+                if inst.id == id {
+                    inst.version = version;
+                    if build.is_some() {
+                        inst.build = build;
+                    }
+                    if let Some(l) = loader {
+                        inst.loader = match l.as_str() {
+                            "Fabric" => InstanceEngine::Fabric,
+                            "Forge" => InstanceEngine::Forge,
+                            "Paper" => InstanceEngine::Paper,
+                            "Spigot" => InstanceEngine::Spigot,
+                            "Purpur" => InstanceEngine::Purpur,
+                            "Folia" => InstanceEngine::Folia,
+                            "Velocity" => InstanceEngine::Velocity,
+                            "Waterfall" => InstanceEngine::Waterfall,
+                            "NeoForge" => InstanceEngine::NeoForge,
+                            "Quilt" => InstanceEngine::Quilt,
+                            _ => InstanceEngine::Vanilla,
+                        };
+                    }
                     let new_json =
                         serde_json::to_string_pretty(&inst).map_err(|e| e.to_string())?;
                     fs::write(json_path, new_json).map_err(|e| e.to_string())?;

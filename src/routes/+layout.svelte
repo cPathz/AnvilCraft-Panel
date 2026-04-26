@@ -253,7 +253,7 @@
                     <div class="flex-1 flex items-center justify-center">
                         <div class="animate-pulse flex flex-col items-center gap-4">
                             <div class="w-12 h-12 rounded-full border-4 border-blue-500/20 border-t-blue-500 animate-spin"></div>
-                            <span class="text-zinc-500 font-medium">{$_("layout.loading")}</span>
+                            <span class="text-zinc-500 font-medium">Loading...</span>
                         </div>
                     </div>
                 {:else}

@@ -662,7 +662,7 @@
                         <div class="flex flex-col min-w-0">
                             <span class="text-[15px] font-bold text-white truncate leading-tight">{player}</span>
                             <div class="flex items-center gap-1.5">
-                                <span class="text-[14px] text-zinc-500 font-black uppercase tracking-widest">{$_("console.player_role")}</span>
+                                <span class="text-[10px] text-zinc-500 font-black uppercase tracking-widest">{$_("console.player_role")}</span>
                             </div>
                         </div>
 

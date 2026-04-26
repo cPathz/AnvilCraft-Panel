@@ -114,7 +114,7 @@
                         class:bg-green-500={instance.state === "Running"}
                         class:bg-red-500={instance.state === "Stopped" ||
                             instance.state === "Error"}
-                        class:bg-yellow-500={instance.state === "Starting"}
+                        class:bg-yellow-500={instance.state === "Starting" || instance.state === "Stopping"}
                     ></div>
 
                     <!-- Inner Layout: Icon Left | Details Right -->
@@ -144,15 +144,23 @@
 
                             <!-- Details (Motor/Version) -->
                             <div
-                                class="flex items-center gap-2 text-xs font-mono text-zinc-400"
+                                class="flex items-center gap-2 text-xs font-mono text-zinc-400 overflow-hidden"
                             >
                                 <span
-                                    class="bg-white/10 border border-white/5 px-1.5 rounded text-zinc-200"
+                                    class="bg-white/10 border border-white/5 px-1.5 rounded text-zinc-200 shrink-0"
                                     >{instance.loader}</span
                                 >
-                                <span class="text-zinc-400"
-                                    >{instance.version}</span
-                                >
+                                <span class="text-zinc-400 flex items-center gap-1 whitespace-nowrap truncate">
+                                    {instance.version}
+                                    {#if instance.build}
+                                        <span>- {instance.build.replace('-experimental', '').replace('-snapshot', '')}</span>
+                                        {#if instance.build.includes('-experimental')}
+                                            <span title="Experimental" class="text-yellow-500 drop-shadow-md">🧪</span>
+                                        {:else if instance.build.includes('-snapshot')}
+                                            <span title="Snapshot" class="text-purple-400 drop-shadow-md">📸</span>
+                                        {/if}
+                                    {/if}
+                                </span>
                             </div>
 
                             <!-- Status & Arrow -->
@@ -165,6 +173,9 @@
                                         "Running"}
                                     class:bg-green-500-10={instance.state ===
                                         "Running"}
+                                    class:border-yellow-500={instance.state === "Starting" || instance.state === "Stopping"}
+                                    class:text-yellow-500={instance.state === "Starting" || instance.state === "Stopping"}
+                                    class:bg-yellow-500-10={instance.state === "Starting" || instance.state === "Stopping"}
                                     class:border-red-500={instance.state ===
                                         "Stopped"}
                                     class:text-red-500={instance.state ===

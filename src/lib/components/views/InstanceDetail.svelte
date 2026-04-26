@@ -304,10 +304,18 @@
                 {/if}
                 <div class="flex items-center gap-3">
                     <span
-                        class="-ml-0.5 translate-y-[4px] px-2 py-0.5 rounded-md text-[11px] font-bold capitalize tracking-wider bg-white/5 text-zinc-400 border border-white/5 backdrop-blur-sm"
+                        class="-ml-0.5 translate-y-[4px] px-2 py-0.5 rounded-md text-[11px] font-bold capitalize tracking-wider bg-white/5 text-zinc-400 border border-white/5 backdrop-blur-sm flex items-center gap-1"
                     >
                         {instance.loader || "Vanilla"}
                         {instance.version}
+                        {#if instance.build}
+                            <span>- {instance.build.replace('-experimental', '').replace('-snapshot', '')}</span>
+                            {#if instance.build.includes('-experimental')}
+                                <span title="Experimental" class="text-yellow-500 text-xs drop-shadow-md">🧪</span>
+                            {:else if instance.build.includes('-snapshot')}
+                                <span title="Snapshot" class="text-purple-400 text-xs drop-shadow-md">📸</span>
+                            {/if}
+                        {/if}
                     </span>
 
                     <!-- Status -->
@@ -315,14 +323,14 @@
                         class="flex items-center gap-1.5 text-xs font-medium backdrop-blur-sm px-2 py-0.5 rounded-full bg-black/20 border border-white/5 {instance.state ===
                         'Running'
                             ? 'text-green-400'
-                            : instance.state === 'Starting'
+                            : instance.state === 'Starting' || instance.state === 'Stopping'
                               ? 'text-yellow-400'
                               : instance.state === 'Error'
                                 ? 'text-red-400'
                                 : 'text-zinc-500'}"
                     >
                         <span class="relative flex h-2 w-2">
-                            {#if instance.state === "Running" || instance.state === "Starting"}
+                            {#if instance.state === "Running" || instance.state === "Starting" || instance.state === "Stopping"}
                                 <span
                                     class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 {instance.state ===
                                     'Running'
@@ -334,20 +342,14 @@
                                 class="relative inline-flex rounded-full h-2 w-2 {instance.state ===
                                 'Running'
                                     ? 'bg-green-500'
-                                    : instance.state === 'Starting'
+                                    : instance.state === 'Starting' || instance.state === 'Stopping'
                                       ? 'bg-yellow-500'
                                       : instance.state === 'Error'
                                         ? 'bg-red-500'
                                         : 'bg-zinc-600'}"
                             ></span>
                         </span>
-                        {instance.state === "Running"
-                            ? $_("instance_detail.status_online")
-                            : instance.state === "Starting"
-                              ? $_("instance_detail.status_starting")
-                              : instance.state === "Error"
-                                ? $_("instance_detail.status_error")
-                                : $_("instance_detail.status_stopped")}
+                        {$_(`instance_detail.status_${instance.state.toLowerCase()}`)}
                     </span>
 
                     <!-- Separator -->

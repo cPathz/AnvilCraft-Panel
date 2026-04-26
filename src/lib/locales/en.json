@@ -35,11 +35,13 @@
     "running": "Running",
     "stopped": "Stopped",
     "starting": "Starting",
+    "stopping": "Stopping",
     "error": "Error"
   },
   "instance_detail": {
-    "status_online": "Online",
+    "status_running": "Online",
     "status_starting": "Starting...",
+    "status_stopping": "Stopping",
     "status_error": "Error",
     "status_stopped": "Stopped",
     "btn_folder": "Folder",

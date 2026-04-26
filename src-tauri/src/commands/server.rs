@@ -88,9 +88,25 @@ pub async fn start_instance(
 
         tauri::async_runtime::spawn(async move {
             let reader = BufReader::new(stdout);
+            let mut is_running = false;
             for line in reader.lines() {
                 if let Ok(l) = line {
-                    let _ = app_clone.emit("server-log", (id_clone.clone(), l));
+                    let _ = app_clone.emit("server-log", (id_clone.clone(), l.clone()));
+                    
+                    if !is_running {
+                        let lower = l.to_lowercase();
+                        if lower.contains("done (") || lower.contains("for help, type \"help\"") {
+                            is_running = true;
+                            let _ = update_instance_state(&instances_dir_clone, &id_clone, InstanceState::Running);
+                            let _ = app_clone.emit("instance-update", ());
+                        }
+                    } else {
+                        let lower = l.to_lowercase();
+                        if lower.contains("stopping server") || lower.contains("stopping the server") {
+                            let _ = update_instance_state(&instances_dir_clone, &id_clone, InstanceState::Stopping);
+                            let _ = app_clone.emit("instance-update", ());
+                        }
+                    }
                 }
             }
             // Process exit
@@ -123,8 +139,8 @@ pub async fn start_instance(
         .map_err(|_| "Lock failed")?
         .insert(id.clone(), child);
 
-    // Update State
-    update_instance_state(&instances_dir, &id, InstanceState::Running)?;
+    // Update State (Initially Starting)
+    update_instance_state(&instances_dir, &id, InstanceState::Starting)?;
     app.emit("instance-update", ()).map_err(|e| e.to_string())?;
 
     Ok(())

@@ -114,6 +114,74 @@ class AppState {
                 runtime.players = [];
             }
         }
+
+        // Version & Loader detection
+        const loaderMatch = msg.match(/This server is running (\w+) version ([^\s]+)/);
+        const vanillaMatch = msg.match(/Starting minecraft server version ([^\s]+)/);
+        
+        if (loaderMatch || vanillaMatch) {
+            let fullVersionStr = "";
+            let detectedLoader: any = undefined;
+            
+            if (loaderMatch) {
+                detectedLoader = loaderMatch[1] as any; // e.g., "Purpur", "Paper"
+                fullVersionStr = loaderMatch[2].trim();
+            } else if (vanillaMatch) {
+                detectedLoader = "Vanilla";
+                fullVersionStr = vanillaMatch[1].trim();
+            }
+
+            let detectedVersion = fullVersionStr;
+            let detectedBuild = undefined;
+            
+            if (fullVersionStr.includes('-')) {
+                const parts = fullVersionStr.split('-');
+                detectedVersion = parts[0];
+                if (parts.length > 1) {
+                     detectedBuild = parts[1];
+                     // Detect experimental/snapshot from the full log message
+                     if (msg.includes("experimental") || msg.includes("EXPERIMENTAL")) {
+                         detectedBuild += "-experimental";
+                     } else if (msg.includes("SNAPSHOT") || msg.includes("snapshot") || msg.includes("Snapshot")) {
+                         detectedBuild += "-snapshot";
+                     }
+                }
+            }
+
+            const instance = this.instances.find(i => i.id === id);
+            if (instance) {
+                let needsUpdate = false;
+                if (instance.version !== detectedVersion) {
+                    instance.version = detectedVersion;
+                    needsUpdate = true;
+                }
+                if (detectedBuild && instance.build !== detectedBuild) {
+                    instance.build = detectedBuild;
+                    needsUpdate = true;
+                }
+                if (detectedLoader && instance.loader !== detectedLoader) {
+                    instance.loader = detectedLoader;
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate) {
+                    if (this.selectedInstance?.id === id) {
+                        this.selectedInstance.version = detectedVersion;
+                        if (detectedBuild) this.selectedInstance.build = detectedBuild;
+                        if (detectedLoader) this.selectedInstance.loader = detectedLoader;
+                    }
+                    
+                    import('@tauri-apps/api/core').then(({ invoke }) => {
+                        invoke('update_instance_version', { 
+                            id, 
+                            version: detectedVersion, 
+                            build: detectedBuild,
+                            loader: detectedLoader
+                        }).catch(console.error);
+                    });
+                }
+            }
+        }
     }
 }
 

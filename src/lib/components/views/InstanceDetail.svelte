@@ -8,9 +8,9 @@
     import { toast } from "$lib/runes/toast.svelte";
     import IconPicker from "$lib/components/modals/IconPicker.svelte";
 
-    // Decomposed Components
     import ConsoleView from "$lib/components/console/ConsoleView.svelte";
     import InstanceSettings from "$lib/components/settings/InstanceSettings.svelte";
+    import AddonsView from "$lib/components/views/AddonsView.svelte";
 
     let instance = $derived(appState.selectedInstance!);
 
@@ -21,12 +21,24 @@
 
     // Derived from runtime store for persistence
     let runtime = $derived(
-        appState.getRuntime(instance.id) || { logs: [], activeTab: "console" },
+        appState.getRuntime(instance.id) || { logs: [], activeTab: "console", addonsType: 'none' },
     );
+
+    // Detect Addons Type
+    $effect(() => {
+        if (instance && runtime.addonsType === 'none') {
+            invoke("get_instance_addons_type", { id: instance.id })
+                .then((type: any) => {
+                    const r = appState.getRuntime(instance.id);
+                    if (r) r.addonsType = type as any;
+                })
+                .catch(console.error);
+        }
+    });
 
     // Tab Management
     let activeTab = $derived(runtime.activeTab);
-    function setActiveTab(tab: "console" | "settings") {
+    function setActiveTab(tab: "console" | "settings" | "addons") {
         appState.ensureRuntime(instance.id);
         const r = appState.getRuntime(instance.id);
         if (r) r.activeTab = tab;
@@ -40,10 +52,10 @@
     // Settings Dirty State (Bound from InstanceSettings)
     let settingsIsDirty = $state(false);
     let showConfirmModal = $state(false);
-    let pendingTab = $state<"console" | "settings" | null>(null);
+    let pendingTab = $state<"console" | "settings" | "addons" | null>(null);
 
     // --- Tab Interception Logic ---
-    function handleTabChange(tab: "console" | "settings") {
+    function handleTabChange(tab: "console" | "settings" | "addons") {
         if (activeTab === "settings" && tab !== "settings" && settingsIsDirty) {
             pendingTab = tab;
             showConfirmModal = true;
@@ -540,6 +552,24 @@
                     ></div>
                 {/if}
             </button>
+
+            {#if runtime.addonsType !== 'none'}
+                <button
+                    onclick={() => handleTabChange("addons")}
+                    class="pb-2 text-sm font-bold relative transition-colors select-none capitalize {activeTab ===
+                    'addons'
+                        ? 'text-white'
+                        : 'text-zinc-500 hover:text-zinc-300'}"
+                >
+                    {runtime.addonsType}
+                    {#if activeTab === "addons"}
+                        <div
+                            class="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                            transition:fade
+                        ></div>
+                    {/if}
+                </button>
+            {/if}
         </div>
 
         {#if !isServerRunning}
@@ -582,6 +612,13 @@
                     {isServerRunning}
                     bind:isDirty={settingsIsDirty}
                 />
+            </div>
+        {:else if activeTab === "addons"}
+            <div
+                class="absolute inset-0 px-8 py-6 flex flex-col"
+                transition:fade={{ duration: 150 }}
+            >
+                <AddonsView {instance} />
             </div>
         {/if}
     </div>

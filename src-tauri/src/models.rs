@@ -79,3 +79,21 @@ pub struct Instance {
     #[serde(default)]
     pub build: Option<String>,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Addon {
+    pub file_name: String,
+    pub name: String,
+    pub version: String,
+    pub author: Option<String>,
+    pub description: Option<String>,
+    pub enabled: bool,
+    pub size: u64,
+    pub last_modified: i64, // Unix timestamp
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AddonCache {
+    pub last_scan: i64,
+    pub addons: Vec<Addon>,
+}

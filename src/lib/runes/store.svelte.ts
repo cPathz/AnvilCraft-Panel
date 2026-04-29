@@ -36,9 +36,10 @@ class AppState {
     // Runtime state (Logs, active tabs, etc)
     instanceRuntime = $state<Record<string, { 
         logs: string[], 
-        activeTab: "console" | "settings", 
+        activeTab: "console" | "settings" | "addons", 
         commandHistory: string[],
-        players: string[] 
+        players: string[],
+        addonsType: 'plugins' | 'mods' | 'none'
     }>>({});
 
     // Global Settings
@@ -59,7 +60,8 @@ class AppState {
                 logs: [], 
                 activeTab: "console", 
                 commandHistory: [],
-                players: []
+                players: [],
+                addonsType: 'none'
             };
         }
     }

@@ -97,3 +97,22 @@ pub struct AddonCache {
     pub last_scan: i64,
     pub addons: Vec<Addon>,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AddonAnalysis {
+    pub source_path: String,
+    pub name: String,
+    pub version: String,
+    pub status: String, // "valid", "duplicate", "update", "invalid"
+    pub existing_filename: Option<String>,
+    pub old_version: Option<String>,
+    pub size: u64,
+    pub last_modified: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AddonInstallItem {
+    pub source_path: String,
+    pub action: String, // "install", "replace", "skip"
+    pub existing_filename: Option<String>,
+}

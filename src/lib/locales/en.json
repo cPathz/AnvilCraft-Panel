@@ -75,7 +75,9 @@
     "btn_kill_confirm": "Kill Process!",
     "toast_start_error": "Error starting server: ",
     "toast_kill_error": "Error killing server: ",
-    "toast_delete_error": "Error deleting instance: "
+    "toast_delete_error": "Error deleting instance: ",
+    "btn_add_mod": "Add Mod",
+    "btn_add_plugin": "Add Plugin"
   },
   "console": {
     "waiting": "Waiting for logs...",

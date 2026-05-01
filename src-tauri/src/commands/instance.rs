@@ -1,7 +1,7 @@
 use crate::commands::versions::{install_project_server, install_vanilla};
 use crate::models::{
     ChildProcessMap, Instance, InstanceEngine, InstanceInstallProgress, InstanceSettings,
-    InstanceState, Addon, AddonCache
+    InstanceState, Addon, AddonCache, AddonAnalysis, AddonInstallItem
 };
 use chrono::Utc;
 use slug::slugify;
@@ -540,7 +540,38 @@ fn extract_addon_metadata(path: &PathBuf) -> Option<Addon> {
         }
     }
 
-    Some(Addon { file_name, name, version, author, description, enabled, size, last_modified })
+    // 4. Check for paper-plugin.yml (Modern Paper)
+    if let Ok(mut paper_file) = archive.by_name("paper-plugin.yml") {
+        let mut content = String::new();
+        if paper_file.read_to_string(&mut content).is_ok() {
+            if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&content) {
+                if let Some(n) = yaml.get("name").and_then(|v| v.as_str()) { name = n.to_string(); }
+                if let Some(v) = yaml.get("version").and_then(|v| v.as_str()) { version = v.to_string(); }
+                author = yaml.get("author").and_then(|v| v.as_str()).map(|s| s.to_string());
+                description = yaml.get("description").and_then(|v| v.as_str()).map(|s: &str| s.to_string());
+                
+                return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified });
+            }
+        }
+    }
+
+    // 5. Check for velocity-plugin.json (Velocity)
+    if let Ok(mut velocity_file) = archive.by_name("velocity-plugin.json") {
+        let mut content = String::new();
+        if velocity_file.read_to_string(&mut content).is_ok() {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(n) = json.get("name").and_then(|v| v.as_str()) { name = n.to_string(); }
+                if let Some(v) = json.get("version").and_then(|v| v.as_str()) { version = v.to_string(); }
+                author = json.get("authors").and_then(|v| v.as_array()).and_then(|a| a.get(0)).and_then(|v| v.as_str()).map(|s| s.to_string());
+                description = json.get("description").and_then(|v| v.as_str()).map(|s| s.to_string());
+                
+                return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified });
+            }
+        }
+    }
+    
+    // If none of the above files were found, it's not a recognized Minecraft plugin/mod
+    None
 }
 
 #[tauri::command]
@@ -1185,4 +1216,250 @@ pub async fn create_instance_from_path(
     }
 
     Ok(id)
+}
+
+#[tauri::command]
+pub async fn open_instance_addons_folder(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let instances_dir = app_data.join("instances");
+
+    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let json_path = entry.path().join("instance.json");
+        if json_path.exists() {
+            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
+            if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
+                if inst.id == id {
+                    let dot_minecraft = entry.path().join(".minecraft");
+                    let mods_path = dot_minecraft.join("mods");
+                    let plugins_path = dot_minecraft.join("plugins");
+
+                    let target = if mods_path.exists() {
+                        mods_path
+                    } else if plugins_path.exists() {
+                        plugins_path
+                    } else {
+                        // Create plugins folder by default if none exist
+                        fs::create_dir_all(&plugins_path).map_err(|e| e.to_string())?;
+                        plugins_path
+                    };
+
+                    #[cfg(target_os = "windows")]
+                    {
+                        std::process::Command::new("explorer")
+                            .arg(target)
+                            .spawn()
+                            .map_err(|e| e.to_string())?;
+                    }
+                    #[cfg(target_os = "linux")]
+                    {
+                        std::process::Command::new("xdg-open")
+                            .arg(target)
+                            .spawn()
+                            .map_err(|e| e.to_string())?;
+                    }
+                    #[cfg(target_os = "macos")]
+                    {
+                        std::process::Command::new("open")
+                            .arg(target)
+                            .spawn()
+                            .map_err(|e| e.to_string())?;
+                    }
+                    return Ok(());
+                }
+            }
+        }
+    }
+    Err("Instance not found".to_string())
+}
+
+#[tauri::command]
+pub async fn analyze_instance_addons(
+    app: tauri::AppHandle,
+    id: String,
+    source_paths: Vec<String>,
+) -> Result<Vec<AddonAnalysis>, String> {
+    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let instances_dir = app_data.join("instances");
+
+    // 1. Find Instance
+    let mut instance_folder = PathBuf::new();
+    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let json_path = entry.path().join("instance.json");
+        if json_path.exists() {
+            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
+            if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
+                if inst.id == id {
+                    instance_folder = entry.path();
+                    break;
+                }
+            }
+        }
+    }
+
+    if instance_folder.as_os_str().is_empty() {
+        return Err("Instance not found".to_string());
+    }
+
+    let dot_minecraft = instance_folder.join(".minecraft");
+    let mods_path = dot_minecraft.join("mods");
+    let plugins_path = dot_minecraft.join("plugins");
+
+    let target_dir = if mods_path.exists() {
+        mods_path
+    } else {
+        plugins_path
+    };
+
+    // 2. Get current addons list for comparison
+    let existing_addons = if target_dir.exists() {
+        let mut list = Vec::new();
+        for entry in fs::read_dir(&target_dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(addon) = extract_addon_metadata(&path) {
+                    list.push(addon);
+                }
+            }
+        }
+        list
+    } else {
+        Vec::new()
+    };
+
+    // 3. Analyze each source path
+    let mut results = Vec::new();
+    for path_str in source_paths {
+        let source_path = PathBuf::from(&path_str);
+        if !source_path.exists() {
+            continue;
+        }
+
+        let metadata = extract_addon_metadata(&source_path);
+        if metadata.is_none() {
+            results.push(AddonAnalysis {
+                source_path: path_str.clone(),
+                name: source_path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string(),
+                version: "N/A".into(),
+                status: "invalid".into(),
+                existing_filename: None,
+                old_version: None,
+                size: 0,
+                last_modified: 0,
+            });
+            continue;
+        }
+
+        let meta = metadata.unwrap();
+        let mut status = "valid".to_string();
+        let mut existing_filename = None;
+        let mut old_version = None;
+
+        // Check for duplicates/updates
+        for existing in &existing_addons {
+            if existing.name == meta.name {
+                existing_filename = Some(existing.file_name.clone());
+                old_version = Some(existing.version.clone());
+
+                if existing.version == meta.version
+                    && existing.size == meta.size
+                    && existing.last_modified == meta.last_modified
+                {
+                    status = "duplicate".into();
+                } else {
+                    status = "update".into();
+                }
+                break;
+            }
+        }
+
+        results.push(AddonAnalysis {
+            source_path: path_str,
+            name: meta.name,
+            version: meta.version,
+            status,
+            existing_filename,
+            old_version,
+            size: meta.size,
+            last_modified: meta.last_modified,
+        });
+    }
+
+    Ok(results)
+}
+
+#[tauri::command]
+pub async fn install_instance_addons(
+    app: tauri::AppHandle,
+    id: String,
+    items: Vec<AddonInstallItem>,
+) -> Result<(), String> {
+    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let instances_dir = app_data.join("instances");
+
+    // 1. Find Instance
+    let mut instance_folder = PathBuf::new();
+    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let json_path = entry.path().join("instance.json");
+        if json_path.exists() {
+            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
+            if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
+                if inst.id == id {
+                    instance_folder = entry.path();
+                    break;
+                }
+            }
+        }
+    }
+
+    if instance_folder.as_os_str().is_empty() {
+        return Err("Instance not found".to_string());
+    }
+
+    let dot_minecraft = instance_folder.join(".minecraft");
+    let mods_path = dot_minecraft.join("mods");
+    let plugins_path = dot_minecraft.join("plugins");
+
+    let target_dir = if mods_path.exists() {
+        mods_path
+    } else {
+        if !plugins_path.exists() {
+            fs::create_dir_all(&plugins_path).map_err(|e| e.to_string())?;
+        }
+        plugins_path
+    };
+
+    // 2. Process items
+    for item in items {
+        if item.action == "skip" {
+            continue;
+        }
+
+        let source = Path::new(&item.source_path);
+        if !source.exists() {
+            continue;
+        }
+
+        // Handle replacement
+        if let Some(existing) = item.existing_filename {
+            let old_file = target_dir.join(existing);
+            if old_file.exists() {
+                fs::remove_file(old_file).map_err(|e| e.to_string())?;
+            }
+        }
+
+        let file_name = source.file_name().ok_or("Invalid filename")?;
+        let dest_path = target_dir.join(file_name);
+
+        fs::copy(source, dest_path).map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
 }

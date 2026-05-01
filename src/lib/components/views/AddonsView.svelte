@@ -83,6 +83,50 @@
         }
     }
 
+    async function toggleAddon(addon: any) {
+        try {
+            const newState = !addon.enabled;
+            await invoke("toggle_instance_addon", { 
+                id: instance.id, 
+                fileName: addon.file_name, 
+                enabled: newState 
+            });
+            // The file watcher will handle the refresh, but we update locally for speed
+            addon.enabled = newState;
+        } catch (e) {
+            toast.error("Error al cambiar estado: " + e);
+        }
+    }
+
+    async function deleteAddon(addon: any) {
+        if (!window.confirm(`¿Estás seguro de que quieres eliminar ${addon.name}?`)) return;
+        
+        const deleteFolder = window.confirm(`¿Quieres intentar eliminar también la carpeta de configuración asociada?`);
+
+        try {
+            loading = true;
+            await invoke("delete_instance_addon", { 
+                id: instance.id, 
+                fileName: addon.file_name, 
+                deleteFolder 
+            });
+            toast.success("Complemento eliminado");
+        } catch (e) {
+            toast.error("Error al eliminar: " + e);
+        } finally {
+            loading = false;
+        }
+    }
+
+    function getStatusLabel(addon: any) {
+        if (addon.enabled) return "Activo";
+        const fn = addon.file_name.toLowerCase();
+        if (fn.endsWith(".bkp") || fn.endsWith(".bak")) return "Backup";
+        if (fn.endsWith(".old")) return "Antiguo";
+        if (fn.endsWith(".off")) return "Apagado";
+        return "Inactivo";
+    }
+
     let unlisten: () => void;
     
     onMount(async () => {
@@ -177,16 +221,27 @@
                             </div>
 
                             <!-- Status & Actions -->
-                            <div class="flex items-center justify-end gap-3">
+                            <div class="flex items-center justify-end gap-6">
+                                <div class="text-[10px] font-bold uppercase tracking-tighter text-zinc-600">
+                                    {getStatusLabel(addon)}
+                                </div>
+
                                 <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button class="p-1.5 rounded-md hover:bg-red-500/10 text-zinc-600 hover:text-red-400 transition-colors" title="Eliminar">
+                                    <button 
+                                        onclick={() => deleteAddon(addon)}
+                                        class="p-1.5 rounded-md hover:bg-red-500/10 text-zinc-600 hover:text-red-400 transition-colors" 
+                                        title="Eliminar"
+                                    >
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                                     </button>
                                 </div>
                                 
-                                <div class={`w-10 h-5 rounded-full relative transition-colors ${addon.enabled ? 'bg-green-500/20' : 'bg-zinc-800'}`}>
+                                <button 
+                                    onclick={() => toggleAddon(addon)}
+                                    class={`w-10 h-5 rounded-full relative transition-colors ${addon.enabled ? 'bg-green-500/20' : 'bg-zinc-800'}`}
+                                >
                                     <div class={`absolute top-1 w-3 h-3 rounded-full transition-all ${addon.enabled ? 'right-1 bg-green-500' : 'left-1 bg-zinc-600'}`}></div>
-                                </div>
+                                </button>
                             </div>
                         </div>
                     {/each}

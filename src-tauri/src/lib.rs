@@ -85,6 +85,8 @@ pub fn run() {
             commands::instance::open_instance_addons_folder,
             commands::instance::analyze_instance_addons,
             commands::instance::install_instance_addons,
+            commands::instance::toggle_instance_addon,
+            commands::instance::delete_instance_addon,
             // Server
             commands::server::start_instance,
             commands::server::stop_instance,

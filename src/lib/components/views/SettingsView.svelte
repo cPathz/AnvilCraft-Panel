@@ -148,16 +148,27 @@
                     <div class="w-px h-3 bg-white/10"></div>
                     <div class="flex items-center gap-2">
                         <span class="text-[9px] text-zinc-500 uppercase tracking-tighter">{$_('settings.developed_by')}</span>
-                        <span class="text-[11px] text-zinc-300 font-bold">cPathz</span>
                         <a
                             href="https://discord.com/users/cpathz"
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="text-[#5865F2] hover:opacity-80 transition-opacity"
+                            class="text-zinc-300 hover:text-white transition-colors text-[11px] font-bold"
                         >
-                            <svg viewBox="0 0 24 24" class="w-3 h-3" fill="currentColor">
-                                <path d="M19.27 5.33C17.94 4.71 16.5 4.26 15 4a.09.09 0 0 0-.07.03c-.18.33-.39.76-.53 1.09a16.09 16.09 0 0 0-4.8 0c-.14-.34-.35-.76-.54-1.09c-.01-.02-.04-.03-.07-.03c-1.5.26-2.93.71-4.27 1.33c-.01 0-.02.01-.03.02c-2.72 4.07-3.47 8.03-3.1 11.95c0 .02.01.04.03.05c1.8 1.32 3.53 2.12 5.2 2.65c.03.01.06 0 .07-.02c.4-.55.76-1.13 1.07-1.74c.02-.04 0-.08-.04-.09c-.57-.22-1.11-.48-1.64-.78c-.04-.02-.04-.08.01-.11c.11-.08.22-.17.33-.25c.02-.02.05-.02.07-.01c3.44 1.57 7.15 1.57 10.55 0c.02-.01.05-.01.07.01c.11.09.22.17.33.26c.04.03.04.09 0 .11c-.52.31-1.07.56-1.64.78c-.04.02-.05.06-.03.09c.31.61.66 1.19 1.07 1.74c.02.02.05.02.07.02c1.67-.53 3.4-1.33 5.2-2.65c.02-.01.03-.03.03-.05c.44-4.53-.73-9.22-3.55-11.94a.06.06 0 0 0-.03-.02zM8.52 14.91c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12c0 1.17-.84 2.12-1.89 2.12zm6.97 0c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12c0 1.17-.85 2.12-1.89 2.12z" />
-                            </svg>
+                            cPathz
+                        </a>
+                        
+                        <div class="w-px h-3 bg-white/10 ml-1"></div>
+
+                        <a
+                            href="https://discord.gg/E4PFVUe8vz"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-zinc-500 hover:text-white transition-colors flex items-center gap-1.5 ml-1"
+                            title="Discord Server"
+                        >
+                            <span class="text-[9px] font-black text-blue-500/80 uppercase tracking-widest leading-none">
+                                {$_('addons.community')}
+                            </span>
                         </a>
                     </div>
                 </div>

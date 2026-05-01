@@ -273,6 +273,7 @@
     "toast_install_error": "Error installing addons: ",
     "locked_tooltip": "Server is running",
     "no_addons": "No {type} found",
-    "no_addons_desc": "The folder is empty. Add JAR files to get started."
+    "no_addons_desc": "The folder is empty. Add JAR files to get started.",
+    "community": "Community"
   }
 }

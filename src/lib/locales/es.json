@@ -273,6 +273,7 @@
     "toast_analyze_error": "Error al analizar complementos: ",
     "toast_install_success": "Se han instalado {count} complementos",
     "toast_install_error": "Error al instalar complementos: ",
-    "locked_tooltip": "Servidor encendido"
+    "locked_tooltip": "Servidor encendido",
+    "community": "Comunidad"
   }
 }

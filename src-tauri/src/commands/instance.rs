@@ -473,55 +473,47 @@ fn extract_addon_metadata(path: &PathBuf) -> Option<Addon> {
         .as_secs() as i64;
     let enabled = !file_name.ends_with(".disabled");
 
-    // Default values
     let mut name = file_name.clone();
     let mut version = "Unknown".to_string();
     let mut author: Option<String> = None;
     let mut description: Option<String> = None;
 
-    // 1. Check for plugin.yml (Spigot/Bukkit)
-    if let Ok(mut plugin_file) = archive.by_name("plugin.yml") {
-        let mut content = String::new();
-        if plugin_file.read_to_string(&mut content).is_ok() {
-            if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&content) {
-                if let Some(n) = yaml.get("name").and_then(|v| v.as_str()) { name = n.to_string(); }
-                if let Some(v) = yaml.get("version").and_then(|v| v.as_str()) { version = v.to_string(); }
-                
-                author = yaml.get("author").and_then(|v| v.as_str()).map(|s| s.to_string());
-                if author.is_none() {
-                    author = yaml.get("authors")
-                        .and_then(|v| v.as_sequence())
-                        .and_then(|seq: &serde_yaml::Sequence| seq.get(0))
-                        .and_then(|v| v.as_str())
-                        .map(|s: &str| s.to_string());
-                }
-                description = yaml.get("description").and_then(|v| v.as_str()).map(|s: &str| s.to_string());
-                
-                return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified });
-            }
-        }
-    }
-
-    // 2. Check for fabric.mod.json (Fabric)
+    // 1. Check for fabric.mod.json (Fabric)
     if let Ok(mut fabric_file) = archive.by_name("fabric.mod.json") {
         let mut content = String::new();
         if fabric_file.read_to_string(&mut content).is_ok() {
             if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
                 if let Some(n) = json.get("name").and_then(|v| v.as_str()) { name = n.to_string(); }
                 if let Some(v) = json.get("version").and_then(|v| v.as_str()) { version = v.to_string(); }
-                
                 author = json.get("authors").and_then(|v| v.as_array()).and_then(|a| a.get(0)).and_then(|v| {
                     if v.is_string() { v.as_str() } else { v.get("name").and_then(|n| n.as_str()) }
                 }).map(|s| s.to_string());
-                
                 description = json.get("description").and_then(|v| v.as_str()).map(|s| s.to_string());
-                
-                return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified });
+                let platform = "Fabric".to_string();
+                return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified, platform });
             }
         }
     }
 
-    // 3. Check for mods.toml (Forge)
+    // 2. Check for quilt.mod.json (Quilt)
+    if let Ok(mut quilt_file) = archive.by_name("quilt.mod.json") {
+        let mut content = String::new();
+        if quilt_file.read_to_string(&mut content).is_ok() {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                let quat = json.get("quilt_loader").or(json.get("metadata"));
+                if let Some(m) = quat {
+                    if let Some(n) = m.get("name").and_then(|v| v.as_str()) { name = n.to_string(); }
+                    if let Some(v) = m.get("version").and_then(|v| v.as_str()) { version = v.to_string(); }
+                    author = m.get("contributors").and_then(|v| v.as_object()).and_then(|o| o.keys().next()).map(|s| s.to_string());
+                    description = m.get("description").and_then(|v| v.as_str()).map(|s| s.to_string());
+                }
+                let platform = "Quilt".to_string();
+                return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified, platform });
+            }
+        }
+    }
+
+    // 3. Check for mods.toml (Forge 1.13+)
     if let Ok(mut forge_file) = archive.by_name("META-INF/mods.toml") {
         let mut content = String::new();
         if forge_file.read_to_string(&mut content).is_ok() {
@@ -532,15 +524,33 @@ fn extract_addon_metadata(path: &PathBuf) -> Option<Addon> {
                         if let Some(v) = mods.get("version").and_then(|v| v.as_str()) { version = v.to_string(); }
                         author = mods.get("authors").and_then(|v| v.as_str()).map(|s| s.to_string());
                         description = mods.get("description").and_then(|v| v.as_str()).map(|s| s.to_string());
-                        
-                        return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified });
+                        let platform = "Forge".to_string();
+                        return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified, platform });
                     }
                 }
             }
         }
     }
 
-    // 4. Check for paper-plugin.yml (Modern Paper)
+    // 4. Check for mcmod.info (Legacy Forge)
+    if let Ok(mut mcmod_file) = archive.by_name("mcmod.info") {
+        let mut content = String::new();
+        if mcmod_file.read_to_string(&mut content).is_ok() {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                let mod_obj = if json.is_array() { json.get(0) } else { json.get("modList").and_then(|l| l.get(0)).or(Some(&json)) };
+                if let Some(m) = mod_obj {
+                    if let Some(n) = m.get("name").and_then(|v| v.as_str()) { name = n.to_string(); }
+                    if let Some(v) = m.get("version").and_then(|v| v.as_str()) { version = v.to_string(); }
+                    author = m.get("authorList").and_then(|v| v.as_array()).and_then(|a| a.get(0)).and_then(|v| v.as_str()).map(|s| s.to_string());
+                    description = m.get("description").and_then(|v| v.as_str()).map(|s| s.to_string());
+                }
+                let platform = "Forge (Legacy)".to_string();
+                return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified, platform });
+            }
+        }
+    }
+
+    // 5. Check for paper-plugin.yml (Modern Paper)
     if let Ok(mut paper_file) = archive.by_name("paper-plugin.yml") {
         let mut content = String::new();
         if paper_file.read_to_string(&mut content).is_ok() {
@@ -549,13 +559,42 @@ fn extract_addon_metadata(path: &PathBuf) -> Option<Addon> {
                 if let Some(v) = yaml.get("version").and_then(|v| v.as_str()) { version = v.to_string(); }
                 author = yaml.get("author").and_then(|v| v.as_str()).map(|s| s.to_string());
                 description = yaml.get("description").and_then(|v| v.as_str()).map(|s: &str| s.to_string());
-                
-                return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified });
+                let platform = "Paper".to_string();
+                return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified, platform });
             }
         }
     }
 
-    // 5. Check for velocity-plugin.json (Velocity)
+    // 6. Check for plugin.yml (Spigot/Bukkit)
+    if let Ok(mut plugin_file) = archive.by_name("plugin.yml") {
+        let mut content = String::new();
+        if plugin_file.read_to_string(&mut content).is_ok() {
+            if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&content) {
+                if let Some(n) = yaml.get("name").and_then(|v| v.as_str()) { name = n.to_string(); }
+                if let Some(v) = yaml.get("version").and_then(|v| v.as_str()) { version = v.to_string(); }
+                author = yaml.get("author").and_then(|v| v.as_str()).map(|s| s.to_string());
+                description = yaml.get("description").and_then(|v| v.as_str()).map(|s: &str| s.to_string());
+                let platform = "Spigot".to_string();
+                return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified, platform });
+            }
+        }
+    }
+
+    // 7. Check for bungee.yml (BungeeCord)
+    if let Ok(mut bungee_file) = archive.by_name("bungee.yml") {
+        let mut content = String::new();
+        if bungee_file.read_to_string(&mut content).is_ok() {
+            if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&content) {
+                if let Some(n) = yaml.get("name").and_then(|v| v.as_str()) { name = n.to_string(); }
+                if let Some(v) = yaml.get("version").and_then(|v| v.as_str()) { version = v.to_string(); }
+                author = yaml.get("author").and_then(|v| v.as_str()).map(|s| s.to_string());
+                let platform = "Bungee".to_string();
+                return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified, platform });
+            }
+        }
+    }
+
+    // 8. Check for velocity-plugin.json (Velocity)
     if let Ok(mut velocity_file) = archive.by_name("velocity-plugin.json") {
         let mut content = String::new();
         if velocity_file.read_to_string(&mut content).is_ok() {
@@ -564,13 +603,12 @@ fn extract_addon_metadata(path: &PathBuf) -> Option<Addon> {
                 if let Some(v) = json.get("version").and_then(|v| v.as_str()) { version = v.to_string(); }
                 author = json.get("authors").and_then(|v| v.as_array()).and_then(|a| a.get(0)).and_then(|v| v.as_str()).map(|s| s.to_string());
                 description = json.get("description").and_then(|v| v.as_str()).map(|s| s.to_string());
-                
-                return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified });
+                let platform = "Velocity".to_string();
+                return Some(Addon { file_name, name, version, author, description, enabled, size, last_modified, platform });
             }
         }
     }
     
-    // If none of the above files were found, it's not a recognized Minecraft plugin/mod
     None
 }
 
@@ -1331,6 +1369,8 @@ pub async fn analyze_instance_addons(
 
     // 3. Analyze each source path
     let mut results = Vec::new();
+    let mut batch_seen: Vec<Addon> = Vec::new();
+
     for path_str in source_paths {
         let source_path = PathBuf::from(&path_str);
         if !source_path.exists() {
@@ -1352,6 +1392,7 @@ pub async fn analyze_instance_addons(
                 old_version: None,
                 size: 0,
                 last_modified: 0,
+                platform: "Unknown".into(),
             });
             continue;
         }
@@ -1361,23 +1402,39 @@ pub async fn analyze_instance_addons(
         let mut existing_filename = None;
         let mut old_version = None;
 
-        // Check for duplicates/updates
-        for existing in &existing_addons {
-            if existing.name == meta.name {
-                existing_filename = Some(existing.file_name.clone());
-                old_version = Some(existing.version.clone());
-
-                if existing.version == meta.version
-                    && existing.size == meta.size
-                    && existing.last_modified == meta.last_modified
-                {
-                    status = "duplicate".into();
-                } else {
-                    status = "update".into();
-                }
+        // A. Check for duplicates/updates within current selection (intra-batch)
+        let mut found_in_batch = false;
+        for seen in &batch_seen {
+            if seen.name == meta.name {
+                existing_filename = Some(seen.file_name.clone());
+                old_version = Some(seen.version.clone());
+                status = if seen.version == meta.version && seen.size == meta.size { "duplicate_selection".into() } else { "update_selection".into() };
+                found_in_batch = true;
                 break;
             }
         }
+
+        if !found_in_batch {
+            // B. Check for duplicates/updates against existing files on disk
+            for existing in &existing_addons {
+                if existing.name == meta.name {
+                    existing_filename = Some(existing.file_name.clone());
+                    old_version = Some(existing.version.clone());
+
+                    if existing.version == meta.version
+                        && existing.size == meta.size
+                        && existing.last_modified == meta.last_modified
+                    {
+                        status = "duplicate".into();
+                    } else {
+                        status = "update".into();
+                    }
+                    break;
+                }
+            }
+        }
+
+        batch_seen.push(meta.clone());
 
         results.push(AddonAnalysis {
             source_path: path_str,
@@ -1388,6 +1445,7 @@ pub async fn analyze_instance_addons(
             old_version,
             size: meta.size,
             last_modified: meta.last_modified,
+            platform: meta.platform,
         });
     }
 

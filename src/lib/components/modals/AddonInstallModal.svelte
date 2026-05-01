@@ -67,7 +67,9 @@
                 <div class={`p-4 rounded-2xl border transition-all ${
                     item.status === 'invalid' ? 'bg-red-500/5 border-red-500/10' :
                     item.status === 'duplicate' ? 'bg-orange-500/5 border-orange-500/10' :
+                    item.status === 'duplicate_selection' ? 'bg-amber-500/10 border-amber-500/20' :
                     item.status === 'update' ? 'bg-blue-500/5 border-blue-500/10' :
+                    item.status === 'update_selection' ? 'bg-indigo-500/10 border-indigo-500/20' :
                     'bg-white/[0.02] border-white/5'
                 }`}>
                     <div class="flex items-center justify-between gap-4">
@@ -76,6 +78,7 @@
                                 <span class="font-bold text-white truncate text-sm">{item.name}</span>
                                 {#if item.status !== 'invalid'}
                                     <span class="px-2 py-0.5 rounded-full bg-white/5 text-[10px] text-zinc-400 font-mono">v{item.version}</span>
+                                    <span class="px-2 py-0.5 rounded-full bg-blue-500/10 text-[10px] text-blue-400 font-bold uppercase tracking-wider">{item.platform}</span>
                                 {/if}
                             </div>
                             
@@ -87,10 +90,17 @@
                                 {#if item.status === 'invalid'}
                                     <span class="text-red-400 font-bold uppercase tracking-tight">No es un complemento válido</span>
                                 {:else if item.status === 'duplicate'}
-                                    <span class="text-orange-400 font-bold uppercase tracking-tight">Ya existe (mismo archivo)</span>
+                                    <span class="text-orange-400 font-bold uppercase tracking-tight">Ya existe en el servidor</span>
+                                {:else if item.status === 'duplicate_selection'}
+                                    <span class="text-amber-400 font-bold uppercase tracking-tight">Carga duplicada (Ya seleccionado)</span>
                                 {:else if item.status === 'update'}
                                     <div class="flex items-center gap-1 text-blue-400">
                                         <span class="font-bold uppercase tracking-tight">Actualización disponible</span>
+                                        <span class="text-zinc-500 font-mono">(v{item.old_version} &rarr; v{item.version})</span>
+                                    </div>
+                                {:else if item.status === 'update_selection'}
+                                    <div class="flex items-center gap-1 text-indigo-400">
+                                        <span class="font-bold uppercase tracking-tight">Versión diferente en selección</span>
                                         <span class="text-zinc-500 font-mono">(v{item.old_version} &rarr; v{item.version})</span>
                                     </div>
                                 {/if}
@@ -101,7 +111,7 @@
                         <div class="flex gap-2 shrink-0">
                             {#if item.status === 'invalid'}
                                 <span class="px-3 py-1.5 text-xs text-red-500/50 font-bold">Omitido</span>
-                            {:else if item.status === 'duplicate'}
+                            {:else if item.status === 'duplicate' || item.status === 'duplicate_selection'}
                                 <div class="flex bg-white/5 rounded-xl p-1">
                                     <button 
                                         onclick={() => item.action = 'skip'}
@@ -112,7 +122,7 @@
                                         class={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${item.action === 'replace' ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                                     >Sobreescribir</button>
                                 </div>
-                            {:else if item.status === 'update'}
+                            {:else if item.status === 'update' || item.status === 'update_selection'}
                                 <div class="flex bg-white/5 rounded-xl p-1">
                                     <button 
                                         onclick={() => item.action = 'replace'}

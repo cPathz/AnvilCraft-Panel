@@ -90,6 +90,7 @@ pub struct Addon {
     pub enabled: bool,
     pub size: u64,
     pub last_modified: i64, // Unix timestamp
+    pub platform: String,   // "Spigot", "Paper", "Fabric", "Forge", "Quilt", "Bungee", "Velocity"
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -108,6 +109,7 @@ pub struct AddonAnalysis {
     pub old_version: Option<String>,
     pub size: u64,
     pub last_modified: i64,
+    pub platform: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

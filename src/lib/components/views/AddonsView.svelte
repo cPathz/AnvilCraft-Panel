@@ -2,18 +2,73 @@
     import { appState, type Instance } from "$lib/runes/store.svelte";
     import { _ } from "svelte-i18n";
     import { invoke } from "@tauri-apps/api/core";
+    import { open } from "@tauri-apps/plugin-dialog";
+    import { toast } from "$lib/runes/toast.svelte";
+    import AddonInstallModal, { type AddonAnalysis } from "$lib/components/modals/AddonInstallModal.svelte";
 
     interface Props {
         instance: Instance;
+        loading?: boolean;
     }
 
-    let { instance }: Props = $props();
+    let { instance, loading = $bindable(true) }: Props = $props();
     let runtime = $derived(appState.getRuntime(instance.id));
     let type = $derived(runtime?.addonsType || 'none');
 
     // UI state
-    let loading = $state(true);
     let addons = $state<any[]>([]);
+    let analysisResults = $state<AddonAnalysis[]>([]);
+    let showInstallModal = $state(false);
+
+    // Expose methods for parent
+    export function refresh() {
+        loadAddons(true);
+    }
+    export function openFolder() {
+        openAddonsFolder();
+    }
+
+    export async function openAddDialog() {
+        try {
+            const selected = await open({
+                multiple: true,
+                filters: [{
+                    name: 'Java Archive',
+                    extensions: ['jar']
+                }]
+            });
+
+            if (selected) {
+                loading = true;
+                const paths = Array.isArray(selected) ? selected : [selected];
+                analysisResults = await invoke("analyze_instance_addons", { id: instance.id, sourcePaths: paths });
+                showInstallModal = true;
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("Error al analizar complementos: " + e);
+        } finally {
+            loading = false;
+        }
+    }
+
+    async function handleInstallConfirm(items: any[]) {
+        showInstallModal = false;
+        loading = true;
+        try {
+            await invoke("install_instance_addons", { id: instance.id, items });
+            const installedCount = items.filter(i => i.action !== 'skip').length;
+            if (installedCount > 0) {
+                toast.success(`Se han instalado ${installedCount} complementos`);
+                await loadAddons(true);
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("Error al instalar complementos: " + e);
+        } finally {
+            loading = false;
+        }
+    }
 
     async function loadAddons(force = false) {
         loading = true;
@@ -32,6 +87,14 @@
         }
     });
 
+    async function openAddonsFolder() {
+        try {
+            await invoke("open_instance_addons_folder", { id: instance.id });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
     function formatSize(bytes: number) {
         if (bytes === 0) return "0 B";
         const k = 1024;
@@ -42,39 +105,6 @@
 </script>
 
 <div class="flex flex-col h-full animate-fade-in">
-    <!-- Header with Stats -->
-    <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center gap-4">
-            <div class="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
-                {#if type === 'mods'}
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-                {:else}
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-                {/if}
-            </div>
-            <div>
-                <h2 class="text-2xl font-bold text-white capitalize">{type}</h2>
-                <p class="text-zinc-400 text-sm">Gestiona los complementos de tu servidor</p>
-            </div>
-        </div>
-
-        <div class="flex gap-2">
-            <button 
-                onclick={() => loadAddons(true)}
-                class="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium text-white transition-all flex items-center gap-2"
-                disabled={loading}
-            >
-                {#if loading}
-                    <div class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                {/if}
-                Actualizar
-            </button>
-            <button class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-bold text-white shadow-lg shadow-blue-900/20 transition-all active:scale-95">
-                + Añadir {type === 'mods' ? 'Mod' : 'Plugin'}
-            </button>
-        </div>
-    </div>
-
     <!-- Content Area: List View -->
     <div class="flex-grow overflow-hidden flex flex-col bg-white/[0.02] border border-white/5 rounded-3xl">
         <!-- Table Header -->
@@ -161,6 +191,14 @@
         </div>
     </div>
 </div>
+
+{#if showInstallModal}
+    <AddonInstallModal 
+        analysis={analysisResults} 
+        onConfirm={handleInstallConfirm}
+        onCancel={() => showInstallModal = false}
+    />
+{/if}
 
 <style>
     .animate-fade-in {

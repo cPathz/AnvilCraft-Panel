@@ -75,7 +75,9 @@
     "btn_kill_confirm": "¡Matar proceso!",
     "toast_start_error": "Error al iniciar el servidor: ",
     "toast_kill_error": "Error al forzar la detención: ",
-    "toast_delete_error": "Error al eliminar la instancia: "
+    "toast_delete_error": "Error al eliminar la instancia: ",
+    "btn_add_mod": "Añadir Mod",
+    "btn_add_plugin": "Añadir Plugin"
   },
   "console": {
     "waiting": "Esperando logs...",

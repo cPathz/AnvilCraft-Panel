@@ -52,6 +52,9 @@ pub fn run() {
             commands::instance::get_instance_max_players,
             commands::instance::get_instance_addons_type,
             commands::instance::get_instance_addons,
+            commands::instance::open_instance_addons_folder,
+            commands::instance::analyze_instance_addons,
+            commands::instance::install_instance_addons,
             // Server
             commands::server::start_instance,
             commands::server::stop_instance,

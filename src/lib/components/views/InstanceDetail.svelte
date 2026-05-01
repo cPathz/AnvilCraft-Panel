@@ -13,6 +13,8 @@
     import AddonsView from "$lib/components/views/AddonsView.svelte";
 
     let instance = $derived(appState.selectedInstance!);
+    let addonsLoading = $state(false);
+    let addonsView = $state<any>(null);
 
     // Ensure runtime exists
     $effect(() => {
@@ -572,7 +574,7 @@
             {/if}
         </div>
 
-        {#if !isServerRunning}
+        {#if !isServerRunning && activeTab === "settings"}
             <button
                 onclick={() => (showDeleteModal = true)}
                 class="mb-2 text-xs font-bold text-red-500/50 hover:text-red-500 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 select-none"
@@ -590,6 +592,41 @@
                 >
                 {$_("instance_detail.btn_delete")}
             </button>
+        {/if}
+
+        {#if activeTab === "addons"}
+            <div class="flex items-center gap-2 mb-2">
+                <button 
+                    onclick={() => addonsView?.refresh()}
+                    class="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all active:scale-95"
+                    disabled={addonsLoading}
+                    title="Actualizar"
+                >
+                    <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class={addonsLoading ? "animate-spin-once" : ""}
+                        ><path
+                            d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+                        /><path d="M3 3v5h5" /><path
+                            d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"
+                        /><path d="M16 16h5v5" /></svg
+                    >
+                </button>
+                <button
+                    class="h-9 px-3 text-sm font-bold text-zinc-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all flex items-center gap-2"
+                    onclick={() => addonsView?.openAddDialog()}
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    {$_(`instance_detail.btn_add_${runtime.addonsType === 'mods' ? 'mod' : 'plugin'}`)}
+                </button>
+            </div>
         {/if}
     </div>
 
@@ -618,7 +655,7 @@
                 class="absolute inset-0 px-8 py-6 flex flex-col"
                 transition:fade={{ duration: 150 }}
             >
-                <AddonsView {instance} />
+                <AddonsView {instance} bind:loading={addonsLoading} bind:this={addonsView} />
             </div>
         {/if}
     </div>
@@ -744,3 +781,13 @@
         </div>
     </div>
 {/if}
+
+<style>
+    @keyframes spin-once {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    .animate-spin-once {
+        animation: spin-once 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+</style>

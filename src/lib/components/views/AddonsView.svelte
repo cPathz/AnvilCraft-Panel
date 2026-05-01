@@ -3,8 +3,10 @@
     import { _ } from "svelte-i18n";
     import { invoke } from "@tauri-apps/api/core";
     import { open } from "@tauri-apps/plugin-dialog";
+    import { listen } from "@tauri-apps/api/event";
     import { toast } from "$lib/runes/toast.svelte";
     import AddonInstallModal, { type AddonAnalysis } from "$lib/components/modals/AddonInstallModal.svelte";
+    import { onMount, onDestroy } from "svelte";
 
     interface Props {
         instance: Instance;
@@ -80,6 +82,18 @@
             loading = false;
         }
     }
+
+    let unlisten: () => void;
+    
+    onMount(async () => {
+        unlisten = await listen('addons-changed', () => {
+            loadAddons();
+        });
+    });
+
+    onDestroy(() => {
+        if (unlisten) unlisten();
+    });
 
     $effect(() => {
         if (type !== 'none') {

@@ -1536,6 +1536,13 @@ pub async fn toggle_instance_addon(
     file_name: String,
     enabled: bool,
 ) -> Result<(), String> {
+    // Safety check: Is server running?
+    let state = app.state::<ChildProcessMap>();
+    let is_running = state.0.lock().map(|m| m.contains_key(&id)).unwrap_or(false);
+    if is_running {
+        return Err("No se puede gestionar complementos mientras el servidor está encendido".to_string());
+    }
+
     let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let instances_dir = app_data.join("instances");
 
@@ -1597,6 +1604,13 @@ pub async fn delete_instance_addon(
     file_name: String,
     delete_folder: bool,
 ) -> Result<(), String> {
+    // Safety check: Is server running?
+    let state = app.state::<ChildProcessMap>();
+    let is_running = state.0.lock().map(|m| m.contains_key(&id)).unwrap_or(false);
+    if is_running {
+        return Err("No se puede eliminar complementos mientras el servidor está encendido".to_string());
+    }
+
     let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let instances_dir = app_data.join("instances");
 

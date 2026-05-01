@@ -118,3 +118,5 @@ pub struct AddonInstallItem {
     pub action: String, // "install", "replace", "skip"
     pub existing_filename: Option<String>,
 }
+
+pub struct AddonWatcherState(pub Mutex<Option<notify::RecommendedWatcher>>);

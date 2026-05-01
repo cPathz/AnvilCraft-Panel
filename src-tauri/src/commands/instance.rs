@@ -612,6 +612,77 @@ fn extract_addon_metadata(path: &PathBuf) -> Option<Addon> {
     None
 }
 
+fn get_addons_internal(
+    target_dir: &Path,
+    cache_path: &Path,
+    force_scan: bool,
+) -> Result<Vec<Addon>, String> {
+    if !target_dir.exists() {
+        return Ok(vec![]);
+    }
+
+    // 1. Load Cache
+    let mut cache = if !force_scan && cache_path.exists() {
+        let cache_content = fs::read_to_string(&cache_path).map_err(|e| e.to_string())?;
+        serde_json::from_str::<AddonCache>(&cache_content).unwrap_or(AddonCache { last_scan: 0, addons: vec![] })
+    } else {
+        AddonCache { last_scan: 0, addons: vec![] }
+    };
+
+    // 2. Scan Directory
+    let mut files_to_scan = Vec::new();
+    let mut current_addons = Vec::new();
+    let mut cache_modified = false;
+
+    for entry in fs::read_dir(target_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        if path.is_file() {
+            let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+            if file_name.ends_with(".jar") || file_name.ends_with(".disabled") {
+                let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
+                let size = metadata.len();
+                let last_modified = metadata.modified().map_err(|e| e.to_string())?
+                    .duration_since(std::time::UNIX_EPOCH).map_err(|e| e.to_string())?
+                    .as_secs() as i64;
+
+                // Check Cache
+                if let Some(cached) = cache.addons.iter().find(|a| a.file_name == file_name && a.size == size && a.last_modified == last_modified) {
+                    current_addons.push(cached.clone());
+                } else {
+                    files_to_scan.push(path.clone());
+                    cache_modified = true;
+                }
+            }
+        }
+    }
+
+    // 3. Parallel Scan for new/changed files
+    if !files_to_scan.is_empty() {
+        let new_addons: Vec<Addon> = files_to_scan.par_iter()
+            .filter_map(|path| extract_addon_metadata(path))
+            .collect();
+        current_addons.extend(new_addons);
+        cache_modified = true;
+    }
+
+    // 4. Check for deletions
+    if current_addons.len() != cache.addons.len() {
+        cache_modified = true;
+    }
+
+    // 5. Update Cache File
+    if cache_modified || force_scan {
+        cache.addons = current_addons.clone();
+        cache.last_scan = Utc::now().timestamp();
+        let new_cache_json = serde_json::to_string_pretty(&cache).map_err(|e| e.to_string())?;
+        fs::write(cache_path, new_cache_json).map_err(|e| e.to_string())?;
+    }
+
+    Ok(current_addons)
+}
+
+
 #[tauri::command]
 pub async fn get_instance_addons(app: tauri::AppHandle, id: String, force_scan: bool) -> Result<Vec<Addon>, String> {
     let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
@@ -631,63 +702,11 @@ pub async fn get_instance_addons(app: tauri::AppHandle, id: String, force_scan: 
 
                     let target_dir = if mods_path.exists() {
                         mods_path
-                    } else if plugins_path.exists() {
+                    } else {
                         plugins_path
-                    } else {
-                        return Ok(vec![]);
                     };
 
-                    // Load Cache
-                    let mut cache = if !force_scan && cache_path.exists() {
-                        let cache_content = fs::read_to_string(&cache_path).map_err(|e| e.to_string())?;
-                        serde_json::from_str::<AddonCache>(&cache_content).unwrap_or(AddonCache { last_scan: 0, addons: vec![] })
-                    } else {
-                        AddonCache { last_scan: 0, addons: vec![] }
-                    };
-
-                    let mut updated_addons = vec![];
-                    let mut cache_modified = false;
-
-                    for file_entry in fs::read_dir(&target_dir).map_err(|e| e.to_string())? {
-                        let file_entry = file_entry.map_err(|e| e.to_string())?;
-                        let path = file_entry.path();
-                        
-                        if path.is_file() {
-                            let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
-                            if file_name.ends_with(".jar") || file_name.ends_with(".disabled") {
-                                let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
-                                let size = metadata.len();
-                                let last_modified = metadata.modified().map_err(|e| e.to_string())?
-                                    .duration_since(std::time::UNIX_EPOCH).map_err(|e| e.to_string())?
-                                    .as_secs() as i64;
-
-                                // Check Cache
-                                if let Some(cached) = cache.addons.iter().find(|a| a.file_name == file_name && a.size == size && a.last_modified == last_modified) {
-                                    updated_addons.push(cached.clone());
-                                } else {
-                                    // Rescan
-                                    if let Some(addon) = extract_addon_metadata(&path) {
-                                        updated_addons.push(addon);
-                                        cache_modified = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Check for deletions
-                    if updated_addons.len() != cache.addons.len() {
-                        cache_modified = true;
-                    }
-
-                    if cache_modified || force_scan {
-                        cache.addons = updated_addons.clone();
-                        cache.last_scan = Utc::now().timestamp();
-                        let new_cache_json = serde_json::to_string_pretty(&cache).map_err(|e| e.to_string())?;
-                        fs::write(cache_path, new_cache_json).map_err(|e| e.to_string())?;
-                    }
-
-                    return Ok(updated_addons);
+                    return get_addons_internal(&target_dir, &cache_path, force_scan);
                 }
             }
         }
@@ -1350,34 +1369,22 @@ pub async fn analyze_instance_addons(
         plugins_path
     };
 
-    // 2. Get current addons list for comparison
-    let existing_addons = if target_dir.exists() {
-        let mut list = Vec::new();
-        for entry in fs::read_dir(&target_dir).map_err(|e| e.to_string())? {
-            let entry = entry.map_err(|e| e.to_string())?;
-            let path = entry.path();
-            if path.is_file() {
-                if let Some(addon) = extract_addon_metadata(&path) {
-                    list.push(addon);
-                }
-            }
-        }
-        list
-    } else {
-        Vec::new()
-    };
+    // 2. Get current addons list for comparison (USING CACHE)
+    let cache_path = instance_folder.join("addons_cache.json");
+    let existing_addons = get_addons_internal(&target_dir, &cache_path, false)?;
 
-    // 3. Analyze each source path
-    let mut results = Vec::new();
+    // 3. Analyze each source path (IN PARALLEL)
     let mut batch_seen: Vec<Addon> = Vec::new();
+    
+    // First, extract metadata for all sources in parallel
+    let source_metas: Vec<(String, Option<Addon>)> = source_paths.par_iter()
+        .map(|p| (p.clone(), extract_addon_metadata(&PathBuf::from(p))))
+        .collect();
 
-    for path_str in source_paths {
+    let mut results = Vec::new();
+    for (path_str, metadata) in source_metas {
         let source_path = PathBuf::from(&path_str);
-        if !source_path.exists() {
-            continue;
-        }
-
-        let metadata = extract_addon_metadata(&source_path);
+        if metadata.is_none() {
         if metadata.is_none() {
             results.push(AddonAnalysis {
                 source_path: path_str.clone(),

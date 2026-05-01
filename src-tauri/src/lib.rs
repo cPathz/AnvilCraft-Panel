@@ -8,7 +8,8 @@ mod version;
 
 pub mod models;
 
-use models::ChildProcessMap;
+use notify::{Watcher, RecursiveMode, Event};
+use models::{ChildProcessMap, AddonWatcherState};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -19,6 +20,35 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
             app.manage(ChildProcessMap(Arc::new(Mutex::new(HashMap::new()))));
+            
+            // Setup Addon Watcher
+            let app_handle = app.app_handle().clone();
+            let app_data = app_handle.path().app_data_dir().unwrap();
+            let instances_dir = app_data.join("instances");
+            
+            if instances_dir.exists() {
+                let mut watcher = notify::recommended_watcher(move |res: notify::Result<Event>| {
+                    match res {
+                        Ok(event) => {
+                            for path in event.paths {
+                                let p_str = path.to_string_lossy();
+                                if (p_str.contains("mods") || p_str.contains("plugins")) && 
+                                   (p_str.ends_with(".jar") || p_str.ends_with(".disabled") || p_str.contains("addons_cache.json")) {
+                                    let _ = app_handle.emit("addons-changed", ());
+                                    break;
+                                }
+                            }
+                        }
+                        Err(_) => {}
+                    }
+                }).unwrap();
+                
+                let _ = watcher.watch(&instances_dir, RecursiveMode::Recursive);
+                app.manage(AddonWatcherState(Mutex::new(Some(watcher))));
+            } else {
+                app.manage(AddonWatcherState(Mutex::new(None)));
+            }
+            
             Ok(())
         })
         .on_window_event(|window, event| {

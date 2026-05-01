@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "AnvilCraft Panel",
-  "version": "0.1.4",
+  "version": "0.1.7",
   "identifier": "AnvilCraftPanel",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "AnvilCraft Panel v0.1.4 (Beta)",
+        "title": "AnvilCraft Panel v0.1.7 (Beta)",
         "width": 1024,
         "height": 660,
         "minWidth": 1024,

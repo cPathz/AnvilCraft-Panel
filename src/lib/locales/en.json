@@ -29,7 +29,8 @@
     "title": "My Instances",
     "subtitle": "Manage and launch your servers",
     "refresh": "Refresh list",
-    "folder": "Folder"
+    "folder": "Folder",
+    "delete": "Delete"
   },
   "status": {
     "running": "Running",
@@ -244,5 +245,34 @@
     "modal_close_active_list": "Servers:",
     "btn_force_close": "Force Close All",
     "btn_closing": "Closing..."
+  },
+  "addons": {
+    "col_name": "Name",
+    "col_version": "Version",
+    "col_author": "Author",
+    "col_size": "Size",
+    "col_status": "Status",
+    "status_active": "Active",
+    "status_backup": "Backup",
+    "status_legacy": "Legacy",
+    "status_disabled": "Disabled",
+    "btn_add": "Add {type}",
+    "btn_refresh": "Refresh",
+    "btn_folder": "Open Folder",
+    "tooltip_enable": "Enable {type}",
+    "tooltip_disable": "Disable {type}",
+    "tooltip_delete": "Delete {type}",
+    "delete_modal_title": "Delete Addon",
+    "delete_modal_msg": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+    "delete_modal_confirm": "Delete permanently",
+    "delete_modal_checkbox": "Also delete the associated configuration folder",
+    "toast_deleted": "Addon deleted",
+    "toast_delete_error": "Error deleting: ",
+    "toast_analyze_error": "Error analyzing addons: ",
+    "toast_install_success": "{count} addons have been installed",
+    "toast_install_error": "Error installing addons: ",
+    "locked_tooltip": "Server is running",
+    "no_addons": "No {type} found",
+    "no_addons_desc": "The folder is empty. Add JAR files to get started."
   }
 }

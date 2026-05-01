@@ -29,7 +29,8 @@
     "title": "Mis Instancias",
     "subtitle": "Gestiona y lanza tus servidores",
     "refresh": "Actualizar lista",
-    "folder": "Carpeta"
+    "folder": "Carpeta",
+    "delete": "Eliminar"
   },
   "status": {
     "running": "En ejecución",
@@ -244,5 +245,34 @@
     "modal_close_active_list": "Servidores:",
     "btn_force_close": "Forzar Cierre Total",
     "btn_closing": "Cerrando..."
+  },
+  "addons": {
+    "col_name": "Nombre",
+    "col_version": "Versión",
+    "col_author": "Autor",
+    "col_size": "Tamaño",
+    "col_status": "Estado",
+    "status_active": "Activo",
+    "status_backup": "Copia (Backup)",
+    "status_legacy": "Legado",
+    "status_disabled": "Desactivado",
+    "no_addons": "No hay {type}",
+    "no_addons_desc": "La carpeta está vacía. Añade archivos JAR para empezar.",
+    "btn_add": "Añadir {type}",
+    "btn_refresh": "Actualizar",
+    "btn_folder": "Abrir Carpeta",
+    "tooltip_enable": "Activar {type}",
+    "tooltip_disable": "Desactivar {type}",
+    "tooltip_delete": "Eliminar {type}",
+    "delete_modal_title": "Eliminar Complemento",
+    "delete_modal_msg": "¿Estás seguro de que quieres eliminar \"{name}\"? Esta acción no se puede deshacer.",
+    "delete_modal_confirm": "Eliminar permanentemente",
+    "delete_modal_checkbox": "Eliminar también la carpeta de configuración asociada",
+    "toast_deleted": "Complemento eliminado",
+    "toast_delete_error": "Error al eliminar: ",
+    "toast_analyze_error": "Error al analizar complementos: ",
+    "toast_install_success": "Se han instalado {count} complementos",
+    "toast_install_error": "Error al instalar complementos: ",
+    "locked_tooltip": "Servidor encendido"
   }
 }

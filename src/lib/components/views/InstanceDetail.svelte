@@ -600,7 +600,7 @@
                     onclick={() => addonsView?.refresh()}
                     class="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all active:scale-95"
                     disabled={addonsLoading}
-                    title="Actualizar"
+                    title={$_('addons.btn_refresh')}
                 >
                     <svg
                         width="18"

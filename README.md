@@ -21,6 +21,10 @@ Special thanks to Bertware for the inspiration with their program called **Bukki
 
 Built with **Tauri v2** (Rust) and **SvelteKit**, AnvilCraft combines the performance of native code with the flexibility of modern web technologies.
 
+<img width="1022" height="688" alt="IMG_0181" src="https://github.com/user-attachments/assets/dd9887ea-3eaa-4325-ba9d-7062de496870" />
+<img width="1020" height="689" alt="IMG_0183" src="https://github.com/user-attachments/assets/053a798c-4592-464b-9fb0-602f4f60fbe2" />
+<img width="1019" height="686" alt="IMG_0182" src="https://github.com/user-attachments/assets/84c2d596-ed3c-476d-b9f4-b9b62a64a871" />
+
 ## 🚀 Key Features
 
 *   **Internationalization (i18n):** Full support for English and Spanish with automatic detection and manual toggle.

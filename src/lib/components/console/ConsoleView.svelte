@@ -154,7 +154,7 @@
         if (formatType === 'formato1') {
             const parsed = parseMinecraftLog(log);
             const levelDisplay = `[${parsed.timestamp}] [${parsed.level}]${parsed.source ? ` [${parsed.source}]` : ''}`;
-            return { text: `${levelDisplay}: ${parsed.message}`, level: parsed.level };
+            return { text: `${levelDisplay}: ${parsed.message}`, level: "RAW" };
         }
 
         // Fallback to old behavior

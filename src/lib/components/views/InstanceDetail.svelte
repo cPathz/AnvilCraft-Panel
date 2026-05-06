@@ -397,7 +397,11 @@
 
                         <!-- Toggle Noise (Blocked when Format Testing is active) -->
                         <button
-                            onclick={() => !appState.showFormatDebugButton && consoleView?.toggleNoise()}
+                            onclick={() => {
+                                if (!appState.showFormatDebugButton && consoleView) {
+                                    consoleView.toggleNoise();
+                                }
+                            }}
                             disabled={appState.showFormatDebugButton}
                             class="text-xs flex items-center gap-1.5 transition-all {appState.showFormatDebugButton
                                 ? 'text-zinc-500 cursor-not-allowed opacity-50'

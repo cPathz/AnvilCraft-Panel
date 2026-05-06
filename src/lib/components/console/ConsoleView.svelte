@@ -41,6 +41,9 @@
     let showPlayers = $state(true);
     let panelTab = $state<'players' | 'format'>('players');
 
+    // Format Testing
+    let formatType = $state<'raw'>('raw');
+
     // Toolbar visibility
     let toolbarVisible = $state(true);
     let toolbarTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -740,31 +743,42 @@
                     <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Prueba de Formato</span>
                 </div>
 
+                <!-- Format Type Buttons -->
+                <div class="px-3 py-2 border-b border-white/5 bg-black/40 flex gap-1">
+                    <button
+                        onclick={() => (formatType = 'raw')}
+                        class="flex-1 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded transition-colors {formatType === 'raw'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
+                    >
+                        Raw
+                    </button>
+                </div>
+
                 <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
-                    <p class="text-xs text-zinc-500 uppercase font-bold tracking-widest">Ejemplos de Formato</p>
-                    <div class="bg-black/30 rounded-lg p-3 border border-white/5">
-                        <span class="text-zinc-300 font-mono text-xs block break-words">
-                            &lt;Jugador&gt; Hola mundo
-                        </span>
-                    </div>
-                    <div class="bg-black/30 rounded-lg p-3 border border-white/5">
-                        <span class="text-green-400 font-mono text-xs block break-words">
-                            [SERVIDOR] El servidor se está iniciando...
-                        </span>
-                    </div>
-                    <div class="bg-black/30 rounded-lg p-3 border border-white/5">
-                        <span class="text-yellow-400 font-mono text-xs block break-words">
-                            [ADVERTENCIA] Bajo en memoria
-                        </span>
-                    </div>
-                    <div class="bg-black/30 rounded-lg p-3 border border-white/5">
-                        <span class="text-red-400 font-mono text-xs block break-words">
-                            [ERROR] Excepción detectada
-                        </span>
-                    </div>
-                    <p class="text-[10px] text-zinc-600 italic mt-2">
-                        Aquí se mostrarán los formatos de chat a prueba
-                    </p>
+                    {#if formatType === 'raw'}
+                        <p class="text-xs text-zinc-500 uppercase font-bold tracking-widest">Sin estilos</p>
+                        <div class="bg-black/30 rounded-lg p-3 border border-white/5">
+                            <span class="text-zinc-300 font-mono text-xs block break-words">
+                                Jugador Hola mundo
+                            </span>
+                        </div>
+                        <div class="bg-black/30 rounded-lg p-3 border border-white/5">
+                            <span class="text-zinc-300 font-mono text-xs block break-words">
+                                SERVIDOR El servidor se está iniciando...
+                            </span>
+                        </div>
+                        <div class="bg-black/30 rounded-lg p-3 border border-white/5">
+                            <span class="text-zinc-300 font-mono text-xs block break-words">
+                                ADVERTENCIA Bajo en memoria
+                            </span>
+                        </div>
+                        <div class="bg-black/30 rounded-lg p-3 border border-white/5">
+                            <span class="text-zinc-300 font-mono text-xs block break-words">
+                                ERROR Excepción detectada
+                            </span>
+                        </div>
+                    {/if}
                 </div>
             {/if}
         </div>

@@ -395,13 +395,11 @@
                     {#if activeTab === "console" && consoleView}
                         <span class="w-1 h-1 rounded-full bg-zinc-700"></span>
 
-                        <!-- Toggle Noise -->
+                        <!-- Toggle Noise (Disabled) -->
                         <button
-                            onclick={() => consoleView.toggleNoise()}
-                            class="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1.5"
-                            title={consoleView.getHideNoise()
-                                ? $_("instance_detail.btn_noise_show")
-                                : $_("instance_detail.btn_noise_hide")}
+                            disabled
+                            class="text-xs text-zinc-500 cursor-not-allowed opacity-50 flex items-center gap-1.5"
+                            title="Raw por default"
                         >
                             <svg
                                 width="14"

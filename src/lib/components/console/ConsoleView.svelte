@@ -647,7 +647,7 @@
                 {#each logs.slice(-200) as log}
                     {@const formatted = formatLog(log)}
                     {@const parsed = formatType === 'formato1' ? parseFormattedLog(formatted.text) : null}
-                    <div class="break-words leading-tight px-2 rounded -mx-2 hover:bg-white/5 font-mono text-sm relative">
+                    <div class="break-words leading-tight px-2 rounded -mx-2 hover:bg-white/5 relative">
                         {#if parsed && formatType === 'formato1'}
                             <!-- Formatted structure with color-coded components -->
                             <span class="text-gray-600">[{parsed.timestamp}]</span>

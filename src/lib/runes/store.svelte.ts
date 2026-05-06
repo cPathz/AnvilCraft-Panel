@@ -28,7 +28,6 @@ class AppState {
 
     // Debug/Dev features
     showFormatDebugButton = $state<boolean>(false);
-    showHideNoiseButton = $state<boolean>(false);
 
     // App Identity
     appInfo = $state({

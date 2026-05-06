@@ -165,19 +165,23 @@
         return { text: log, level: getLogLevel(log) };
     }
 
-    function parseFormattedLog(text: string): { timestamp: string | null; level: string | null; source: string | null; message: string } {
+    function parseFormattedLog(text: string): { timestamp: string | null; level: string | null; source: string | null; message: string; isCommand: boolean } {
         // Parse formato1 structure: [HH:mm:ss] [LEVEL] [source]: message
         const match = text.match(/^\[([^\]]+)\]\s+\[([A-Z]+)\](?:\s+\[([^\]]+)\])?\s*:\s*(.*)$/);
         if (match) {
+            const message = match[4];
+            const isCommand = message.trim().startsWith('>') || message.includes('java -jar');
             return {
                 timestamp: match[1],
                 level: match[2],
                 source: match[3] || null,
-                message: match[4]
+                message,
+                isCommand
             };
         }
         // Fallback: return entire text as message
-        return { timestamp: null, level: null, source: null, message: text };
+        const isCommand = text.trim().startsWith('>') || text.includes('java -jar');
+        return { timestamp: null, level: null, source: null, message: text, isCommand };
     }
 
     async function sendCommand() {
@@ -647,32 +651,47 @@
                 {#each logs.slice(-200) as log}
                     {@const formatted = formatLog(log)}
                     {@const parsed = formatType === 'formato1' ? parseFormattedLog(formatted.text) : null}
-                    <div class="break-words leading-tight px-2 rounded -mx-2 hover:bg-white/5 relative">
-                        {#if parsed && formatType === 'formato1'}
-                            <!-- Formatted structure with color-coded components -->
-                            <span class="text-gray-600">[{parsed.timestamp}]</span>
-                            <span class={parsed.level === 'ERROR'
+
+                    {#if parsed && formatType === 'formato1' && !parsed.isCommand}
+                        <!-- Grid layout: [LEVEL] | [TIMESTAMP] | MESSAGE -->
+                        <div style="display: grid; grid-template-columns: 50px 85px 1fr; gap: 8px; align-items: start; padding: 0 8px; margin: -8px 0;" class="hover:bg-white/5">
+                            <!-- Column 1: Level -->
+                            <span class="font-bold {parsed.level === 'ERROR'
                                 ? 'text-red-500'
                                 : parsed.level === 'WARN'
-                                  ? 'text-yellow-500'
-                                  : 'text-gray-400'}>
-                                {' '}[{parsed.level}]
+                                  ? 'text-yellow-400'
+                                  : 'text-blue-400'}">
+                                [{parsed.level}]
                             </span>
-                            {#if parsed.source}
-                                <span class="text-cyan-400">{' '}[{parsed.source}]</span>
-                            {/if}
-                            <span class={parsed.level === 'ERROR'
-                                ? 'text-red-500'
-                                : parsed.level === 'WARN'
-                                  ? 'text-yellow-500'
-                                  : 'text-gray-400'}>
-                                : {parsed.message}
-                            </span>
-                        {:else}
-                            <!-- RAW format - single colored span -->
-                            <span class="text-gray-400">{formatted.text}</span>
-                        {/if}
-                    </div>
+
+                            <!-- Column 2: Timestamp -->
+                            <span class="text-gray-500 text-right">{parsed.timestamp}</span>
+
+                            <!-- Column 3: Message with source if exists -->
+                            <div class="break-words whitespace-pre-wrap">
+                                {#if parsed.source}
+                                    <span class="text-cyan-400">[{parsed.source}]</span>{' '}
+                                {/if}
+                                <span class={parsed.level === 'ERROR'
+                                    ? 'text-red-500'
+                                    : parsed.level === 'WARN'
+                                      ? 'text-yellow-400'
+                                      : 'text-gray-300'}>
+                                    {parsed.message}
+                                </span>
+                            </div>
+                        </div>
+                    {:else if parsed && formatType === 'formato1' && parsed.isCommand}
+                        <!-- Command line - full width, green -->
+                        <div class="break-words whitespace-pre-wrap px-2 py-0.5 text-green-400 hover:bg-white/5">
+                            {parsed.message}
+                        </div>
+                    {:else}
+                        <!-- RAW format - no grid, plain text -->
+                        <div class="break-words whitespace-pre-wrap px-2 py-0.5 text-gray-400 hover:bg-white/5">
+                            {formatted.text}
+                        </div>
+                    {/if}
                 {/each}
 
                 {#if logs.length === 0}

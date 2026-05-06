@@ -639,7 +639,7 @@
 
             <!-- Scrollable Logs -->
             <div
-                class="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar flex flex-col justify-start relative"
+                class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar flex flex-col justify-start relative"
                 style:font-family={consoleSettings.fontFamily}
                 style:font-size="{consoleSettings.fontSize}px"
                 style:line-height={consoleSettings.lineHeight}
@@ -654,7 +654,7 @@
 
                     {#if parsed && formatType === 'formato1' && !parsed.isCommand}
                         <!-- Grid layout: [LEVEL] | [TIMESTAMP] | MESSAGE -->
-                        <div style="display: grid; grid-template-columns: 50px 85px 1fr; gap: 8px; align-items: start; padding: 0 8px; margin: -8px 0;" class="hover:bg-white/5">
+                        <div style="display: grid; grid-template-columns: 80px 100px 150px 1fr; gap: 8px; align-items: start;" class="px-2 py-0.5 rounded hover:bg-white/5">
                             <!-- Column 1: Level -->
                             <span class="font-bold {parsed.level === 'ERROR'
                                 ? 'text-red-500'

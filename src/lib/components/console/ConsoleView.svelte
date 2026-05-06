@@ -545,21 +545,36 @@
             <div
                 class="absolute top-3 right-4 z-30 flex flex-col gap-2"
             >
-                <!-- Players Toggle Button -->
+                <!-- Expand/Collapse Panel Button -->
                 <button
                     onclick={() => showPlayers = !showPlayers}
                     class="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all active:scale-95 shadow-lg backdrop-blur-md"
-                    title={showPlayers ? $_("console.users_hide") : $_("console.users_show")}
+                    title={showPlayers ? "Ocultar panel" : "Mostrar panel"}
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        {#if showPlayers}
+                            <path d="M8 6h12M8 12h12M8 18h12"/>
+                        {:else}
+                            <path d="M15 18l-6-6m6 0l-6 6"/>
+                        {/if}
+                    </svg>
+                </button>
+
+                <!-- Players Button -->
+                <button
+                    onclick={() => { showPlayers = true; panelTab = 'players'; }}
+                    class="p-2 rounded-lg {panelTab === 'players' && showPlayers ? 'bg-blue-500/20 border-blue-500/50 text-white' : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'} border transition-all active:scale-95 shadow-lg backdrop-blur-md"
+                    title="Mostrar jugadores conectados"
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                     </svg>
                 </button>
 
-                <!-- Format Testing Toggle Button -->
+                <!-- Format Testing Button -->
                 <button
                     onclick={() => { showPlayers = true; panelTab = 'format'; }}
-                    class="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all active:scale-95 shadow-lg backdrop-blur-md"
+                    class="p-2 rounded-lg {panelTab === 'format' && showPlayers ? 'bg-blue-500/20 border-blue-500/50 text-white' : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'} border transition-all active:scale-95 shadow-lg backdrop-blur-md"
                     title="Pruebas de formato de chat"
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -638,29 +653,8 @@
             transition:slide={{ axis: 'x', duration: 300 }}
             class="w-52 bg-[#1e293b]/95 rounded-xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative"
         >
-            <!-- Tab Bar -->
-            <div class="flex border-b border-white/5 bg-white/5">
-                <button
-                    onclick={() => (panelTab = 'players')}
-                    class="flex-1 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors {panelTab === 'players'
-                        ? 'text-white border-b-2 border-blue-500 bg-white/10'
-                        : 'text-zinc-500 hover:text-zinc-300'}"
-                >
-                    Jugadores
-                </button>
-                <button
-                    onclick={() => (panelTab = 'format')}
-                    class="flex-1 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors {panelTab === 'format'
-                        ? 'text-white border-b-2 border-blue-500 bg-white/10'
-                        : 'text-zinc-500 hover:text-zinc-300'}"
-                >
-                    Formato
-                </button>
-            </div>
-
-            <!-- Content Area -->
             {#if panelTab === 'players'}
-                <!-- Players Tab -->
+                <!-- Players Panel -->
                 <!-- Header -->
                 <div class="px-4 py-3 border-b border-white/5 bg-white/5 flex items-center justify-between">
                     <div class="flex items-center gap-2">
@@ -702,7 +696,7 @@
                                 </div>
                             </div>
 
-                            <!-- Status Indicator (Correctly anchored now) -->
+                            <!-- Status Indicator -->
                             <div class="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
                         </div>
                     {:else}
@@ -723,8 +717,12 @@
                     </div>
                 </div>
             {:else if panelTab === 'format'}
-                <!-- Format Testing Tab -->
-                <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 flex flex-col">
+                <!-- Format Testing Panel -->
+                <div class="px-4 py-3 border-b border-white/5 bg-white/5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Prueba de Formato</span>
+                </div>
+
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
                     <p class="text-xs text-zinc-500 uppercase font-bold tracking-widest">Ejemplos de Formato</p>
                     <div class="bg-black/30 rounded-lg p-3 border border-white/5">
                         <span class="text-zinc-300 font-mono text-xs block break-words">

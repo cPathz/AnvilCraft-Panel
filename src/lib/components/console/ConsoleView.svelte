@@ -145,6 +145,14 @@
     }
 
     function formatLog(log: string): { text: string; level: string } {
+        // If hideNoise is enabled, parse and clean the log
+        if (hideNoise) {
+            const vanillaRegex = /^\[\d{2}:\d{2}:\d{2}\] \[.*?\/(\w+)\]: (.*)/;
+            const match = log.match(vanillaRegex);
+            if (match) return { text: match[2], level: match[1] };
+            return { text: log, level: getLogLevel(log) };
+        }
+
         // If RAW format is selected, show logs as-is
         if (formatType === 'raw') {
             return { text: log, level: "RAW" };
@@ -157,12 +165,8 @@
             return { text: `${levelDisplay}: ${parsed.message}`, level: "RAW" };
         }
 
-        // Fallback to old behavior
-        if (!hideNoise) return { text: log, level: "RAW" };
-        const vanillaRegex = /^\[\d{2}:\d{2}:\d{2}\] \[.*?\/(\w+)\]: (.*)/;
-        const match = log.match(vanillaRegex);
-        if (match) return { text: match[2], level: match[1] };
-        return { text: log, level: getLogLevel(log) };
+        // Fallback: show raw
+        return { text: log, level: "RAW" };
     }
 
     function parseFormattedLog(text: string): { timestamp: string | null; level: string | null; source: string | null; message: string; isCommand: boolean } {

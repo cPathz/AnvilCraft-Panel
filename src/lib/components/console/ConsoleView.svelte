@@ -31,6 +31,7 @@
     let autocompleteSuggestions = $state<string[]>([]);
     let autocompleteIndex = $state(0);
 
+    let hideNoise = $state(true);
     let showConsoleToolbar = $state(false);
 
     let inputElement = $state<HTMLInputElement>();
@@ -128,6 +129,14 @@
         if (r) r.logs = [];
     }
 
+    export function toggleNoise() {
+        hideNoise = !hideNoise;
+    }
+
+    export function getHideNoise() {
+        return hideNoise;
+    }
+
     function getLogLevel(log: string): string {
         if (log.includes("ERROR") || log.includes("stderr")) return "ERROR";
         if (log.includes("WARN")) return "WARN";
@@ -135,6 +144,7 @@
     }
 
     function formatLog(log: string): { text: string; level: string } {
+        if (!hideNoise) return { text: log, level: "RAW" };
         const vanillaRegex = /^\[\d{2}:\d{2}:\d{2}\] \[.*?\/(\w+)\]: (.*)/;
         const match = log.match(vanillaRegex);
         if (match) return { text: match[2], level: match[1] };

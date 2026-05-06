@@ -755,29 +755,22 @@
                     </button>
                 </div>
 
-                <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
                     {#if formatType === 'raw'}
-                        <p class="text-xs text-zinc-500 uppercase font-bold tracking-widest">Sin estilos</p>
-                        <div class="bg-black/30 rounded-lg p-3 border border-white/5">
-                            <span class="text-zinc-300 font-mono text-xs block break-words">
-                                Jugador Hola mundo
-                            </span>
-                        </div>
-                        <div class="bg-black/30 rounded-lg p-3 border border-white/5">
-                            <span class="text-zinc-300 font-mono text-xs block break-words">
-                                SERVIDOR El servidor se está iniciando...
-                            </span>
-                        </div>
-                        <div class="bg-black/30 rounded-lg p-3 border border-white/5">
-                            <span class="text-zinc-300 font-mono text-xs block break-words">
-                                ADVERTENCIA Bajo en memoria
-                            </span>
-                        </div>
-                        <div class="bg-black/30 rounded-lg p-3 border border-white/5">
-                            <span class="text-zinc-300 font-mono text-xs block break-words">
-                                ERROR Excepción detectada
-                            </span>
-                        </div>
+                        <p class="text-xs text-zinc-500 uppercase font-bold tracking-widest mb-2">Logs sin procesar (Últimos 10)</p>
+                        {#if logs.length > 0}
+                            {#each logs.slice(-10) as log}
+                                <div class="bg-black/30 rounded-lg p-2.5 border border-white/5">
+                                    <span class="text-zinc-300 font-mono text-[10px] block break-words leading-relaxed">
+                                        {log}
+                                    </span>
+                                </div>
+                            {/each}
+                        {:else}
+                            <div class="flex items-center justify-center py-6 opacity-30">
+                                <span class="text-xs text-zinc-500">No hay logs para mostrar</span>
+                            </div>
+                        {/if}
                     {/if}
                 </div>
             {/if}

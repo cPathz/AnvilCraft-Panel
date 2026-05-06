@@ -553,9 +553,9 @@
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         {#if showPlayers}
-                            <path d="M8 6h12M8 12h12M8 18h12"/>
-                        {:else}
                             <path d="M15 18l-6-6m6 0l-6 6"/>
+                        {:else}
+                            <path d="M9 6l6 6m-6 0l6 6"/>
                         {/if}
                     </svg>
                 </button>

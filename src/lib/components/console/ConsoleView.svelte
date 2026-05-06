@@ -551,12 +551,11 @@
                     class="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all active:scale-95 shadow-lg backdrop-blur-md"
                     title={showPlayers ? "Ocultar panel" : "Mostrar panel"}
                 >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         {#if showPlayers}
-                            <path d="M12 9l3 3m-3 0l-3 3"/>
+                            <path d="M9 6l6 6l-6 6"/>
                         {:else}
-                            <path d="M12 9l-3 3m3 0l3 3"/>
+                            <path d="M15 6l-6 6l6 6"/>
                         {/if}
                     </svg>
                 </button>

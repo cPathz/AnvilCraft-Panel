@@ -396,19 +396,13 @@
                         <span class="w-1 h-1 rounded-full bg-zinc-700"></span>
 
                         <!-- Toggle Noise (Blocked when Format Testing is active) -->
+                        {#if !appState.showFormatDebugButton}
                         <button
-                            onclick={() => {
-                                if (!appState.showFormatDebugButton && consoleView) {
-                                    consoleView.toggleNoise();
-                                }
-                            }}
-                            disabled={appState.showFormatDebugButton}
-                            class="text-xs flex items-center gap-1.5 transition-all {appState.showFormatDebugButton
-                                ? 'text-zinc-500 cursor-not-allowed opacity-50'
-                                : 'text-zinc-400 hover:text-white cursor-pointer opacity-80 hover:opacity-100'}"
-                            title={appState.showFormatDebugButton
-                                ? "Deshabilitado en modo Format Testing"
-                                : consoleView?.getHideNoise() ? "Mostrar ruido" : "Ocultar ruido"}
+                            onclick={() => consoleView.toggleNoise()}
+                            class="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1.5"
+                            title={consoleView.getHideNoise()
+                                ? "Mostrar ruido"
+                                : "Ocultar ruido"}
                         >
                             <svg
                                 width="14"
@@ -433,6 +427,7 @@
                                 {/if}
                             </svg>
                         </button>
+                        {/if}
 
                         <!-- Clear Console -->
                         <button

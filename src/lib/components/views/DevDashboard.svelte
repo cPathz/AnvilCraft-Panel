@@ -225,7 +225,7 @@
                     <!-- Tab Content -->
                     {#if activeTab === "tab_commands"}
                         <!-- Debug Controls Section -->
-                        <section in:fade class="flex gap-3 items-center p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/50">
+                        <section in:fade class="flex flex-wrap gap-3 items-center p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/50">
                             <span class="text-sm font-bold text-zinc-400 uppercase tracking-widest">Console Debug:</span>
                             <button
                                 onclick={() => (appState.showFormatDebugButton = !appState.showFormatDebugButton)}
@@ -233,7 +233,15 @@
                                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                                     : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'}"
                             >
-                                {appState.showFormatDebugButton ? '✓ Format Testing Enabled' : '○ Format Testing Disabled'}
+                                {appState.showFormatDebugButton ? '✓ Format Testing' : '○ Format Testing'}
+                            </button>
+                            <button
+                                onclick={() => (appState.showHideNoiseButton = !appState.showHideNoiseButton)}
+                                class="px-4 py-2 rounded-lg font-bold transition-all {appState.showHideNoiseButton
+                                    ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20'
+                                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'}"
+                            >
+                                {appState.showHideNoiseButton ? '✓ Hide Noise Button' : '○ Hide Noise Button'}
                             </button>
                         </section>
 

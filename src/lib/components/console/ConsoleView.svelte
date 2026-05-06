@@ -555,7 +555,7 @@
         >
             <!-- Floating Toolbar (Fixed) -->
             <div
-                class="absolute top-3 right-4 z-30 flex flex-col gap-2 transition-opacity duration-500 {toolbarVisible ? 'opacity-100' : 'opacity-20'}"
+                class="absolute top-3 right-4 z-30 flex flex-col gap-2 transition-opacity duration-500 {toolbarVisible ? 'opacity-100' : 'opacity-40'}"
                 onmouseenter={resetToolbarTimeout}
                 onmouseleave={() => {
                     if (toolbarTimeout) clearTimeout(toolbarTimeout);

@@ -745,10 +745,10 @@
                 </div>
 
                 <!-- Format Type Buttons -->
-                <div class="px-3 py-2 border-b border-white/5 bg-black/40 flex gap-1">
+                <div class="px-3 py-2 border-b border-white/5 bg-black/40 flex flex-col gap-1">
                     <button
                         onclick={() => (formatType = 'raw')}
-                        class="flex-1 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded transition-colors {formatType === 'raw'
+                        class="w-full px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded transition-colors {formatType === 'raw'
                             ? 'bg-blue-600 text-white'
                             : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
                     >
@@ -756,7 +756,7 @@
                     </button>
                     <button
                         onclick={() => (formatType = 'formato1')}
-                        class="flex-1 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded transition-colors {formatType === 'formato1'
+                        class="w-full px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded transition-colors {formatType === 'formato1'
                             ? 'bg-blue-600 text-white'
                             : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
                     >

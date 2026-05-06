@@ -39,6 +39,7 @@
 
     // Players Panel State
     let showPlayers = $state(true);
+    let panelTab = $state<'players' | 'format'>('players');
     let players = $derived(runtime?.players || []);
     let maxPlayers = $state(20);
 
@@ -542,8 +543,9 @@
         >
             <!-- Floating Toolbar (Fixed) -->
             <div
-                class="absolute top-3 right-4 z-30 flex justify-end gap-2"
+                class="absolute top-3 right-4 z-30 flex flex-col gap-2"
             >
+                <!-- Players Toggle Button -->
                 <button
                     onclick={() => showPlayers = !showPlayers}
                     class="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all active:scale-95 shadow-lg backdrop-blur-md"
@@ -551,6 +553,17 @@
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </button>
+
+                <!-- Format Testing Toggle Button -->
+                <button
+                    onclick={() => { showPlayers = true; panelTab = 'format'; }}
+                    class="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all active:scale-95 shadow-lg backdrop-blur-md"
+                    title="Pruebas de formato de chat"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h.01"/><path d="M12 9h.01"/><path d="M16 9h.01"/>
                     </svg>
                 </button>
             </div>
@@ -619,73 +632,125 @@
             </div>
         </div>
 
-    <!-- Players Side Panel -->
+    <!-- Players/Format Panel -->
     {#if showPlayers}
         <div
             transition:slide={{ axis: 'x', duration: 300 }}
             class="w-52 bg-[#1e293b]/95 rounded-xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative"
         >
-            <!-- Header -->
-            <div class="px-4 py-3 border-b border-white/5 bg-white/5 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">{$_("console.users_panel_title")}</span>
-                    <span class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold">{players.length}</span>
-                </div>
+            <!-- Tab Bar -->
+            <div class="flex border-b border-white/5 bg-white/5">
                 <button
-                    onclick={refreshPlayers}
-                    class="p-1.5 rounded-md text-zinc-500 hover:text-white hover:bg-white/5 transition-all active:rotate-180 duration-500"
-                    title={$_("gallery.refresh")}
+                    onclick={() => (panelTab = 'players')}
+                    class="flex-1 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors {panelTab === 'players'
+                        ? 'text-white border-b-2 border-blue-500 bg-white/10'
+                        : 'text-zinc-500 hover:text-zinc-300'}"
                 >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
-                    </svg>
+                    Jugadores
+                </button>
+                <button
+                    onclick={() => (panelTab = 'format')}
+                    class="flex-1 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors {panelTab === 'format'
+                        ? 'text-white border-b-2 border-blue-500 bg-white/10'
+                        : 'text-zinc-500 hover:text-zinc-300'}"
+                >
+                    Formato
                 </button>
             </div>
 
-            <!-- Players List -->
-            <div class="flex-1 overflow-y-auto custom-scrollbar p-1.5 space-y-1">
-                {#each players as player}
-                    <div class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-all group/player cursor-default relative">
-                        <!-- Avatar -->
-                        <div class="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center overflow-hidden shadow-lg border border-white/5 group-hover/player:scale-105 transition-transform shrink-0">
-                            <img 
-                                src="https://mc-heads.net/avatar/{player}/64" 
-                                alt={player}
-                                class="w-full h-full object-contain"
-                                onerror={(e) => {
-                                    const target = e.currentTarget as HTMLImageElement;
-                                    target.src = "https://mc-heads.net/avatar/MHF_Steve/64";
-                                }}
-                            />
-                        </div>
-                        
-                        <div class="flex flex-col min-w-0">
-                            <span class="text-[15px] font-bold text-white truncate leading-tight">{player}</span>
-                            <div class="flex items-center gap-1.5">
-                                <span class="text-[10px] text-zinc-500 font-black uppercase tracking-widest">{$_("console.player_role")}</span>
-                            </div>
-                        </div>
-
-                        <!-- Status Indicator (Correctly anchored now) -->
-                        <div class="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
+            <!-- Content Area -->
+            {#if panelTab === 'players'}
+                <!-- Players Tab -->
+                <!-- Header -->
+                <div class="px-4 py-3 border-b border-white/5 bg-white/5 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">{$_("console.users_panel_title")}</span>
+                        <span class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold">{players.length}</span>
                     </div>
-                {:else}
-                    <div class="flex flex-col items-center justify-center py-8 opacity-20 select-none">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    <button
+                        onclick={refreshPlayers}
+                        class="p-1.5 rounded-md text-zinc-500 hover:text-white hover:bg-white/5 transition-all active:rotate-180 duration-500"
+                        title={$_("gallery.refresh")}
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
                         </svg>
-                        <span class="text-[13px] font-bold uppercase tracking-widest mt-2 text-center px-4">{$_("console.users_no_active")}</span>
-                    </div>
-                {/each}
-            </div>
-
-            <!-- Footer Stats -->
-            <div class="p-3 border-t border-white/5 bg-black/20">
-                <div class="flex items-center justify-between text-[13px] text-zinc-500 font-bold uppercase tracking-widest">
-                    <span>{$_("console.users_slots")}</span>
-                    <span class="text-zinc-400 font-mono text-[13px]">{players.length}/{maxPlayers}</span>
+                    </button>
                 </div>
-            </div>
+
+                <!-- Players List -->
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-1.5 space-y-1">
+                    {#each players as player}
+                        <div class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-all group/player cursor-default relative">
+                            <!-- Avatar -->
+                            <div class="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center overflow-hidden shadow-lg border border-white/5 group-hover/player:scale-105 transition-transform shrink-0">
+                                <img
+                                    src="https://mc-heads.net/avatar/{player}/64"
+                                    alt={player}
+                                    class="w-full h-full object-contain"
+                                    onerror={(e) => {
+                                        const target = e.currentTarget as HTMLImageElement;
+                                        target.src = "https://mc-heads.net/avatar/MHF_Steve/64";
+                                    }}
+                                />
+                            </div>
+
+                            <div class="flex flex-col min-w-0">
+                                <span class="text-[15px] font-bold text-white truncate leading-tight">{player}</span>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] text-zinc-500 font-black uppercase tracking-widest">{$_("console.player_role")}</span>
+                                </div>
+                            </div>
+
+                            <!-- Status Indicator (Correctly anchored now) -->
+                            <div class="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
+                        </div>
+                    {:else}
+                        <div class="flex flex-col items-center justify-center py-8 opacity-20 select-none">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            <span class="text-[13px] font-bold uppercase tracking-widest mt-2 text-center px-4">{$_("console.users_no_active")}</span>
+                        </div>
+                    {/each}
+                </div>
+
+                <!-- Footer Stats -->
+                <div class="p-3 border-t border-white/5 bg-black/20">
+                    <div class="flex items-center justify-between text-[13px] text-zinc-500 font-bold uppercase tracking-widest">
+                        <span>{$_("console.users_slots")}</span>
+                        <span class="text-zinc-400 font-mono text-[13px]">{players.length}/{maxPlayers}</span>
+                    </div>
+                </div>
+            {:else if panelTab === 'format'}
+                <!-- Format Testing Tab -->
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 flex flex-col">
+                    <p class="text-xs text-zinc-500 uppercase font-bold tracking-widest">Ejemplos de Formato</p>
+                    <div class="bg-black/30 rounded-lg p-3 border border-white/5">
+                        <span class="text-zinc-300 font-mono text-xs block break-words">
+                            &lt;Jugador&gt; Hola mundo
+                        </span>
+                    </div>
+                    <div class="bg-black/30 rounded-lg p-3 border border-white/5">
+                        <span class="text-green-400 font-mono text-xs block break-words">
+                            [SERVIDOR] El servidor se está iniciando...
+                        </span>
+                    </div>
+                    <div class="bg-black/30 rounded-lg p-3 border border-white/5">
+                        <span class="text-yellow-400 font-mono text-xs block break-words">
+                            [ADVERTENCIA] Bajo en memoria
+                        </span>
+                    </div>
+                    <div class="bg-black/30 rounded-lg p-3 border border-white/5">
+                        <span class="text-red-400 font-mono text-xs block break-words">
+                            [ERROR] Excepción detectada
+                        </span>
+                    </div>
+                    <p class="text-[10px] text-zinc-600 italic mt-2">
+                        Aquí se mostrarán los formatos de chat a prueba
+                    </p>
+                </div>
+            {/if}
         </div>
     {/if}
 </div>

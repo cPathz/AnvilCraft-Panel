@@ -165,6 +165,21 @@
         return { text: log, level: getLogLevel(log) };
     }
 
+    function parseFormattedLog(text: string): { timestamp: string | null; level: string | null; source: string | null; message: string } {
+        // Parse formato1 structure: [HH:mm:ss] [LEVEL] [source]: message
+        const match = text.match(/^\[([^\]]+)\]\s+\[([A-Z]+)\](?:\s+\[([^\]]+)\])?\s*:\s*(.*)$/);
+        if (match) {
+            return {
+                timestamp: match[1],
+                level: match[2],
+                source: match[3] || null,
+                message: match[4]
+            };
+        }
+        // Fallback: return entire text as message
+        return { timestamp: null, level: null, source: null, message: text };
+    }
+
     async function sendCommand() {
         if (!commandInput.trim()) return;
 
@@ -631,24 +646,32 @@
             >
                 {#each logs.slice(-200) as log}
                     {@const formatted = formatLog(log)}
-                    <div
-                        class="break-words leading-tight hover:bg-white/5 px-2 rounded -mx-2 group/log relative"
-                    >
-                        {#if formatted.level !== "RAW"}
-                            <span
-                                class="text-[#565f89] text-xs mr-2 font-bold"
-                                >[{formatted.level}]</span
-                            >
+                    {@const parsed = formatType === 'formato1' ? parseFormattedLog(formatted.text) : null}
+                    <div class="break-words leading-tight px-2 rounded -mx-2 hover:bg-white/5 font-mono text-sm relative">
+                        {#if parsed && formatType === 'formato1'}
+                            <!-- Formatted structure with color-coded components -->
+                            <span class="text-gray-600">[{parsed.timestamp}]</span>
+                            <span class={parsed.level === 'ERROR'
+                                ? 'text-red-500'
+                                : parsed.level === 'WARN'
+                                  ? 'text-yellow-500'
+                                  : 'text-gray-400'}>
+                                {' '}[{parsed.level}]
+                            </span>
+                            {#if parsed.source}
+                                <span class="text-cyan-400">{' '}[{parsed.source}]</span>
+                            {/if}
+                            <span class={parsed.level === 'ERROR'
+                                ? 'text-red-500'
+                                : parsed.level === 'WARN'
+                                  ? 'text-yellow-500'
+                                  : 'text-gray-400'}>
+                                : {parsed.message}
+                            </span>
+                        {:else}
+                            <!-- RAW format - single colored span -->
+                            <span class="text-gray-400">{formatted.text}</span>
                         {/if}
-                        <span
-                            class={formatted.level === "ERROR"
-                                ? "text-red-400"
-                                : formatted.level === "WARN"
-                                  ? "text-yellow-400"
-                                  : formatted.level === "INFO"
-                                    ? "text-zinc-300"
-                                    : "text-zinc-400"}>{formatted.text}</span
-                        >
                     </div>
                 {/each}
 

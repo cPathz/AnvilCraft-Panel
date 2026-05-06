@@ -42,7 +42,7 @@
     let showPlayers = $state(true);
     let panelTab = $state<'players' | 'format'>('players');
 
-    // Format Testing
+    // Format Testing (debug only)
     let formatType = $state<'raw' | 'formato1'>('raw');
 
     // Toolbar visibility
@@ -625,16 +625,18 @@
                     </svg>
                 </button>
 
-                <!-- Format Testing Button -->
-                <button
-                    onclick={() => { showPlayers = true; panelTab = 'format'; }}
-                    class="p-2 rounded-lg {panelTab === 'format' && showPlayers ? 'bg-blue-500/20 border-blue-500/50 text-white' : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'} border transition-all active:scale-95 shadow-lg backdrop-blur-md"
-                    title="Pruebas de formato de chat"
-                >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h.01"/><path d="M12 9h.01"/><path d="M16 9h.01"/>
-                    </svg>
-                </button>
+                <!-- Format Testing Button (Debug Only) -->
+                {#if appState.view === 'dev' && appState.showFormatDebugButton}
+                    <button
+                        onclick={() => { showPlayers = true; panelTab = 'format'; }}
+                        class="p-2 rounded-lg {panelTab === 'format' && showPlayers ? 'bg-blue-500/20 border-blue-500/50 text-white' : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'} border transition-all active:scale-95 shadow-lg backdrop-blur-md"
+                        title="Pruebas de formato de chat (Debug)"
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h.01"/><path d="M12 9h.01"/><path d="M16 9h.01"/>
+                        </svg>
+                    </button>
+                {/if}
             </div>
 
             <!-- Scrollable Logs -->
@@ -793,10 +795,10 @@
                         <span class="text-zinc-400 font-mono text-[13px]">{players.length}/{maxPlayers}</span>
                     </div>
                 </div>
-            {:else if panelTab === 'format'}
-                <!-- Format Testing Panel -->
+            {:else if panelTab === 'format' && appState.view === 'dev' && appState.showFormatDebugButton}
+                <!-- Format Testing Panel (Debug Only) -->
                 <div class="px-4 py-3 border-b border-white/5 bg-white/5">
-                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Prueba de Formato</span>
+                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Prueba de Formato (Debug)</span>
                 </div>
 
                 <!-- Format Type Buttons -->

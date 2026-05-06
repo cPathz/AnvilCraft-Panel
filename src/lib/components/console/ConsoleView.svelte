@@ -653,10 +653,10 @@
                     {@const parsed = formatType === 'formato1' ? parseFormattedLog(formatted.text) : null}
 
                     {#if parsed && formatType === 'formato1' && !parsed.isCommand}
-                        <!-- Grid layout: [LEVEL] | [TIMESTAMP] | MESSAGE -->
-                        <div style="display: grid; grid-template-columns: 80px 100px 150px 1fr; gap: 8px; align-items: start;" class="px-2 py-0.5 rounded hover:bg-white/5">
-                            <!-- Column 1: Level -->
-                            <span class="font-bold {parsed.level === 'ERROR'
+                        <!-- Grid layout: 3-column functional grid -->
+                        <div style="display: grid; grid-template-columns: min-content min-content 1fr; gap: 1rem; align-items: start;" class="px-2 py-0.5 hover:bg-white/5">
+                            <!-- Column 1: Level (min-content, no wrap) -->
+                            <span class="font-bold whitespace-nowrap {parsed.level === 'ERROR'
                                 ? 'text-red-500'
                                 : parsed.level === 'WARN'
                                   ? 'text-yellow-400'
@@ -664,10 +664,10 @@
                                 [{parsed.level}]
                             </span>
 
-                            <!-- Column 2: Timestamp -->
-                            <span class="text-gray-500 text-right">{parsed.timestamp}</span>
+                            <!-- Column 2: Timestamp (min-content, no wrap) -->
+                            <span class="text-gray-500 whitespace-nowrap">{parsed.timestamp}</span>
 
-                            <!-- Column 3: Message with source if exists -->
+                            <!-- Column 3: Message (flexible, with word break) -->
                             <div class="break-words whitespace-pre-wrap">
                                 {#if parsed.source}
                                     <span class="text-cyan-400">[{parsed.source}]</span>{' '}

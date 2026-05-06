@@ -31,7 +31,7 @@
     let autocompleteSuggestions = $state<string[]>([]);
     let autocompleteIndex = $state(0);
 
-    let hideNoise = $state(true);
+    let hideNoise = $state(false);
     let showConsoleToolbar = $state(false);
 
     let inputElement = $state<HTMLInputElement>();

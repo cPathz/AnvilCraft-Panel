@@ -28,7 +28,7 @@ class AppState {
 
     // App Identity
     appInfo = $state({
-        version: "0.1.7",
+        version: "",
         tag: "Beta",
         isEvalCopy: true
     });

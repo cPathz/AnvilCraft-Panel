@@ -29,3 +29,7 @@ DB_EXPERIMENTAL.md
 
 # Tauri Signer
 /.tauri/
+tauri.key
+tauri.key.pub
+# Instrucciones de Release
+RELEASE_PROTOCOL.md

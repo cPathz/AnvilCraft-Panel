@@ -136,7 +136,7 @@
                 <!-- App & Version -->
                 <div class="flex flex-col gap-1">
                     <h2 class="text-xl font-black text-white/90 tracking-tight">
-                        AnvilCraft <span class="text-blue-500 font-mono text-base ml-1">v{appState.appInfo.version} ({appState.appInfo.tag})</span>
+                        AnvilCraft <span class="text-blue-500 font-mono text-base ml-1">v.{appState.appInfo.version} ({appState.appInfo.tag})</span>
                     </h2>
                 </div>
 

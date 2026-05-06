@@ -764,40 +764,8 @@
                     </button>
                 </div>
 
-                <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
-                    {#if formatType === 'raw'}
-                        <!-- Placeholder para raw -->
-                    {:else if formatType === 'formato1'}
-                        {#if logs.length > 0}
-                            {#each logs.slice(-10) as log}
-                                {@const parsed = parseMinecraftLog(log)}
-                                <div class="bg-black/30 rounded-lg p-2.5 border border-white/5">
-                                    <div class="text-[10px] font-mono space-y-1">
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-zinc-500">{parsed.timestamp}</span>
-                                            <span class={parsed.level === 'ERROR'
-                                                ? 'text-red-400'
-                                                : parsed.level === 'WARN'
-                                                  ? 'text-yellow-400'
-                                                  : parsed.level === 'DEBUG'
-                                                    ? 'text-purple-400'
-                                                    : 'text-green-400'} font-bold>
-                                                [{parsed.level}]
-                                            </span>
-                                            {#if parsed.source}
-                                                <span class="text-blue-400">[{parsed.source}]</span>
-                                            {/if}
-                                        </div>
-                                        <div class="text-zinc-300">{parsed.message}</div>
-                                    </div>
-                                </div>
-                            {/each}
-                        {:else}
-                            <div class="flex items-center justify-center py-6 opacity-30">
-                                <span class="text-xs text-zinc-500">No hay logs para mostrar</span>
-                            </div>
-                        {/if}
-                    {/if}
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-3">
+                    <!-- Empty area for format testing -->
                 </div>
             {/if}
         </div>

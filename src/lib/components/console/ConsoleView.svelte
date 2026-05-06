@@ -40,6 +40,18 @@
     // Players Panel State
     let showPlayers = $state(true);
     let panelTab = $state<'players' | 'format'>('players');
+
+    // Toolbar visibility
+    let toolbarVisible = $state(true);
+    let toolbarTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    function resetToolbarTimeout() {
+        toolbarVisible = true;
+        if (toolbarTimeout) clearTimeout(toolbarTimeout);
+        toolbarTimeout = setTimeout(() => {
+            toolbarVisible = false;
+        }, 2000);
+    }
     let players = $derived(runtime?.players || []);
     let maxPlayers = $state(20);
 
@@ -543,11 +555,18 @@
         >
             <!-- Floating Toolbar (Fixed) -->
             <div
-                class="absolute top-3 right-4 z-30 flex flex-col gap-2"
+                class="absolute top-3 right-4 z-30 flex flex-col gap-2 transition-opacity duration-500 {toolbarVisible ? 'opacity-100' : 'opacity-20'}"
+                onmouseenter={resetToolbarTimeout}
+                onmouseleave={() => {
+                    if (toolbarTimeout) clearTimeout(toolbarTimeout);
+                    toolbarTimeout = setTimeout(() => {
+                        toolbarVisible = false;
+                    }, 2000);
+                }}
             >
                 <!-- Expand/Collapse Panel Button -->
                 <button
-                    onclick={() => showPlayers = !showPlayers}
+                    onclick={() => { showPlayers = !showPlayers; resetToolbarTimeout(); }}
                     class="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all active:scale-95 shadow-lg backdrop-blur-md"
                     title={showPlayers ? "Ocultar panel" : "Mostrar panel"}
                 >
@@ -562,7 +581,7 @@
 
                 <!-- Players Button -->
                 <button
-                    onclick={() => { showPlayers = true; panelTab = 'players'; }}
+                    onclick={() => { showPlayers = true; panelTab = 'players'; resetToolbarTimeout(); }}
                     class="p-2 rounded-lg {panelTab === 'players' && showPlayers ? 'bg-blue-500/20 border-blue-500/50 text-white' : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'} border transition-all active:scale-95 shadow-lg backdrop-blur-md"
                     title="Mostrar jugadores conectados"
                 >
@@ -573,7 +592,7 @@
 
                 <!-- Format Testing Button -->
                 <button
-                    onclick={() => { showPlayers = true; panelTab = 'format'; }}
+                    onclick={() => { showPlayers = true; panelTab = 'format'; resetToolbarTimeout(); }}
                     class="p-2 rounded-lg {panelTab === 'format' && showPlayers ? 'bg-blue-500/20 border-blue-500/50 text-white' : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'} border transition-all active:scale-95 shadow-lg backdrop-blur-md"
                     title="Pruebas de formato de chat"
                 >

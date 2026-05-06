@@ -395,11 +395,12 @@
                     {#if activeTab === "console" && consoleView}
                         <span class="w-1 h-1 rounded-full bg-zinc-700"></span>
 
-                        <!-- Toggle Noise (Disabled) -->
+                        <!-- Toggle Noise (Debug Only) -->
+                        {#if appState.showHideNoiseButton}
                         <button
-                            disabled
-                            class="text-xs text-zinc-500 cursor-not-allowed opacity-50 flex items-center gap-1.5"
-                            title="Raw por default"
+                            onclick={() => consoleView?.toggleNoise()}
+                            class="text-xs text-zinc-400 hover:text-white cursor-pointer opacity-80 hover:opacity-100 flex items-center gap-1.5 transition-all"
+                            title={consoleView?.getHideNoise() ? "Mostrar ruido" : "Ocultar ruido"}
                         >
                             <svg
                                 width="14"
@@ -424,6 +425,7 @@
                                 {/if}
                             </svg>
                         </button>
+                        {/if}
 
                         <!-- Clear Console -->
                         <button

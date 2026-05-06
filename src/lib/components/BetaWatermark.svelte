@@ -12,6 +12,6 @@
             {$locale && $_ ? $_("settings.eval_copy_branding") : "AnvilCraft Panel"}
         </span>
     {/if}
-    <span>v{appState.appInfo.version} ({appState.appInfo.tag})</span>
+    <span>v.{appState.appInfo.version} ({appState.appInfo.tag})</span>
     <span>Dev: cPathz</span>
 </div>

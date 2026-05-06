@@ -3,6 +3,7 @@
     import TopBar from "$lib/components/TopBar.svelte";
     import ToastContainer from "$lib/components/ToastContainer.svelte";
     import BetaWatermark from "$lib/components/BetaWatermark.svelte";
+    import GlobalUpdateBanner from "$lib/components/GlobalUpdateBanner.svelte";
     import "../app.css";
 
     import { appState } from "$lib/runes/store.svelte";
@@ -12,6 +13,7 @@
 
     import { listen } from "@tauri-apps/api/event";
     import { getCurrentWindow } from "@tauri-apps/api/window";
+    import { getVersion } from "@tauri-apps/api/app";
 
     import { setupI18n } from "$lib/i18n";
     import { isLoading, _, locale } from "svelte-i18n";
@@ -71,6 +73,17 @@
         }
 
         const init = async () => {
+            try {
+                // Fetch and set dynamic version
+                const version = await getVersion();
+                appState.appInfo.version = version;
+                
+                // Set window title dynamically
+                await getCurrentWindow().setTitle(`AnvilCraft Panel v.${version} (${appState.appInfo.tag})`);
+            } catch (e) {
+                console.error("Failed to set app version:", e);
+            }
+
             // Global Log Listener
             try {
                 unlisten = await listen<[string, string]>(
@@ -264,5 +277,6 @@
     </div>
 
     <ToastContainer />
+    <GlobalUpdateBanner />
     <BetaWatermark />
 </div>

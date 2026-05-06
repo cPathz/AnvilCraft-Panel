@@ -636,7 +636,7 @@
                     >
                         {#if formatted.level !== "RAW"}
                             <span
-                                class="text-[#565f89] text-xs mr-2 select-none font-bold"
+                                class="text-[#565f89] text-xs mr-2 font-bold"
                                 >[{formatted.level}]</span
                             >
                         {/if}

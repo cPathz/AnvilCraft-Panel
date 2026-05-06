@@ -9,9 +9,10 @@ export interface LogEntry {
 const ANSI_REGEX = /\x1B\[[0-9;]*m/g;
 const LOG_PATTERN_STANDARD = /^\[([^\]]+)\]\s*\[([^\]\/]+)\/([A-Z]+)\]:\s*(.*)$/;
 const LOG_PATTERN_SHORT = /^\[([^\]]+)\s+([A-Z]+)\]:\s*(.*)$/;
-const SOURCE_PATTERN = /^\s*\[([^\]]+)\]\s*(.*)/;
+const SOURCE_PATTERN = /^\[([A-Za-z][A-Za-z0-9_\-]*)\]\s+(.*)/;
 
 const VALID_LEVELS = new Set(['INFO', 'WARN', 'ERROR', 'DEBUG']);
+const RESERVED_WORDS = new Set(['INFO', 'WARN', 'ERROR', 'DEBUG', 'FATAL', 'TRACE']);
 
 export function parseMinecraftLog(rawLog: string): LogEntry {
   // Eliminar ANSI (una sola pasada)
@@ -50,7 +51,11 @@ export function parseMinecraftLog(rawLog: string): LogEntry {
 function extractSource(message: string): { source: string | null; cleanMessage: string } {
   const match = message.match(SOURCE_PATTERN);
   if (match) {
-    return { source: match[1], cleanMessage: match[2] };
+    const potentialSource = match[1];
+    // Solo acepta como source si NO es una palabra reservada (INFO, WARN, etc)
+    if (!RESERVED_WORDS.has(potentialSource.toUpperCase())) {
+      return { source: potentialSource, cleanMessage: match[2] };
+    }
   }
   return { source: null, cleanMessage: message };
 }

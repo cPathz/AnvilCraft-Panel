@@ -7,6 +7,7 @@
     import { FEATURES } from "$lib/config/features";
     import commandTree from "$lib/data/command_tree.json";
     import argumentData from "$lib/data/arguments.json";
+    import { parseMinecraftLog } from "$lib/utils/logParser";
 
     let { instanceId } = $props();
 
@@ -42,7 +43,7 @@
     let panelTab = $state<'players' | 'format'>('players');
 
     // Format Testing
-    let formatType = $state<'raw'>('raw');
+    let formatType = $state<'raw' | 'formato1'>('raw');
 
     // Toolbar visibility
     let toolbarVisible = $state(true);
@@ -753,10 +754,50 @@
                     >
                         Raw
                     </button>
+                    <button
+                        onclick={() => (formatType = 'formato1')}
+                        class="flex-1 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded transition-colors {formatType === 'formato1'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
+                    >
+                        Formato 1
+                    </button>
                 </div>
 
-                <div class="flex-1 overflow-y-auto custom-scrollbar p-3">
-                    <!-- Placeholder for format previews -->
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+                    {#if formatType === 'raw'}
+                        <!-- Placeholder para raw -->
+                    {:else if formatType === 'formato1'}
+                        {#if logs.length > 0}
+                            {#each logs.slice(-10) as log}
+                                {@const parsed = parseMinecraftLog(log)}
+                                <div class="bg-black/30 rounded-lg p-2.5 border border-white/5">
+                                    <div class="text-[10px] font-mono space-y-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-zinc-500">{parsed.timestamp}</span>
+                                            <span class={parsed.level === 'ERROR'
+                                                ? 'text-red-400'
+                                                : parsed.level === 'WARN'
+                                                  ? 'text-yellow-400'
+                                                  : parsed.level === 'DEBUG'
+                                                    ? 'text-purple-400'
+                                                    : 'text-green-400'} font-bold>
+                                                [{parsed.level}]
+                                            </span>
+                                            {#if parsed.source}
+                                                <span class="text-blue-400">[{parsed.source}]</span>
+                                            {/if}
+                                        </div>
+                                        <div class="text-zinc-300">{parsed.message}</div>
+                                    </div>
+                                </div>
+                            {/each}
+                        {:else}
+                            <div class="flex items-center justify-center py-6 opacity-30">
+                                <span class="text-xs text-zinc-500">No hay logs para mostrar</span>
+                            </div>
+                        {/if}
+                    {/if}
                 </div>
             {/if}
         </div>

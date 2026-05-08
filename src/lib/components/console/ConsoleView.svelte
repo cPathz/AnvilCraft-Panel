@@ -32,7 +32,6 @@
     let autocompleteSuggestions = $state<string[]>([]);
     let autocompleteIndex = $state(0);
 
-    let hideNoise = $state(false);
     let showConsoleToolbar = $state(false);
 
     let inputElement = $state<HTMLInputElement>();
@@ -40,10 +39,6 @@
 
     // Players Panel State
     let showPlayers = $state(true);
-    let panelTab = $state<'players' | 'format'>('players');
-
-    // Format Testing (debug only)
-    let formatType = $state<'raw' | 'formato1'>('raw');
 
     // Toolbar visibility
     let toolbarVisible = $state(true);
@@ -130,14 +125,6 @@
         if (r) r.logs = [];
     }
 
-    export function toggleNoise() {
-        hideNoise = !hideNoise;
-    }
-
-    export function getHideNoise() {
-        return hideNoise;
-    }
-
     function getLogLevel(log: string): string {
         if (log.includes("ERROR") || log.includes("stderr")) return "ERROR";
         if (log.includes("WARN")) return "WARN";
@@ -145,46 +132,9 @@
     }
 
     function formatLog(log: string): { text: string; level: string } {
-        // If hideNoise is enabled, parse and clean the log
-        if (hideNoise) {
-            const parsed = parseMinecraftLog(log);
-            return { text: parsed.message, level: parsed.level };
-        }
-
-        // If RAW format is selected, show logs as-is
-        if (formatType === 'raw') {
-            return { text: log, level: "RAW" };
-        }
-
-        // If FORMATO1 is selected, use parseMinecraftLog
-        if (formatType === 'formato1') {
-            const parsed = parseMinecraftLog(log);
-            const levelDisplay = `[${parsed.timestamp}] [${parsed.level}]${parsed.source ? ` [${parsed.source}]` : ''}`;
-            return { text: `${levelDisplay}: ${parsed.message}`, level: "RAW" };
-        }
-
-        // Fallback: show raw
-        return { text: log, level: "RAW" };
+        return { text: log, level: getLogLevel(log) };
     }
 
-    function parseFormattedLog(text: string): { timestamp: string | null; level: string | null; source: string | null; message: string; isCommand: boolean } {
-        // Parse formato1 structure: [HH:mm:ss] [LEVEL] [source]: message
-        const match = text.match(/^\[([^\]]+)\]\s+\[([A-Z]+)\](?:\s+\[([^\]]+)\])?\s*:\s*(.*)$/);
-        if (match) {
-            const message = match[4];
-            const isCommand = message.trim().startsWith('>') || message.includes('java -jar');
-            return {
-                timestamp: match[1],
-                level: match[2],
-                source: match[3] || null,
-                message,
-                isCommand
-            };
-        }
-        // Fallback: return entire text as message
-        const isCommand = text.trim().startsWith('>') || text.includes('java -jar');
-        return { timestamp: null, level: null, source: null, message: text, isCommand };
-    }
 
     async function sendCommand() {
         if (!commandInput.trim()) return;
@@ -627,18 +577,6 @@
                     </svg>
                 </button>
 
-                <!-- Format Testing Button (Debug Only) -->
-                {#if appState.view === 'dev' && appState.showFormatDebugButton}
-                    <button
-                        onclick={() => { showPlayers = true; panelTab = 'format'; }}
-                        class="p-2 rounded-lg {panelTab === 'format' && showPlayers ? 'bg-blue-500/20 border-blue-500/50 text-white' : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'} border transition-all active:scale-95 shadow-lg backdrop-blur-md"
-                        title="Pruebas de formato de chat (Debug)"
-                    >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h.01"/><path d="M12 9h.01"/><path d="M16 9h.01"/>
-                        </svg>
-                    </button>
-                {/if}
             </div>
 
             <!-- Scrollable Logs -->
@@ -654,48 +592,9 @@
             >
                 {#each logs.slice(-200) as log}
                     {@const formatted = formatLog(log)}
-                    {@const parsed = formatType === 'formato1' ? parseFormattedLog(formatted.text) : null}
-
-                    {#if parsed && formatType === 'formato1' && !parsed.isCommand}
-                        <!-- Grid layout: 3-column functional grid -->
-                        <div style="display: grid; grid-template-columns: min-content min-content 1fr; gap: 1rem; align-items: start;" class="px-2 py-0.5 hover:bg-white/5">
-                            <!-- Column 1: Level (min-content, no wrap) -->
-                            <span class="font-bold whitespace-nowrap {parsed.level === 'ERROR'
-                                ? 'text-red-500'
-                                : parsed.level === 'WARN'
-                                  ? 'text-yellow-400'
-                                  : 'text-blue-400'}">
-                                [{parsed.level}]
-                            </span>
-
-                            <!-- Column 2: Timestamp (min-content, no wrap) -->
-                            <span class="text-gray-500 whitespace-nowrap">{parsed.timestamp}</span>
-
-                            <!-- Column 3: Message (flexible, with word break) -->
-                            <div class="break-words whitespace-pre-wrap">
-                                {#if parsed.source}
-                                    <span class="text-cyan-400">[{parsed.source}]</span>{' '}
-                                {/if}
-                                <span class={parsed.level === 'ERROR'
-                                    ? 'text-red-500'
-                                    : parsed.level === 'WARN'
-                                      ? 'text-yellow-400'
-                                      : 'text-gray-300'}>
-                                    {parsed.message}
-                                </span>
-                            </div>
-                        </div>
-                    {:else if parsed && formatType === 'formato1' && parsed.isCommand}
-                        <!-- Command line - full width, green -->
-                        <div class="break-words whitespace-pre-wrap px-2 py-0.5 text-green-400 hover:bg-white/5">
-                            {parsed.message}
-                        </div>
-                    {:else}
-                        <!-- RAW format - no grid, plain text -->
-                        <div class="break-words whitespace-pre-wrap px-2 py-0.5 text-gray-400 hover:bg-white/5">
-                            {formatted.text}
-                        </div>
-                    {/if}
+                    <div class="break-words whitespace-pre-wrap px-2 py-0.5 text-gray-400 hover:bg-white/5">
+                        {formatted.text}
+                    </div>
                 {/each}
 
                 {#if logs.length === 0}
@@ -796,35 +695,6 @@
                         <span>{$_("console.users_slots")}</span>
                         <span class="text-zinc-400 font-mono text-[13px]">{players.length}/{maxPlayers}</span>
                     </div>
-                </div>
-            {:else if panelTab === 'format' && appState.view === 'dev' && appState.showFormatDebugButton}
-                <!-- Format Testing Panel (Debug Only) -->
-                <div class="px-4 py-3 border-b border-white/5 bg-white/5">
-                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Prueba de Formato (Debug)</span>
-                </div>
-
-                <!-- Format Type Buttons -->
-                <div class="px-3 py-2 border-b border-white/5 bg-black/40 flex flex-col gap-1">
-                    <button
-                        onclick={() => (formatType = 'raw')}
-                        class="w-full px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded transition-colors {formatType === 'raw'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
-                    >
-                        Raw
-                    </button>
-                    <button
-                        onclick={() => (formatType = 'formato1')}
-                        class="w-full px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded transition-colors {formatType === 'formato1'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
-                    >
-                        Formato 1
-                    </button>
-                </div>
-
-                <div class="flex-1 overflow-y-auto custom-scrollbar p-3">
-                    <!-- Empty area - buttons only control main console display -->
                 </div>
             {/if}
         </div>

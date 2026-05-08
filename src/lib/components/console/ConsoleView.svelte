@@ -719,10 +719,26 @@
                 </div>
 
                 <!-- Format Options -->
-                <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
-                    <div class="text-xs text-zinc-400">
-                        Las opciones de formato se aplicarán próximamente en esta sección.
-                    </div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2 flex flex-col">
+                    <!-- Raw Format Button -->
+                    <button
+                        onclick={() => (appState.logFormat = 'raw')}
+                        class="w-full px-3 py-2 text-[11px] font-bold uppercase tracking-wider rounded transition-colors {appState.logFormat === 'raw'
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                            : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
+                    >
+                        Raw
+                    </button>
+
+                    <!-- Formato 1 Button -->
+                    <button
+                        onclick={() => (appState.logFormat = 'formato1')}
+                        class="w-full px-3 py-2 text-[11px] font-bold uppercase tracking-wider rounded transition-colors {appState.logFormat === 'formato1'
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                            : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
+                    >
+                        Formato 1
+                    </button>
                 </div>
             {/if}
         </div>

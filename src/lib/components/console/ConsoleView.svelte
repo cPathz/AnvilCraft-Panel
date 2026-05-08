@@ -147,10 +147,8 @@
     function formatLog(log: string): { text: string; level: string } {
         // If hideNoise is enabled, parse and clean the log
         if (hideNoise) {
-            const vanillaRegex = /^\[\d{2}:\d{2}:\d{2}\] \[.*?\/(\w+)\]: (.*)/;
-            const match = log.match(vanillaRegex);
-            if (match) return { text: match[2], level: match[1] };
-            return { text: log, level: getLogLevel(log) };
+            const parsed = parseMinecraftLog(log);
+            return { text: parsed.message, level: parsed.level };
         }
 
         // If RAW format is selected, show logs as-is

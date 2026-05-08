@@ -5,6 +5,7 @@ use tauri::{Emitter, Manager};
 
 pub mod commands;
 mod version;
+pub mod parser;
 
 pub mod models;
 

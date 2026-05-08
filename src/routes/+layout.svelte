@@ -10,6 +10,7 @@
     import { onMount } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
     import type { Instance } from "$lib/runes/store.svelte";
+    import type { ParsedLog } from "$lib/types/parser";
 
     import { listen } from "@tauri-apps/api/event";
     import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -86,15 +87,15 @@
 
             // Global Log Listener
             try {
-                unlisten = await listen<[string, string]>(
+                unlisten = await listen<[string, ParsedLog]>(
                     "server-log",
                     (event) => {
-                        const [id, line] = event.payload;
+                        const [id, parsedLog] = event.payload;
                         appState.ensureRuntime(id);
                         const runtime = appState.getRuntime(id);
                         if (runtime) {
-                            runtime.logs.push(line);
-                            appState.parseLog(id, line);
+                            runtime.logs.push(parsedLog);
+                            appState.parseLog(id, parsedLog.raw);
                             if (runtime.logs.length > 1000) {
                                 runtime.logs = runtime.logs.slice(-1000);
                             }

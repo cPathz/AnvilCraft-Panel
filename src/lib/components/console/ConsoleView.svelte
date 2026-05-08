@@ -8,6 +8,7 @@
     import commandTree from "$lib/data/command_tree.json";
     import argumentData from "$lib/data/arguments.json";
     import { parseMinecraftLog } from "$lib/utils/logParser";
+    import { convertAnsiToHtml } from "$lib/utils/ansiConverter";
     import type { ParsedLog } from "$lib/types/parser";
 
     let { instanceId } = $props();
@@ -127,21 +128,41 @@
         if (r) r.logs = [];
     }
 
-    function formatLog(log: ParsedLog | string): { text: string; level: string } {
-        // Handle legacy strings (shouldn't happen with new parser, but safe fallback)
+    function getLevelColor(level: string): string {
+        switch (level) {
+            case 'ERROR':
+            case 'FATAL':
+                return 'text-red-400';
+            case 'WARN':
+                return 'text-yellow-400';
+            case 'DEBUG':
+                return 'text-blue-400';
+            case 'INFO':
+            default:
+                return 'text-gray-400';
+        }
+    }
+
+    function formatLog(log: ParsedLog | string): { text: string; level: string; html?: string; isStacktrace: boolean } {
+        // Fallback para strings planos (compatibilidad)
         if (typeof log === 'string') {
             const level = log.includes("ERROR") || log.includes("stderr") ? "ERROR" :
                          log.includes("WARN") ? "WARN" : "INFO";
-            return { text: log, level };
+            return { text: log, level, isStacktrace: false };
         }
 
-        // Handle ParsedLog objects
-        // For RAW format: show raw string
-        // For FORMATO1: show structured data (will be styled in Fase 2)
+        // Determinar texto a mostrar según formato (Raw vs Mensaje limpio)
         const displayText = appState.logFormat === 'raw' ? log.raw : log.message || log.raw;
-        const level = log.level;
+        
+        // Convertir ANSI a HTML si el backend detectó códigos ANSI
+        const htmlContent = log.has_ansi_codes ? convertAnsiToHtml(displayText) : null;
 
-        return { text: displayText, level };
+        return { 
+            text: displayText, 
+            level: log.level, 
+            html: htmlContent || undefined, 
+            isStacktrace: log.is_stacktrace_line 
+        };
     }
 
 
@@ -612,9 +633,28 @@
             >
                 {#each logs.slice(-200) as log}
                     {@const formatted = formatLog(log)}
-                    <div class="px-2 text-gray-400 hover:bg-white/5 {appState.wrapConsoleText ? 'break-words whitespace-pre-wrap' : 'whitespace-pre'}">
-                        {formatted.text}
-                    </div>
+                    {@const baseClass = appState.wrapConsoleText ? 'break-words whitespace-pre-wrap' : 'whitespace-pre'}
+                    {@const levelColor = getLevelColor(formatted.level)}
+                    
+                    {#if formatted.isStacktrace}
+                        <!-- Línea de Stacktrace: Identación extra, fuente pequeña y opacidad reducida -->
+                        <div class="px-2 pl-6 text-[11px] {levelColor} opacity-60 hover:bg-white/5 {baseClass}">
+                            {#if formatted.html}
+                                {@html formatted.html}
+                            {:else}
+                                {formatted.text}
+                            {/if}
+                        </div>
+                    {:else}
+                        <!-- Línea de Log Normal: Color según nivel (INFO, WARN, ERROR) -->
+                        <div class="px-2 {levelColor} hover:bg-white/5 {baseClass}">
+                            {#if formatted.html}
+                                {@html formatted.html}
+                            {:else}
+                                {formatted.text}
+                            {/if}
+                        </div>
+                    {/if}
                 {/each}
 
                 {#if logs.length === 0}

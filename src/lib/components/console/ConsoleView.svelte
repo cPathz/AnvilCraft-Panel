@@ -712,7 +712,10 @@
                 <!-- Format Console Panel -->
                 <!-- Header -->
                 <div class="px-4 py-3 border-b border-white/5 bg-white/5 flex items-center justify-between">
-                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Formato Consola</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Formato Consola</span>
+                    </div>
+                    <div class="w-7 h-7"></div>
                 </div>
 
                 <!-- Format Options -->

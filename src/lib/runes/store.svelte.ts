@@ -1,3 +1,4 @@
+import type { ParsedLog } from "$lib/types/parser";
 
 export interface Instance {
     id: string;
@@ -40,7 +41,7 @@ class AppState {
 
     // Runtime state (Logs, active tabs, etc)
     instanceRuntime = $state<Record<string, { 
-        logs: string[], 
+        logs: (ParsedLog | string)[], 
         activeTab: "console" | "settings" | "addons", 
         commandHistory: string[],
         players: string[],

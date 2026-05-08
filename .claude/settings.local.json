@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm audit *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(xargs grep -l \"stdout\\\\|stderr\\\\|log\")",
+      "PowerShell(cd \"D:\\\\Usuarios\\\\Luis Macias\\\\Documentos\\\\Proyectos\\\\AnvilCraft\" && node -e \"$\\(Get-Content scratch/test-log.ts -Raw\\)\")",
+      "Bash(git *)",
+      "Bash(npm run *)",
+      "PowerShell(Get-Process *)",
+      "WebFetch(domain:docs.papermc.io)",
+      "Bash(cargo check *)"
+    ]
+  }
+}

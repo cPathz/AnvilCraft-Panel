@@ -583,11 +583,6 @@
             <!-- Scrollable Logs -->
             <div
                 class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar flex flex-col justify-start relative"
-                style:font-family={consoleSettings.fontFamily}
-                style:font-size="{consoleSettings.fontSize}px"
-                style:line-height={consoleSettings.lineHeight}
-                style:letter-spacing="{consoleSettings.letterSpacing}px"
-                style:font-weight={consoleSettings.fontWeight}
                 bind:this={consoleContainer}
                 role="group"
             >

@@ -28,9 +28,9 @@ class AppState {
     creatingInstance = $state<boolean>(false);
 
     // Console Settings Toggle (Dev only)
-    applyConsoleSettings = $state<boolean>(false);
-    wrapConsoleText = $state<boolean>(true);
-    logFormat = $state<'raw' | 'formato1'>('raw');
+    applyConsoleSettings = $state<boolean>(true);
+    wrapConsoleText = $state<boolean>(false);
+    logFormat = $state<'raw' | 'formato1'>('formato1');
 
     // App Identity
     appInfo = $state({
@@ -52,8 +52,8 @@ class AppState {
     settings = $state({
         console: {
             fontFamily: "JetBrains Mono",
-            fontSize: 13,
-            lineHeight: 1.1,
+            fontSize: 14,
+            lineHeight: 1.4,
             letterSpacing: 0,
             fontWeight: "400", // Normal
             theme: "Campbell"

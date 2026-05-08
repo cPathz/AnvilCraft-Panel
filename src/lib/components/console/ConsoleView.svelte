@@ -151,8 +151,17 @@
             return { text: log, level, isStacktrace: false };
         }
 
-        // Determinar texto a mostrar según formato (Raw vs Mensaje limpio)
-        const displayText = appState.logFormat === 'raw' ? log.raw : log.message || log.raw;
+        // Si el formato es RAW, devolvemos el texto tal cual viene del jar, sin colores ni procesado ANSI
+        if (appState.logFormat === 'raw') {
+            return { 
+                text: log.raw, 
+                level: 'INFO', // Color gris por defecto para RAW
+                isStacktrace: false 
+            };
+        }
+
+        // MODO FORMATO 1: Determinar texto a mostrar (Mensaje limpio)
+        const displayText = log.message || log.raw;
         
         // Convertir ANSI a HTML si el backend detectó códigos ANSI
         const htmlContent = log.has_ansi_codes ? convertAnsiToHtml(displayText) : null;

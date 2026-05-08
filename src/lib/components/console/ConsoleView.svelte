@@ -582,10 +582,10 @@
 
             <!-- Scrollable Logs -->
             <div
-                class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar flex flex-col justify-start relative"
+                class="flex-1 overflow-y-auto p-2 custom-scrollbar flex flex-col justify-start relative"
                 style:font-family={appState.applyConsoleSettings ? consoleSettings.fontFamily : undefined}
                 style:font-size={appState.applyConsoleSettings ? `${consoleSettings.fontSize}px` : undefined}
-                style:line-height={appState.applyConsoleSettings ? consoleSettings.lineHeight : undefined}
+                style:line-height={appState.applyConsoleSettings ? consoleSettings.lineHeight : '1.5'}
                 style:letter-spacing={appState.applyConsoleSettings ? `${consoleSettings.letterSpacing}px` : undefined}
                 style:font-weight={appState.applyConsoleSettings ? consoleSettings.fontWeight : undefined}
                 bind:this={consoleContainer}
@@ -593,7 +593,7 @@
             >
                 {#each logs.slice(-200) as log}
                     {@const formatted = formatLog(log)}
-                    <div class="px-2 py-0.5 text-gray-400 hover:bg-white/5 {appState.wrapConsoleText ? 'break-words whitespace-pre-wrap' : 'whitespace-pre'}">
+                    <div class="px-2 text-gray-400 hover:bg-white/5 {appState.wrapConsoleText ? 'break-words whitespace-pre-wrap' : 'whitespace-pre'}">
                         {formatted.text}
                     </div>
                 {/each}

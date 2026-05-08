@@ -417,6 +417,17 @@
                                 /></svg
                             >
                         </button>
+
+                        <!-- Console Settings Toggle -->
+                        <button
+                            onclick={() => (appState.applyConsoleSettings = !appState.applyConsoleSettings)}
+                            class="text-xs px-2 py-1 rounded transition-colors {appState.applyConsoleSettings
+                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                                : 'text-zinc-500 hover:text-zinc-300 border border-zinc-700/50'} border flex items-center gap-1"
+                            title={appState.applyConsoleSettings ? "Disable console settings" : "Enable console settings"}
+                        >
+                            {appState.applyConsoleSettings ? '✓' : '○'} Settings
+                        </button>
                     {/if}
                 </div>
             </div>

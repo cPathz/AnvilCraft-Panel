@@ -39,7 +39,7 @@
 
     // Players Panel State
     let showPlayers = $state(true);
-    let panelTab = $state<'players'>('players');
+    let panelTab = $state<'players' | 'format'>('players');
 
     // Toolbar visibility
     let toolbarVisible = $state(true);
@@ -578,6 +578,17 @@
                     </svg>
                 </button>
 
+                <!-- Format Console Button -->
+                <button
+                    onclick={() => { showPlayers = true; panelTab = 'format'; }}
+                    class="p-2 rounded-lg {panelTab === 'format' && showPlayers ? 'bg-blue-500/20 border-blue-500/50 text-white' : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'} border transition-all active:scale-95 shadow-lg backdrop-blur-md"
+                    title="Opciones de formato de consola"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h.01"/><path d="M12 9h.01"/><path d="M16 9h.01"/>
+                    </svg>
+                </button>
+
             </div>
 
             <!-- Scrollable Logs -->
@@ -695,6 +706,18 @@
                     <div class="flex items-center justify-between text-[13px] text-zinc-500 font-bold uppercase tracking-widest">
                         <span>{$_("console.users_slots")}</span>
                         <span class="text-zinc-400 font-mono text-[13px]">{players.length}/{maxPlayers}</span>
+                    </div>
+                </div>
+            {:else if panelTab === 'format'}
+                <!-- Format Console Panel -->
+                <div class="px-4 py-3 border-b border-white/5 bg-white/5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Formato Consola</span>
+                </div>
+
+                <!-- Format Options -->
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+                    <div class="text-xs text-zinc-400 mb-4">
+                        Las opciones de formato se aplicarán próximamente en esta sección.
                     </div>
                 </div>
             {/if}

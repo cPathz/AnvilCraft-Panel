@@ -428,6 +428,17 @@
                         >
                             {appState.applyConsoleSettings ? '✓' : '○'} Settings
                         </button>
+
+                        <!-- Text Wrap Toggle -->
+                        <button
+                            onclick={() => (appState.wrapConsoleText = !appState.wrapConsoleText)}
+                            class="text-xs px-2 py-1 rounded transition-colors {appState.wrapConsoleText
+                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                                : 'text-zinc-500 hover:text-zinc-300 border border-zinc-700/50'} border flex items-center gap-1"
+                            title={appState.wrapConsoleText ? "Disable text wrap" : "Enable text wrap"}
+                        >
+                            {appState.wrapConsoleText ? '✓' : '○'} Wrap
+                        </button>
                     {/if}
                 </div>
             </div>

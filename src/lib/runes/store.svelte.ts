@@ -28,6 +28,7 @@ class AppState {
 
     // Console Settings Toggle (Dev only)
     applyConsoleSettings = $state<boolean>(false);
+    wrapConsoleText = $state<boolean>(true);
 
     // App Identity
     appInfo = $state({

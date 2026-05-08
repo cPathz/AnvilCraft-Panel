@@ -710,13 +710,14 @@
                 </div>
             {:else if panelTab === 'format'}
                 <!-- Format Console Panel -->
-                <div class="px-4 py-3 border-b border-white/5 bg-white/5">
+                <!-- Header -->
+                <div class="px-4 py-3 border-b border-white/5 bg-white/5 flex items-center justify-between">
                     <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Formato Consola</span>
                 </div>
 
                 <!-- Format Options -->
-                <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
-                    <div class="text-xs text-zinc-400 mb-4">
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
+                    <div class="text-xs text-zinc-400">
                         Las opciones de formato se aplicarán próximamente en esta sección.
                     </div>
                 </div>

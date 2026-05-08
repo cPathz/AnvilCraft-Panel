@@ -39,6 +39,7 @@
 
     // Players Panel State
     let showPlayers = $state(true);
+    let panelTab = $state<'players'>('players');
 
     // Toolbar visibility
     let toolbarVisible = $state(true);

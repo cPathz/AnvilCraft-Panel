@@ -26,9 +26,6 @@ class AppState {
     refreshing = $state<boolean>(false);
     creatingInstance = $state<boolean>(false);
 
-    // Debug/Dev features
-    showFormatDebugButton = $state<boolean>(false);
-
     // App Identity
     appInfo = $state({
         version: "",

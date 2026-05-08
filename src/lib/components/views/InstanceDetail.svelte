@@ -395,40 +395,6 @@
                     {#if activeTab === "console" && consoleView}
                         <span class="w-1 h-1 rounded-full bg-zinc-700"></span>
 
-                        <!-- Toggle Noise (Blocked when Format Testing is active) -->
-                        {#if !appState.showFormatDebugButton}
-                        <button
-                            onclick={() => consoleView.toggleNoise()}
-                            class="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1.5"
-                            title={consoleView.getHideNoise()
-                                ? "Mostrar ruido"
-                                : "Ocultar ruido"}
-                        >
-                            <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            >
-                                {#if consoleView.getHideNoise()}
-                                    <path
-                                        d="M4 12v-3a3 3 0 0 1 3 -3h13m-3 -3l3 3l-3 3"
-                                    /><path
-                                        d="M20 12v3a3 3 0 0 1 -3 3h-13m3 3l-3 -3l3 -3"
-                                    />
-                                {:else}
-                                    <path d="M7 12l5-5 5 5" /><path
-                                        d="M7 12l5 5 5-5"
-                                    />
-                                {/if}
-                            </svg>
-                        </button>
-                        {/if}
-
                         <!-- Clear Console -->
                         <button
                             onclick={() => consoleView.clearLogs()}

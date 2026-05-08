@@ -1,4 +1,5 @@
 use crate::models::{ChildProcessMap, Instance, InstanceEngine, InstanceSettings, InstanceState};
+use crate::parser::ParsedLog;
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
 #[cfg(windows)]
@@ -91,8 +92,9 @@ pub async fn start_instance(
             let mut is_running = false;
             for line in reader.lines() {
                 if let Ok(l) = line {
-                    let _ = app_clone.emit("server-log", (id_clone.clone(), l.clone()));
-                    
+                    let parsed = ParsedLog::new(&l);
+                    let _ = app_clone.emit("server-log", (id_clone.clone(), parsed));
+
                     if !is_running {
                         let lower = l.to_lowercase();
                         if lower.contains("done (") || lower.contains("for help, type \"help\"") {
@@ -126,7 +128,8 @@ pub async fn start_instance(
             let reader = BufReader::new(stderr);
             for line in reader.lines() {
                 if let Ok(l) = line {
-                    let _ = app_clone.emit("server-log", (id_clone.clone(), l));
+                    let parsed = ParsedLog::new(&l);
+                    let _ = app_clone.emit("server-log", (id_clone.clone(), parsed));
                 }
             }
         });

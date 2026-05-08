@@ -8,6 +8,7 @@
     import commandTree from "$lib/data/command_tree.json";
     import argumentData from "$lib/data/arguments.json";
     import { parseMinecraftLog } from "$lib/utils/logParser";
+    import type { ParsedLog } from "$lib/types/parser";
 
     let { instanceId } = $props();
 
@@ -126,14 +127,21 @@
         if (r) r.logs = [];
     }
 
-    function getLogLevel(log: string): string {
-        if (log.includes("ERROR") || log.includes("stderr")) return "ERROR";
-        if (log.includes("WARN")) return "WARN";
-        return "INFO";
-    }
+    function formatLog(log: ParsedLog | string): { text: string; level: string } {
+        // Handle legacy strings (shouldn't happen with new parser, but safe fallback)
+        if (typeof log === 'string') {
+            const level = log.includes("ERROR") || log.includes("stderr") ? "ERROR" :
+                         log.includes("WARN") ? "WARN" : "INFO";
+            return { text: log, level };
+        }
 
-    function formatLog(log: string): { text: string; level: string } {
-        return { text: log, level: getLogLevel(log) };
+        // Handle ParsedLog objects
+        // For RAW format: show raw string
+        // For FORMATO1: show structured data (will be styled in Fase 2)
+        const displayText = appState.logFormat === 'raw' ? log.raw : log.message || log.raw;
+        const level = log.level;
+
+        return { text: displayText, level };
     }
 
 

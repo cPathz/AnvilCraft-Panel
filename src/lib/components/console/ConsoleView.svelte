@@ -593,7 +593,7 @@
             >
                 {#each logs.slice(-200) as log}
                     {@const formatted = formatLog(log)}
-                    <div class="break-words whitespace-pre-wrap px-2 py-0.5 text-gray-400 hover:bg-white/5">
+                    <div class="px-2 py-0.5 text-gray-400 hover:bg-white/5 {appState.wrapConsoleText ? 'break-words whitespace-pre-wrap' : 'whitespace-pre'}">
                         {formatted.text}
                     </div>
                 {/each}

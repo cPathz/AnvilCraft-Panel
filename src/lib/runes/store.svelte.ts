@@ -26,6 +26,9 @@ class AppState {
     refreshing = $state<boolean>(false);
     creatingInstance = $state<boolean>(false);
 
+    // Console Settings Toggle (Dev only)
+    applyConsoleSettings = $state<boolean>(false);
+
     // App Identity
     appInfo = $state({
         version: "",

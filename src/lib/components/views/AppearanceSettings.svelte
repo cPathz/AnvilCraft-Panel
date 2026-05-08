@@ -138,7 +138,7 @@
                     <input
                         type="range"
                         min="0.8"
-                        max="2.0"
+                        max="4.0"
                         step="0.05"
                         bind:value={appState.settings.console.lineHeight}
                         class="flex-1 accent-blue-500 h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer"

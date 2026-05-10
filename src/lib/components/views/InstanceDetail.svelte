@@ -425,9 +425,9 @@
                             class="text-xs px-2 py-1 rounded transition-colors {appState.applyConsoleSettings
                                 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
                                 : 'text-zinc-500 hover:text-zinc-300 border border-zinc-700/50'} border flex items-center gap-1"
-                            title={appState.applyConsoleSettings ? "Disable console settings" : "Enable console settings"}
+                            title={appState.applyConsoleSettings ? $_("instance_detail.tooltip_disable_settings") : $_("instance_detail.tooltip_enable_settings")}
                         >
-                            {appState.applyConsoleSettings ? '✓' : '○'} Settings
+                            {appState.applyConsoleSettings ? '✓' : '○'} {$_("instance_detail.label_settings")}
                         </button>
 
                         <!-- Text Wrap Toggle -->
@@ -436,9 +436,9 @@
                             class="text-xs px-2 py-1 rounded transition-colors {appState.wrapConsoleText
                                 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
                                 : 'text-zinc-500 hover:text-zinc-300 border border-zinc-700/50'} border flex items-center gap-1"
-                            title={appState.wrapConsoleText ? "Disable text wrap" : "Enable text wrap"}
+                            title={appState.wrapConsoleText ? $_("instance_detail.tooltip_disable_wrap") : $_("instance_detail.tooltip_enable_wrap")}
                         >
-                            {appState.wrapConsoleText ? '✓' : '○'} Wrap
+                            {appState.wrapConsoleText ? '✓' : '○'} {$_("instance_detail.label_wrap")}
                         </button>
 
                         <!-- Hide Levels Toggle -->
@@ -447,9 +447,9 @@
                             class="text-xs px-2 py-1 rounded transition-colors {appState.hideConsoleLevels
                                 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
                                 : 'text-zinc-500 hover:text-zinc-300 border border-zinc-700/50'} border flex items-center gap-1"
-                            title={appState.hideConsoleLevels ? "Show all tags" : "Hide level tags (Compact)"}
+                            title={appState.hideConsoleLevels ? $_("instance_detail.tooltip_show_levels") : $_("instance_detail.tooltip_hide_levels")}
                         >
-                            {appState.hideConsoleLevels ? '✓' : '○'} Compacto
+                            {appState.hideConsoleLevels ? '✓' : '○'} {$_("instance_detail.label_compact")}
                         </button>
 
                         <!-- Show Time Toggle -->
@@ -458,9 +458,9 @@
                             class="text-xs px-2 py-1 rounded transition-colors {appState.showConsoleTimestamps
                                 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
                                 : 'text-zinc-500 hover:text-zinc-300 border border-zinc-700/50'} border flex items-center gap-1"
-                            title={appState.showConsoleTimestamps ? "Hide timestamps" : "Show timestamps"}
+                            title={appState.showConsoleTimestamps ? $_("instance_detail.tooltip_hide_time") : $_("instance_detail.tooltip_show_time")}
                         >
-                            {appState.showConsoleTimestamps ? '✓' : '○'} Hora
+                            {appState.showConsoleTimestamps ? '✓' : '○'} {$_("instance_detail.label_time")}
                         </button>
                     {/if}
                 </div>

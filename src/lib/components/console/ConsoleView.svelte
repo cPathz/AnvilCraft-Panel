@@ -700,7 +700,7 @@
                 <button
                     onclick={() => showPlayers = !showPlayers}
                     class="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all active:scale-95 shadow-lg backdrop-blur-md"
-                    title={showPlayers ? "Ocultar panel" : "Mostrar panel"}
+                    title={showPlayers ? $_("console.tooltip_hide_panel") : $_("console.tooltip_show_panel")}
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         {#if showPlayers}
@@ -715,7 +715,7 @@
                 <button
                     onclick={() => { showPlayers = true; panelTab = 'players'; }}
                     class="p-2 rounded-lg {panelTab === 'players' && showPlayers ? 'bg-blue-500/20 border-blue-500/50 text-white' : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'} border transition-all active:scale-95 shadow-lg backdrop-blur-md"
-                    title="Mostrar jugadores conectados"
+                    title={$_("console.tooltip_players")}
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
@@ -726,7 +726,7 @@
                 <button
                     onclick={() => { showPlayers = true; panelTab = 'format'; }}
                     class="p-2 rounded-lg {panelTab === 'format' && showPlayers ? 'bg-blue-500/20 border-blue-500/50 text-white' : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'} border transition-all active:scale-95 shadow-lg backdrop-blur-md"
-                    title="Opciones de formato de consola"
+                    title={$_("console.tooltip_format")}
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h.01"/><path d="M12 9h.01"/><path d="M16 9h.01"/>
@@ -880,7 +880,7 @@
                 <!-- Header -->
                 <div class="px-4 py-3 border-b border-white/5 bg-white/5 flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Formato Consola</span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">{$_("console.format_title")}</span>
                     </div>
                     <div class="w-7 h-7"></div>
                 </div>
@@ -894,7 +894,7 @@
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                             : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
                     >
-                        Raw
+                        {$_("console.format_raw")}
                     </button>
 
                     <!-- Formato 1 Button -->
@@ -904,7 +904,7 @@
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                             : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
                     >
-                        Formato 1
+                        {$_("console.format_1")}
                     </button>
 
                     <!-- Formato 2 Button -->
@@ -914,7 +914,7 @@
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                             : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
                     >
-                        Formato 2
+                        {$_("console.format_2")}
                     </button>
 
                     <!-- Formato 3 Button -->
@@ -924,7 +924,7 @@
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                             : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
                     >
-                        Formato 3
+                        {$_("console.format_3")}
                     </button>
                 </div>
             {/if}
@@ -965,7 +965,7 @@
                                 {#if cmd.startsWith("<")}
                                     <span
                                         class="text-[10px] opacity-70 uppercase tracking-wider font-bold"
-                                        >Arg</span
+                                        >{$_("console.arg_label")}</span
                                     >
                                 {/if}
                             </div>

@@ -439,6 +439,28 @@
                         >
                             {appState.wrapConsoleText ? '✓' : '○'} Wrap
                         </button>
+
+                        <!-- Hide Levels Toggle -->
+                        <button
+                            onclick={() => (appState.hideConsoleLevels = !appState.hideConsoleLevels)}
+                            class="text-xs px-2 py-1 rounded transition-colors {appState.hideConsoleLevels
+                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                                : 'text-zinc-500 hover:text-zinc-300 border border-zinc-700/50'} border flex items-center gap-1"
+                            title={appState.hideConsoleLevels ? "Show all tags" : "Hide level tags (Compact)"}
+                        >
+                            {appState.hideConsoleLevels ? '✓' : '○'} Compacto
+                        </button>
+
+                        <!-- Show Time Toggle -->
+                        <button
+                            onclick={() => (appState.showConsoleTimestamps = !appState.showConsoleTimestamps)}
+                            class="text-xs px-2 py-1 rounded transition-colors {appState.showConsoleTimestamps
+                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                                : 'text-zinc-500 hover:text-zinc-300 border border-zinc-700/50'} border flex items-center gap-1"
+                            title={appState.showConsoleTimestamps ? "Hide timestamps" : "Show timestamps"}
+                        >
+                            {appState.showConsoleTimestamps ? '✓' : '○'} Hora
+                        </button>
                     {/if}
                 </div>
             </div>

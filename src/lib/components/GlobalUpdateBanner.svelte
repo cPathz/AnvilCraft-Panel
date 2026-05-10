@@ -4,6 +4,7 @@
     import { relaunch } from "@tauri-apps/plugin-process";
     import { toast } from "$lib/runes/toast.svelte";
     import { _ } from "svelte-i18n";
+    import { appState } from "$lib/runes/store.svelte";
 
     let update = $state<any>(null);
     let isForced = $state(false);
@@ -38,7 +39,17 @@
                 }
                 
                 releaseNotes = body;
-                show = true;
+                
+                // Smart Zen Mode Logic: 
+                // If manual mode is on, only show if it's a NEW version we haven't ignored yet
+                if (appState.settings.manualUpdate) {
+                    if (update.version !== appState.settings.lastIgnoredVersion) {
+                        show = true;
+                    }
+                } else {
+                    // Standard mode: always show popup on startup
+                    show = true;
+                }
             }
         } catch (e) {
             console.error("Failed to check for updates on startup:", e);
@@ -79,6 +90,8 @@
 
     function dismiss() {
         if (!isForced) {
+            // Save this version as ignored so it doesn't pop up again in Zen Mode
+            appState.settings.lastIgnoredVersion = update.version;
             show = false;
         }
     }

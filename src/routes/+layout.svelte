@@ -15,6 +15,7 @@
     import { listen } from "@tauri-apps/api/event";
     import { getCurrentWindow } from "@tauri-apps/api/window";
     import { getVersion } from "@tauri-apps/api/app";
+    import { check } from "@tauri-apps/plugin-updater";
 
     import { setupI18n } from "$lib/i18n";
     import { isLoading, _, locale } from "svelte-i18n";
@@ -119,6 +120,34 @@
                 };
             } catch (e) {
                 console.error("Failed to setup listeners:", e);
+            }
+
+            // Check for updates
+            try {
+                const update = await check();
+                if (update) {
+                    let body = update.body || "No changelog provided.";
+                    let isCritical = false;
+
+                    if (body.includes("[CRITICAL]")) {
+                        isCritical = true;
+                        body = body.replace("[CRITICAL]", "");
+                    }
+
+                    appState.updateData = {
+                        version: update.version,
+                        body: body.trim(),
+                        date: update.date || "",
+                        isCritical: isCritical,
+                        available: true,
+                        rawUpdate: update // Store the original update object for installation
+                    };
+                    console.log("Update found:", update.version, isCritical ? "(CRITICAL)" : "");
+                } else {
+                    appState.updateData = null;
+                }
+            } catch (e) {
+                console.error("Failed to check for updates:", e);
             }
 
             await refreshInstances();

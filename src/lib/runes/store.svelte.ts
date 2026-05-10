@@ -41,6 +41,16 @@ class AppState {
         isEvalCopy: true
     });
 
+    // Update Data
+    updateData = $state<{
+        version: string,
+        body: string,
+        date: string,
+        isCritical: boolean,
+        available: boolean,
+        rawUpdate: any
+    } | null>(null);
+
     // Runtime state (Logs, active tabs, etc)
     instanceRuntime = $state<Record<string, { 
         logs: (ParsedLog | string)[], 
@@ -53,6 +63,8 @@ class AppState {
 
     // Global Settings
     settings = $state({
+        manualUpdate: false, // Default: automatic/standard notification
+        lastIgnoredVersion: "", // Stores the version string of the last dismissed update
         console: {
             fontFamily: "JetBrains Mono",
             fontSize: 14,

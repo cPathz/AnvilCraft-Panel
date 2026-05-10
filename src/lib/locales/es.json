@@ -51,6 +51,7 @@
     "btn_noise_show": "Mostrar todo (incluido ruido)",
     "btn_noise_hide": "Ocultar ruido (filtro inteligente)",
     "btn_clear_console": "Limpiar consola",
+    "btn_clear_errors": "Limpiar errores",
     "btn_force_stop": "Forzar Detención",
     "btn_stop": "Detener",
     "btn_start": "Iniciar",

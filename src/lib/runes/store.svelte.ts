@@ -104,6 +104,13 @@ class AppState {
         this.parseLog(id, log.raw);
     }
 
+    clearIssues(id: string) {
+        const runtime = this.instanceRuntime[id];
+        if (runtime) {
+            runtime.issues = [];
+        }
+    }
+
     parseLog(id: string, line: string) {
 
         // Strip ANSI escape codes first

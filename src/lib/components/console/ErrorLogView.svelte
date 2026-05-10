@@ -39,6 +39,27 @@
             </div>
         </div>
     {:else}
+        <!-- Sticky Header with Clear Button -->
+        <div class="sticky top-0 z-10 bg-[#1e293b]/80 backdrop-blur-md px-8 py-4 border-b border-white/5 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                <h3 class="text-sm font-bold text-zinc-100 uppercase tracking-widest">
+                    {$_('instance_detail.tab_errors')}
+                </h3>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-bold border border-red-500/20">
+                    {issues.length}
+                </span>
+            </div>
+
+            <button 
+                onclick={() => appState.clearIssues(instance.id)}
+                class="group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-400 hover:text-red-400 hover:bg-red-400/10 transition-all border border-transparent hover:border-red-400/20 active:scale-95"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:rotate-12 transition-transform"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                {$_('instance_detail.btn_clear_errors')}
+            </button>
+        </div>
+
         <div class="flex-1 overflow-y-auto px-8 py-6 space-y-4 custom-scrollbar">
             {#each issues as log, i (i)}
                 <div 

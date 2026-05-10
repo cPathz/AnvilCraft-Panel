@@ -51,6 +51,7 @@
     "btn_noise_show": "Show all (including noise)",
     "btn_noise_hide": "Hide noise (smart filter)",
     "btn_clear_console": "Clear console",
+    "btn_clear_errors": "Clear errors",
     "btn_force_stop": "Force Stop",
     "btn_stop": "Stop",
     "btn_start": "Start",

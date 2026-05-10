@@ -91,8 +91,8 @@ class AppState {
             runtime.logs = runtime.logs.slice(-2000);
         }
 
-        // Si es un error, añadir a la pestaña de errores
-        if (log.level === 'ERROR' || log.level === 'FATAL') {
+        // Si es un error o advertencia, añadir a la pestaña de errores
+        if (log.level === 'ERROR' || log.level === 'FATAL' || log.level === 'WARN') {
             runtime.issues.push(log);
             // Limitar a 500 errores para no saturar memoria
             if (runtime.issues.length > 500) {

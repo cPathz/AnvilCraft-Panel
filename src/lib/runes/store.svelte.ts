@@ -44,7 +44,8 @@ class AppState {
     // Runtime state (Logs, active tabs, etc)
     instanceRuntime = $state<Record<string, { 
         logs: (ParsedLog | string)[], 
-        activeTab: "console" | "settings" | "addons", 
+        issues: ParsedLog[],
+        activeTab: "console" | "settings" | "addons" | "errors", 
         commandHistory: string[],
         players: string[],
         addonsType: 'plugins' | 'mods' | 'none'
@@ -66,6 +67,7 @@ class AppState {
         if (!this.instanceRuntime[id]) {
             this.instanceRuntime[id] = { 
                 logs: [], 
+                issues: [],
                 activeTab: "console", 
                 commandHistory: [],
                 players: [],
@@ -78,9 +80,31 @@ class AppState {
         return this.instanceRuntime[id];
     }
 
-    parseLog(id: string, line: string) {
+    addLog(id: string, log: ParsedLog) {
+        this.ensureRuntime(id);
         const runtime = this.instanceRuntime[id];
         if (!runtime) return;
+
+        // Añadir a logs principales
+        runtime.logs.push(log);
+        if (runtime.logs.length > 2000) {
+            runtime.logs = runtime.logs.slice(-2000);
+        }
+
+        // Si es un error, añadir a la pestaña de errores
+        if (log.level === 'ERROR' || log.level === 'FATAL') {
+            runtime.issues.push(log);
+            // Limitar a 500 errores para no saturar memoria
+            if (runtime.issues.length > 500) {
+                runtime.issues = runtime.issues.slice(-500);
+            }
+        }
+
+        // Procesar detección de jugadores, versiones, etc.
+        this.parseLog(id, log.raw);
+    }
+
+    parseLog(id: string, line: string) {
 
         // Strip ANSI escape codes first
         const cleanLine = line.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').trim();

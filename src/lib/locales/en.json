@@ -55,6 +55,8 @@
     "btn_stop": "Stop",
     "btn_start": "Start",
     "tab_console": "Console",
+    "tab_addons": "Addons",
+    "tab_errors": "Errors",
     "tab_settings": "Settings",
     "btn_delete": "Delete",
     "toast_name_updated": "Name updated successfully",
@@ -275,5 +277,9 @@
     "no_addons": "No {type} found",
     "no_addons_desc": "The folder is empty. Add JAR files to get started.",
     "community": "Community"
+  },
+  "errors": {
+    "empty_title": "No critical plugin errors detected",
+    "empty_subtitle": "AnvilCraft's intelligent analysis system is monitoring the logs..."
   }
 }

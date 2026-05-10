@@ -11,6 +11,7 @@
     import ConsoleView from "$lib/components/console/ConsoleView.svelte";
     import InstanceSettings from "$lib/components/settings/InstanceSettings.svelte";
     import AddonsView from "$lib/components/views/AddonsView.svelte";
+    import ErrorLogView from "$lib/components/console/ErrorLogView.svelte";
 
     let instance = $derived(appState.selectedInstance!);
     let addonsLoading = $state(false);
@@ -40,7 +41,7 @@
 
     // Tab Management
     let activeTab = $derived(runtime.activeTab);
-    function setActiveTab(tab: "console" | "settings" | "addons") {
+    function setActiveTab(tab: "console" | "settings" | "addons" | "errors") {
         appState.ensureRuntime(instance.id);
         const r = appState.getRuntime(instance.id);
         if (r) r.activeTab = tab;
@@ -54,10 +55,10 @@
     // Settings Dirty State (Bound from InstanceSettings)
     let settingsIsDirty = $state(false);
     let showConfirmModal = $state(false);
-    let pendingTab = $state<"console" | "settings" | "addons" | null>(null);
+    let pendingTab = $state<"console" | "settings" | "addons" | "errors" | null>(null);
 
     // --- Tab Interception Logic ---
-    function handleTabChange(tab: "console" | "settings" | "addons") {
+    function handleTabChange(tab: "console" | "settings" | "addons" | "errors") {
         if (activeTab === "settings" && tab !== "settings" && settingsIsDirty) {
             pendingTab = tab;
             showConfirmModal = true;
@@ -584,6 +585,29 @@
                     {/if}
                 </button>
             {/if}
+
+            <button
+                onclick={() => handleTabChange("errors")}
+                class="pb-2 text-sm font-bold relative transition-colors select-none flex items-center gap-2 {activeTab ===
+                'errors'
+                    ? 'text-white'
+                    : 'text-zinc-500 hover:text-zinc-300'}"
+            >
+                {$_("instance_detail.tab_errors")}
+                <!-- Badge -->
+                <span class="flex h-4 min-w-[1rem] px-1 items-center justify-center rounded-full text-[10px] font-bold transition-all border {runtime.issues.length > 0 
+                    ? 'bg-red-500 text-white border-red-400/50 shadow-lg shadow-red-500/20' 
+                    : 'bg-zinc-800 text-zinc-500 border-white/5 shadow-inner'}">
+                    {runtime.issues.length}
+                </span>
+                
+                {#if activeTab === "errors"}
+                    <div
+                        class="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                        transition:fade
+                    ></div>
+                {/if}
+            </button>
         </div>
 
         {#if !isServerRunning && activeTab === "settings"}
@@ -668,6 +692,13 @@
                 transition:fade={{ duration: 150 }}
             >
                 <AddonsView {instance} bind:loading={addonsLoading} bind:this={addonsView} />
+            </div>
+        {:else if activeTab === "errors"}
+            <div
+                class="absolute inset-0 flex flex-col"
+                transition:fade={{ duration: 150 }}
+            >
+                <ErrorLogView />
             </div>
         {/if}
     </div>

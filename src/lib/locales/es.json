@@ -56,6 +56,8 @@
     "btn_start": "Iniciar",
     "tab_console": "Consola",
     "tab_settings": "Ajustes",
+    "tab_addons": "Complementos",
+    "tab_errors": "Errores",
     "btn_delete": "Eliminar",
     "toast_name_updated": "Nombre actualizado correctamente",
     "toast_name_error": "Error al actualizar el nombre: ",
@@ -275,5 +277,9 @@
     "toast_install_error": "Error al instalar complementos: ",
     "locked_tooltip": "Servidor encendido",
     "community": "Comunidad"
+  },
+  "errors": {
+    "empty_title": "No se detectaron errores críticos en los plugins",
+    "empty_subtitle": "El sistema de análisis inteligente de AnvilCraft está monitoreando los logs..."
   }
 }

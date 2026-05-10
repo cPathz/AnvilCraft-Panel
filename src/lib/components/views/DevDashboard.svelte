@@ -224,18 +224,6 @@
                 <div class="max-w-6xl mr-auto space-y-8">
                     <!-- Tab Content -->
                     {#if activeTab === "tab_commands"}
-                        <!-- Console Settings Toggle -->
-                        <section in:fade class="flex gap-3 items-center p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/50">
-                            <span class="text-sm font-bold text-zinc-400 uppercase tracking-widest">Console Settings:</span>
-                            <button
-                                onclick={() => (appState.applyConsoleSettings = !appState.applyConsoleSettings)}
-                                class="px-4 py-2 rounded-lg font-bold transition-all {appState.applyConsoleSettings
-                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-                                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'}"
-                            >
-                                {appState.applyConsoleSettings ? '✓ Enabled' : '○ Disabled'}
-                            </button>
-                        </section>
 
                         <!-- Stats Section -->
                         {#if stats}

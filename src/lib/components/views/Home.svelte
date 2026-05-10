@@ -1,6 +1,54 @@
 <script lang="ts">
     import { _ } from "svelte-i18n";
     import { appState } from "$lib/runes/store.svelte";
+    import { openUrl } from "@tauri-apps/plugin-opener";
+    import { fade, scale } from "svelte/transition";
+    import { relaunch } from "@tauri-apps/plugin-process";
+    import { toast } from "$lib/runes/toast.svelte";
+
+    // Interaction State
+    let showUpdateConfirm = $state(false);
+    let showRedirectConfirm = $state(false);
+    
+    // Installation State
+    let downloading = $state(false);
+    let downloadProgress = $state(0);
+
+    const mockUrl = "https://github.com/cPathz/AnvilCraft-Panel/releases/latest";
+
+    async function handleInstall() {
+        if (!appState.updateData?.rawUpdate) return;
+        
+        try {
+            downloading = true;
+            let downloaded = 0;
+            const update = appState.updateData.rawUpdate;
+            let contentLength: number | undefined = 0;
+            
+            await update.downloadAndInstall((event: any) => {
+                switch (event.event) {
+                    case 'Started':
+                        contentLength = event.data.contentLength;
+                        break;
+                    case 'Progress':
+                        downloaded += event.data.chunkLength;
+                        if (contentLength) {
+                            downloadProgress = Math.round((downloaded / contentLength) * 100);
+                        }
+                        break;
+                    case 'Finished':
+                        break;
+                }
+            });
+
+            toast.success($_('settings.install_update'));
+            await relaunch();
+        } catch (e) {
+            console.error(e);
+            toast.error($_('settings.update_error') + ": " + e);
+            downloading = false;
+        }
+    }
 
     // "Rising Particles" Logic (Adapted from SCSS loop)
     const particles = Array.from({ length: 20 }).map((_, i) => ({
@@ -181,6 +229,52 @@
         }
     </style>
 
+    <!-- Update Notification Banner (Real Logic) - Absolute Top Center -->
+    {#if appState.updateData}
+        <div class="absolute top-4 left-1/2 -translate-x-1/2 w-fit max-w-sm z-50 animate-enter" transition:fade>
+            <div 
+                class="relative group cursor-pointer block text-left"
+                role="button"
+                tabindex="0"
+                onclick={() => showUpdateConfirm = true}
+                onkeydown={(e) => e.key === 'Enter' && (showUpdateConfirm = true)}
+            >
+                <!-- Glow Effect (Amber/Orange) -->
+                <div class="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+                
+                <!-- Main Card -->
+                <div class="relative px-4 py-3 bg-[#0f172a]/80 backdrop-blur-xl border border-amber-500/20 rounded-2xl flex items-center gap-4 shadow-2xl transition-transform active:scale-95">
+                    <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                    </div>
+                    <div class="flex flex-col flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-white font-bold text-[17px]">
+                                {appState.updateData.isCritical ? 'Actualización Crítica' : '¡Actualización Disponible!'}
+                            </span>
+                            <span class="px-1.5 py-0.5 rounded {appState.updateData.isCritical ? 'bg-red-500 text-white' : 'bg-amber-500 text-black'} text-[11px] font-black uppercase tracking-wider shadow-lg">
+                                v{appState.updateData.version}
+                            </span>
+                        </div>
+                        <p class="text-zinc-400 text-[14px] font-medium leading-tight">
+                            Hay mejoras listas para instalar. 
+                            <button 
+                                class="text-amber-400 font-bold hover:underline"
+                                onclick={(e) => { e.stopPropagation(); showRedirectConfirm = true; }}
+                            >
+                                Ver cambios
+                            </button>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {/if}
+
     <!-- Content -->
     <div class="relative z-10 flex flex-col items-center">
         <!-- Welcome Text -->
@@ -227,3 +321,118 @@
         </button>
     </div>
 </div>
+
+<!-- Update Confirmation Dialog -->
+{#if showUpdateConfirm}
+    <div 
+        class="fixed inset-0 z-[100] flex items-center justify-center p-6"
+        transition:fade={{ duration: 200 }}
+    >
+        <!-- Overlay -->
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick={() => showUpdateConfirm = false}></div>
+        
+        <!-- Modal -->
+        <div 
+            class="relative w-full max-w-[360px] bg-[#111827] border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden p-7 flex flex-col items-center text-center gap-5"
+            transition:scale={{ duration: 300, start: 0.9, opacity: 0 }}
+        >
+            <div class="w-14 h-14 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20 shadow-inner">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+            </div>
+            
+            <div class="space-y-1.5">
+                <h2 class="text-xl font-black text-white leading-tight">¿Deseas actualizar a la versión {mockVersion}?</h2>
+                <p class="text-zinc-400 text-xs font-medium px-2">Esta acción reiniciará la aplicación para aplicar los cambios.</p>
+            </div>
+            
+            <div class="flex flex-col w-full gap-2.5 mt-1">
+                {#if downloading}
+                    <div class="w-full space-y-2 my-2 animate-pulse">
+                        <div class="flex justify-between text-[10px] font-black uppercase tracking-widest text-blue-400">
+                            <span>Descargando</span>
+                            <span>{downloadProgress}%</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                            <div 
+                                class="h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-300 ease-out" 
+                                style="width: {downloadProgress}%"
+                            ></div>
+                        </div>
+                        <p class="text-[9px] text-zinc-500 italic">Preparando actualización...</p>
+                    </div>
+                {:else}
+                    <button 
+                        class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98]"
+                        onclick={handleInstall}
+                    >
+                        Sí, actualizar ahora
+                    </button>
+                    <button 
+                        class="w-full py-2.5 bg-white/5 hover:bg-white/10 text-zinc-500 text-xs font-bold rounded-xl transition-all active:scale-[0.98]"
+                        onclick={() => showUpdateConfirm = false}
+                    >
+                        Quizás luego
+                    </button>
+                {/if}
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Redirect Confirmation Dialog -->
+{#if showRedirectConfirm}
+    <div 
+        class="fixed inset-0 z-[100] flex items-center justify-center p-6"
+        transition:fade={{ duration: 200 }}
+    >
+        <!-- Overlay -->
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick={() => showRedirectConfirm = false}></div>
+        
+        <!-- Modal -->
+        <div 
+            class="relative w-full max-w-[360px] bg-[#111827] border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden p-7 flex flex-col items-center text-center gap-5"
+            transition:scale={{ duration: 300, start: 0.9, opacity: 0 }}
+        >
+            <div class="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20 shadow-inner">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+            </div>
+            
+            <div class="space-y-1.5">
+                <h2 class="text-xl font-black text-white leading-tight">Estás siendo redirigido</h2>
+                <p class="text-zinc-400 text-xs font-medium px-2">
+                    Vas a salir de AnvilCraft para visitar un sitio externo:
+                </p>
+                <div class="bg-black/40 p-2.5 rounded-xl border border-white/5 mx-2 mt-1">
+                    <p class="text-amber-500/80 font-mono text-[10px] break-all">github.com/cPathz/AnvilCraft-Panel/releases/latest</p>
+                </div>
+                <p class="text-zinc-500 text-[10px] mt-1 italic">¿Deseas continuar en tu navegador?</p>
+            </div>
+            
+            <div class="flex flex-col w-full gap-2.5 mt-1">
+                <button 
+                    class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-amber-900/20 active:scale-[0.98]"
+                    onclick={async () => {
+                        showRedirectConfirm = false;
+                        await openUrl(mockUrl);
+                    }}
+                >
+                    Aceptar y Continuar
+                </button>
+                <button 
+                    class="w-full py-2.5 bg-white/5 hover:bg-white/10 text-zinc-500 text-xs font-bold rounded-xl transition-all active:scale-[0.98]"
+                    onclick={() => showRedirectConfirm = false}
+                >
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+{/if}

@@ -24,7 +24,7 @@
 
     // Derived from runtime store for persistence
     let runtime = $derived(
-        appState.getRuntime(instance.id) || { logs: [], activeTab: "console", addonsType: 'none' },
+        appState.getRuntime(instance.id) || { logs: [], issues: [], activeTab: "console", addonsType: 'none' },
     );
 
     // Detect Addons Type

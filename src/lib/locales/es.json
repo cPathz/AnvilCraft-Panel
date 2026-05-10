@@ -281,6 +281,13 @@
   },
   "errors": {
     "empty_title": "No se detectaron errores críticos en los plugins",
-    "empty_subtitle": "El sistema de análisis inteligente de AnvilCraft está monitoreando los logs..."
+    "empty_subtitle": "El sistema de análisis inteligente de AnvilCraft está monitoreando los logs...",
+    "table_intro": "A continuación puedes encontrar todos los mensajes de advertencia y error creados por el servidor.",
+    "col_id": "ID",
+    "col_type": "Tipo",
+    "col_time": "Hora",
+    "col_origin": "Origen",
+    "col_message": "Mensaje",
+    "origin_system": "Sistema"
   }
 }

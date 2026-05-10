@@ -96,8 +96,8 @@
                         if (runtime) {
                             runtime.logs.push(parsedLog);
                             appState.parseLog(id, parsedLog.raw);
-                            if (runtime.logs.length > 1000) {
-                                runtime.logs = runtime.logs.slice(-1000);
+                            if (runtime.logs.length > 2000) {
+                                runtime.logs = runtime.logs.slice(-2000);
                             }
                         }
                     },

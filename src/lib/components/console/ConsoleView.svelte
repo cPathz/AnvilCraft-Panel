@@ -143,37 +143,143 @@
         }
     }
 
-    function formatLog(log: ParsedLog | string): { text: string; level: string; html?: string; isStacktrace: boolean } {
+    function formatLog(log: ParsedLog | string): { text: string; level: string; html?: string; isStacktrace: boolean; opacity: string; levelColor: string } {
         // Fallback para strings planos (compatibilidad)
         if (typeof log === 'string') {
             const level = log.includes("ERROR") || log.includes("stderr") ? "ERROR" :
                          log.includes("WARN") ? "WARN" : "INFO";
-            return { text: log, level, isStacktrace: false };
-        }
+            
+            let displayText = log;
+            if (appState.logFormat === 'formato2') {
+                displayText = log.replace(/^\[\d{2}:\d{2}:\d{2}\s+([A-Z]+)\]:\s*/, '[$1]: ');
+            }
 
-        // Si el formato es RAW, devolvemos el texto tal cual viene del jar, sin colores ni procesado ANSI
-        if (appState.logFormat === 'raw') {
             return { 
-                text: log.raw, 
-                level: 'INFO', // Color gris por defecto para RAW
-                isStacktrace: false 
+                text: displayText, 
+                level, 
+                isStacktrace: false, 
+                opacity: 'opacity-100',
+                levelColor: getLevelColor(level)
             };
         }
 
-        // MODO FORMATO 1: Determinar texto a mostrar (Mensaje limpio)
+        // MODO RAW
+        if (appState.logFormat === 'raw') {
+            return { 
+                text: log.raw, 
+                level: 'INFO', 
+                isStacktrace: false,
+                opacity: 'opacity-100',
+                levelColor: 'text-gray-400'
+            };
+        }
+
+        // Determinar color base y hitos (Compartido por Formato 2 y 3)
+        let colorClass = getLevelColor(log.level);
+        const msg = log.message;
+        const raw = log.raw;
+
+        if (raw.includes("Starting org.bukkit.craftbukkit.Main") || raw.includes("Starting net.minecraft.server.Main")) {
+            colorClass = 'text-cyan-400';
+        } else if (msg.includes("Done") && msg.includes("type \"help\"")) {
+            colorClass = 'text-green-400';
+        } else if (msg.includes("Stopping the server")) {
+            colorClass = 'text-orange-400';
+        } else if (msg.includes("Stopping server")) {
+            colorClass = 'text-red-400';
+        } else if (log.level === 'INFO' || log.level === 'UNKNOWN') {
+            colorClass = 'text-zinc-300';
+        }
+
+        // MODO FORMATO 2: Estética exclusiva (Colores personalizados AnvilCraft)
+        if (appState.logFormat === 'formato2') {
+            const cleanLevel = log.level.includes('/') ? log.level.split('/').pop() : log.level;
+            // Ocultar el tag de nivel si el modo compacto está activo
+            const levelTag = (cleanLevel !== 'UNKNOWN' && !appState.hideConsoleLevels) ? `[${cleanLevel}]: ` : "";
+            
+            const isSystemThread = log.plugin && (
+                log.plugin.toLowerCase().includes('thread') || 
+                log.plugin.toLowerCase().includes('servermain')
+            );
+            const pluginTag = (log.plugin && !isSystemThread) ? `[${log.plugin}] ` : "";
+            
+            // Etiqueta de tiempo opcional
+            const timeTag = (log.timestamp && appState.showConsoleTimestamps) ? `[${log.timestamp}] ` : "";
+
+            let displayText = "";
+            if (levelTag || pluginTag || timeTag) {
+                displayText = `${timeTag}${levelTag}${pluginTag}${log.message}`;
+            } else {
+                // Fallback agresivo para limpiar timestamps si el nivel es desconocido
+                displayText = log.raw
+                    .replace(/^\[\d{2}:\d{2}:\d{2}\s+/, '[') // Cambia [12:34:56 INFO] -> [INFO]
+                    .replace(/^\[\d{2}:\d{2}:\d{2}\]\s+/, ''); // Elimina [12:34:56]
+            }
+
+            return { 
+                text: displayText, 
+                level: log.level, 
+                html: undefined, 
+                isStacktrace: log.is_stacktrace_line,
+                opacity: 'opacity-100',
+                levelColor: colorClass
+            };
+        }
+
+        // MODO FORMATO 3: Estética "Fiel al Desarrollador" (ANSI Original + Estructura Limpia)
+        if (appState.logFormat === 'formato3') {
+            const cleanLevel = log.level.includes('/') ? log.level.split('/').pop() : log.level;
+            // Ocultar el tag de nivel si el modo compacto está activo
+            const levelTag = (cleanLevel !== 'UNKNOWN' && !appState.hideConsoleLevels) ? `[${cleanLevel}]: ` : "";
+            
+            const isSystemThread = log.plugin && (
+                log.plugin.toLowerCase().includes('thread') || 
+                log.plugin.toLowerCase().includes('servermain')
+            );
+
+            // Solo ocultar el tag si el mensaje ya empieza literalmente con "[NombrePlugin]" (evita duplicidad)
+            const cleanMessage = log.message.replace(/\x1b\[[0-9;]*m/g, '').trim();
+            const messageAlreadyHasPlugin = log.plugin && cleanMessage.startsWith(`[${log.plugin}]`);
+            const pluginTag = (log.plugin && !isSystemThread && !messageAlreadyHasPlugin) ? `[${log.plugin}] ` : "";
+
+            // Etiqueta de tiempo opcional
+            const timeTag = (log.timestamp && appState.showConsoleTimestamps) ? `[${log.timestamp}] ` : "";
+
+            // Para el formato 3, si el color es el default (zinc), usamos el gris de RAW para toda la línea y sus tags
+            const finalColorClass = colorClass === 'text-zinc-300' ? 'text-gray-400' : colorClass;
+
+            // Procesar los colores ANSI originales del mensaje
+            const htmlContent = log.has_ansi_codes ? convertAnsiToHtml(log.message) : null;
+            
+            let finalHtml = htmlContent;
+            if (finalHtml) {
+                // Usamos el color final para los tags
+                finalHtml = `<span class="${finalColorClass}">${timeTag}${levelTag}${pluginTag}</span>${finalHtml}`;
+            }
+
+            return { 
+                text: `${timeTag}${levelTag}${pluginTag}${log.message}`, 
+                level: cleanLevel || 'INFO', 
+                html: finalHtml || undefined, 
+                isStacktrace: log.is_stacktrace_line,
+                opacity: 'opacity-100',
+                levelColor: finalColorClass
+            };
+        }
+
+        // MODO FORMATO 1: Estética original (vibrante)
         const displayText = log.message || log.raw;
-        
-        // Convertir ANSI a HTML si el backend detectó códigos ANSI
         const htmlContent = log.has_ansi_codes ? convertAnsiToHtml(displayText) : null;
 
         return { 
             text: displayText, 
             level: log.level, 
             html: htmlContent || undefined, 
-            isStacktrace: log.is_stacktrace_line 
+            isStacktrace: log.is_stacktrace_line,
+            opacity: 'opacity-100',
+            levelColor: getLevelColor(log.level)
         };
     }
-
 
     async function sendCommand() {
         if (!commandInput.trim()) return;
@@ -640,10 +746,14 @@
                 bind:this={consoleContainer}
                 role="group"
             >
-                {#each logs.slice(-200) as log}
+                <!-- 
+                    NOTA DE ESCALABILIDAD: Si se desea aumentar a >1000 líneas, 
+                    consultar CONSOLE_PERFORMANCE.md para implementar Virtual Scrolling.
+                -->
+                {#each logs.slice(-500) as log}
                     {@const formatted = formatLog(log)}
                     {@const baseClass = appState.wrapConsoleText ? 'break-words whitespace-pre-wrap' : 'whitespace-pre'}
-                    {@const levelColor = getLevelColor(formatted.level)}
+                    {@const levelColor = formatted.levelColor}
                     
                     {#if formatted.isStacktrace}
                         <!-- Línea de Stacktrace: Identación extra, fuente pequeña y opacidad reducida -->
@@ -656,7 +766,7 @@
                         </div>
                     {:else}
                         <!-- Línea de Log Normal: Color según nivel (INFO, WARN, ERROR) -->
-                        <div class="px-2 {levelColor} hover:bg-white/5 {baseClass}">
+                        <div class="px-2 {levelColor} {formatted.opacity} hover:bg-white/5 {baseClass}">
                             {#if formatted.html}
                                 {@html formatted.html}
                             {:else}
@@ -795,6 +905,26 @@
                             : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
                     >
                         Formato 1
+                    </button>
+
+                    <!-- Formato 2 Button -->
+                    <button
+                        onclick={() => (appState.logFormat = 'formato2')}
+                        class="w-full px-3 py-2 text-[11px] font-bold uppercase tracking-wider rounded transition-colors {appState.logFormat === 'formato2'
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                            : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
+                    >
+                        Formato 2
+                    </button>
+
+                    <!-- Formato 3 Button -->
+                    <button
+                        onclick={() => (appState.logFormat = 'formato3')}
+                        class="w-full px-3 py-2 text-[11px] font-bold uppercase tracking-wider rounded transition-colors {appState.logFormat === 'formato3'
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                            : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
+                    >
+                        Formato 3
                     </button>
                 </div>
             {/if}

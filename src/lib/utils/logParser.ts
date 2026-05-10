@@ -41,7 +41,7 @@ export function parseMinecraftLog(rawLog: string): LogEntry {
   // Fallback: texto plano (logs de inicio, etc.)
   const { source, cleanMessage } = extractSource(cleanLog);
   return {
-    timestamp: new Date().toLocaleTimeString('es-ES'),
+    timestamp: '', // No inventar timestamp si no viene en el log
     level: 'INFO',
     source,
     message: cleanMessage.trim()

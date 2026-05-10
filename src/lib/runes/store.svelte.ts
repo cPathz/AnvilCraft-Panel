@@ -30,7 +30,9 @@ class AppState {
     // Console Settings Toggle (Dev only)
     applyConsoleSettings = $state<boolean>(true);
     wrapConsoleText = $state<boolean>(false);
-    logFormat = $state<'raw' | 'formato1'>('formato1');
+    hideConsoleLevels = $state<boolean>(false);
+    showConsoleTimestamps = $state<boolean>(false);
+    logFormat = $state<'raw' | 'formato1' | 'formato2' | 'formato3'>('formato1');
 
     // App Identity
     appInfo = $state({

@@ -91,15 +91,7 @@
                     "server-log",
                     (event) => {
                         const [id, parsedLog] = event.payload;
-                        appState.ensureRuntime(id);
-                        const runtime = appState.getRuntime(id);
-                        if (runtime) {
-                            runtime.logs.push(parsedLog);
-                            appState.parseLog(id, parsedLog.raw);
-                            if (runtime.logs.length > 2000) {
-                                runtime.logs = runtime.logs.slice(-2000);
-                            }
-                        }
+                        appState.addLog(id, parsedLog);
                     },
                 );
 

@@ -1,4 +1,5 @@
 {
+  "identifier": "AnvilCraftPanel",
   "bundle": {
     "windows": {
       "msix": {

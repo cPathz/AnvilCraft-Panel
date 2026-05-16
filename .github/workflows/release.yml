@@ -16,10 +16,10 @@ jobs:
         include:
           - platform: "windows-latest"
             target: "standalone"
-            args: ""
+            args: "--bundles nsis"
           - platform: "windows-latest"
             target: "msix"
-            args: "--config src-tauri/tauri.msix.conf.json"
+            args: "--bundles msix --config src-tauri/tauri.msix.conf.json"
 
     runs-on: ${{ matrix.platform }}
     steps:

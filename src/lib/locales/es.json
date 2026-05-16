@@ -11,7 +11,10 @@
     "toast_success": "Éxito",
     "toast_error": "Error",
     "toast_warning": "Advertencia",
-    "toast_info": "Información"
+    "toast_info": "Información",
+    "experimental": "Experimental",
+    "experimental_feature": "Función Experimental",
+    "new": "Nuevo"
   },
   "nav": {
     "home": "Inicio",
@@ -23,7 +26,11 @@
     "welcome": "Bienvenido a AnvilCraft",
     "subtitle_1": "Gestiona tus servidores locales de Minecraft",
     "subtitle_2": "Simple, rápido y potente.",
-    "create": "Crear nueva instancia"
+    "create": "Crear nueva instancia",
+    "update_restart_warning": "Esta acción reiniciará la aplicación para aplicar los cambios.",
+    "update_preparing": "Preparando actualización...",
+    "redirect_title": "Estás siendo redirigido",
+    "redirect_confirm": "¿Deseas continuar en tu navegador?"
   },
   "gallery": {
     "title": "Mis Instancias",
@@ -150,15 +157,29 @@
     "java_retired_tip": "Esta versión ha sido retirada por Adoptium. Se recomienda usar Java 17.",
     "java_folder_info": "Los Javas se descargan en ",
     "java_args": "Argumentos Java",
-    "btn_reset": "Restaurar Valores"
+    "btn_reset": "Restaurar Valores",
+    "export_title": "Exportar Instancia",
+    "export_desc": "Empaqueta los archivos del servidor en un archivo ZIP.",
+    "export_full": "Empaquetar instancia completa",
+    "export_full_desc": "Incluye metadatos de AnvilCraft para reimportar en otra instalación.",
+    "export_btn": "Exportar",
+    "export_exporting": "Exportando...",
+    "toast_export_success": "Instancia exportada correctamente",
+    "toast_export_error": "Error al exportar: ",
+    "export_step_starting": "Iniciando...",
+    "export_step_packing": "Empaquetando...",
+    "export_step_verifying": "Verificando integridad..."
   },
   "dev": {
     "title": "Panel de Desarrollador",
     "subtitle": "Herramientas internas de desarrollo.",
     "tab_commands": "Comandos",
-    "tab_menu2": "Menú 2",
+    "tab_menu2": "Ajustes de Marca",
     "tab_menu3": "Menú 3",
     "tab_menu4": "Menú 4",
+    "eval_copy_toggle": "Marca de Agua (Copia de Evaluación)",
+    "eval_copy_on": "Activada",
+    "eval_copy_off": "Desactivada",
     "build": "Build: ",
     "stat_loaded": "VERSIONES CARGADAS",
     "stat_latest": "ÚLTIMA VERSIÓN",
@@ -202,7 +223,16 @@
     "install_update": "Instalar y Reiniciar",
     "downloading_update": "Descargando actualización...",
     "update_error": "Error durante la actualización",
-    "toast_force_close_error": "Error al forzar el cierre: "
+    "toast_force_close_error": "Error al forzar el cierre: ",
+    "updates_controlled_by_store": "Controlado por Microsoft Store",
+    "updates_controlled_by_store_desc": "Las actualizaciones se gestionan automáticamente a través de la tienda oficial.",
+    "zen_mode": "Modo Zen",
+    "zen_mode_desc": "Solo avisar una vez por actualización.",
+    "import_title": "Importar Instancia",
+    "import_desc": "Restaura un servidor desde un archivo .zip exportado previamente.",
+    "import_btn": "Importar Servidor",
+    "toast_import_success": "Instancia importada correctamente",
+    "toast_import_error": "Error al importar: "
   },
   "terminal": {
     "title": "Terminal",
@@ -299,7 +329,19 @@
     "toast_install_success": "Se han instalado {count} complementos",
     "toast_install_error": "Error al instalar complementos: ",
     "locked_tooltip": "Servidor encendido",
-    "community": "Comunidad"
+    "community": "Comunidad",
+    "install_modal_title": "Instalar Complementos",
+    "install_modal_desc": "Revisa los archivos antes de proceder con la instalación.",
+    "status_invalid": "No es un complemento válido",
+    "status_exists": "Ya existe en el servidor",
+    "status_duplicate_selection": "Carga duplicada (Ya seleccionado)",
+    "status_update_available": "Actualización disponible",
+    "status_version_mismatch": "Versión diferente en selección",
+    "action_skip": "Omitir",
+    "action_overwrite": "Sobreescribir",
+    "action_update": "Actualizar",
+    "action_ignore": "Ignorar",
+    "btn_install_all": "Instalar {count} archivos"
   },
   "errors": {
     "empty_title": "No se detectaron errores críticos en los plugins",

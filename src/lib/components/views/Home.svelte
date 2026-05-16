@@ -266,7 +266,7 @@
                                 class="text-amber-400 font-bold hover:underline"
                                 onclick={(e) => { e.stopPropagation(); showRedirectConfirm = true; }}
                             >
-                                Ver cambios
+                                {$_('settings.check_updates')}
                             </button>
                         </p>
                     </div>
@@ -345,15 +345,15 @@
             </div>
             
             <div class="space-y-1.5">
-                <h2 class="text-xl font-black text-white leading-tight">¿Deseas actualizar a la versión {mockVersion}?</h2>
-                <p class="text-zinc-400 text-xs font-medium px-2">Esta acción reiniciará la aplicación para aplicar los cambios.</p>
+                <h2 class="text-xl font-black text-white leading-tight">{$_('settings.update_available')} (v{appState.updateData?.version})</h2>
+                <p class="text-zinc-400 text-xs font-medium px-2">{$_('home.update_restart_warning')}</p>
             </div>
             
             <div class="flex flex-col w-full gap-2.5 mt-1">
                 {#if downloading}
                     <div class="w-full space-y-2 my-2 animate-pulse">
                         <div class="flex justify-between text-[10px] font-black uppercase tracking-widest text-blue-400">
-                            <span>Descargando</span>
+                            <span>{$_('common.status_downloading')}</span>
                             <span>{downloadProgress}%</span>
                         </div>
                         <div class="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
@@ -362,14 +362,14 @@
                                 style="width: {downloadProgress}%"
                             ></div>
                         </div>
-                        <p class="text-[9px] text-zinc-500 italic">Preparando actualización...</p>
+                        <p class="text-[9px] text-zinc-500 italic">{$_('home.update_preparing')}</p>
                     </div>
                 {:else}
                     <button 
                         class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98]"
                         onclick={handleInstall}
                     >
-                        Sí, actualizar ahora
+                        {$_('common.toast_success')}
                     </button>
                     <button 
                         class="w-full py-2.5 bg-white/5 hover:bg-white/10 text-zinc-500 text-xs font-bold rounded-xl transition-all active:scale-[0.98]"
@@ -406,14 +406,14 @@
             </div>
             
             <div class="space-y-1.5">
-                <h2 class="text-xl font-black text-white leading-tight">Estás siendo redirigido</h2>
+                <h2 class="text-xl font-black text-white leading-tight">{$_('home.redirect_title')}</h2>
                 <p class="text-zinc-400 text-xs font-medium px-2">
-                    Vas a salir de AnvilCraft para visitar un sitio externo:
+                    {$_('settings.updates_desc')}
                 </p>
                 <div class="bg-black/40 p-2.5 rounded-xl border border-white/5 mx-2 mt-1">
-                    <p class="text-amber-500/80 font-mono text-[10px] break-all">github.com/cPathz/AnvilCraft-Panel/releases/latest</p>
+                    <p class="text-amber-500/80 font-mono text-[10px] break-all">{mockUrl}</p>
                 </div>
-                <p class="text-zinc-500 text-[10px] mt-1 italic">¿Deseas continuar en tu navegador?</p>
+                <p class="text-zinc-500 text-[10px] mt-1 italic">{$_('home.redirect_confirm')}</p>
             </div>
             
             <div class="flex flex-col w-full gap-2.5 mt-1">
@@ -424,13 +424,13 @@
                         await openUrl(mockUrl);
                     }}
                 >
-                    Aceptar y Continuar
+                    {$_('common.toast_success')}
                 </button>
                 <button 
                     class="w-full py-2.5 bg-white/5 hover:bg-white/10 text-zinc-500 text-xs font-bold rounded-xl transition-all active:scale-[0.98]"
                     onclick={() => showRedirectConfirm = false}
                 >
-                    Cancelar
+                    {$_('instance_detail.btn_cancel')}
                 </button>
             </div>
         </div>

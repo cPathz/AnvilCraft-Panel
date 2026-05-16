@@ -77,6 +77,7 @@ pub fn run() {
             commands::instance::update_instance_name,
             commands::instance::update_instance_version,
             commands::instance::save_instance_settings,
+            commands::instance::get_instance_port,
             commands::instance::open_instances_folder,
             commands::instance::detect_minecraft_version,
             commands::instance::create_instance_from_path,
@@ -88,6 +89,8 @@ pub fn run() {
             commands::instance::install_instance_addons,
             commands::instance::toggle_instance_addon,
             commands::instance::delete_instance_addon,
+            commands::instance::export_instance,
+            commands::instance::import_instance,
             // Server
             commands::server::start_instance,
             commands::server::stop_instance,
@@ -99,6 +102,7 @@ pub fn run() {
             // System
             commands::system::get_system_memory,
             commands::system::get_java_version,
+            commands::system::get_distribution_channel,
             // Dev
             commands::dev::import_minecraft_data,
             commands::dev::get_data_stats,

@@ -16,6 +16,29 @@ use tauri::{Emitter, Manager, State};
 use uuid::Uuid;
 use zip::ZipArchive;
 
+fn get_instance_info(app: &tauri::AppHandle, id: &str) -> Result<(PathBuf, Instance), String> {
+    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let instances_dir = app_data.join("instances");
+
+    if !instances_dir.exists() {
+        return Err("Instances directory not found".to_string());
+    }
+
+    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let json_path = entry.path().join("instance.json");
+        if json_path.exists() {
+            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
+            if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
+                if inst.id == id {
+                    return Ok((entry.path(), inst));
+                }
+            }
+        }
+    }
+    Err("Instance not found".to_string())
+}
+
 #[tauri::command]
 pub async fn create_instance(
     app: tauri::AppHandle,
@@ -228,42 +251,15 @@ pub async fn delete_instance(
     id: String,
 ) -> Result<(), String> {
     // 0. Resolve Instance Path First
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instances_dir = app_data.join("instances");
-
-    let mut target_path = PathBuf::new();
-    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let json_path = entry.path().join("instance.json");
-        if json_path.exists() {
-            let content = fs::read_to_string(json_path).unwrap_or_default();
-            if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
-                if inst.id == id {
-                    target_path = entry.path();
-                    break;
-                }
-            }
-        }
-    }
-
-    if !target_path.exists() {
-        return Ok(()); // Nothing to delete
-    }
+    let (target_path, _) = get_instance_info(&app, &id)?;
 
     // 1. Force Kill Orphan Processes (via Sysinfo)
     // Scans all processes for a java process running inside this instance folder
     {
         let sys = System::new_all();
-        // sys.refresh_processes(); REMOVED (new_all refreshes everything)
-
         let target_path_str = target_path.to_string_lossy().to_string();
 
         for (pid, process) in sys.processes() {
-            // process.name() is &str in newer or &OsStr in some?
-            // Error: "no method to_lowercase for &OsStr". So it is &OsStr?
-            // Wait, newer sysinfo returns &str for name().
-            // If error says &OsStr, then it returns &OsStr?
-            // Let's assume &OsStr and convert.
             if process
                 .name()
                 .to_string_lossy()
@@ -331,26 +327,13 @@ pub async fn update_instance_name(
     if name.trim().len() > 30 {
         return Err("Name too long".to_string());
     }
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instances_dir = app_data.join("instances");
-
-    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let json_path = entry.path().join("instance.json");
-        if json_path.exists() {
-            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
-            if let Ok(mut inst) = serde_json::from_str::<Instance>(&content) {
-                if inst.id == id {
-                    inst.name = name.clone();
-                    let new_json =
-                        serde_json::to_string_pretty(&inst).map_err(|e| e.to_string())?;
-                    fs::write(json_path, new_json).map_err(|e| e.to_string())?;
-                    return Ok(());
-                }
-            }
-        }
-    }
-    Err("Instance not found".to_string())
+    let (instance_path, mut inst) = get_instance_info(&app, &id)?;
+    
+    inst.name = name.clone();
+    let json_path = instance_path.join("instance.json");
+    let new_json = serde_json::to_string_pretty(&inst).map_err(|e| e.to_string())?;
+    fs::write(json_path, new_json).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -359,26 +342,13 @@ pub async fn update_instance_icon(
     id: String,
     icon: String,
 ) -> Result<(), String> {
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instances_dir = app_data.join("instances");
+    let (instance_path, mut inst) = get_instance_info(&app, &id)?;
 
-    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let json_path = entry.path().join("instance.json");
-        if json_path.exists() {
-            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
-            if let Ok(mut inst) = serde_json::from_str::<Instance>(&content) {
-                if inst.id == id {
-                    inst.icon = icon.clone();
-                    let new_json =
-                        serde_json::to_string_pretty(&inst).map_err(|e| e.to_string())?;
-                    fs::write(json_path, new_json).map_err(|e| e.to_string())?;
-                    return Ok(());
-                }
-            }
-        }
-    }
-    Err("Instance not found".to_string())
+    inst.icon = icon.clone();
+    let json_path = instance_path.join("instance.json");
+    let new_json = serde_json::to_string_pretty(&inst).map_err(|e| e.to_string())?;
+    fs::write(json_path, new_json).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -389,76 +359,46 @@ pub async fn update_instance_version(
     build: Option<String>,
     loader: Option<String>,
 ) -> Result<(), String> {
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instances_dir = app_data.join("instances");
+    let (instance_path, mut inst) = get_instance_info(&app, &id)?;
 
-    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let json_path = entry.path().join("instance.json");
-        if json_path.exists() {
-            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
-            if let Ok(mut inst) = serde_json::from_str::<Instance>(&content) {
-                if inst.id == id {
-                    inst.version = version;
-                    if build.is_some() {
-                        inst.build = build;
-                    }
-                    if let Some(l) = loader {
-                        inst.loader = match l.as_str() {
-                            "Fabric" => InstanceEngine::Fabric,
-                            "Forge" => InstanceEngine::Forge,
-                            "Paper" => InstanceEngine::Paper,
-                            "Spigot" => InstanceEngine::Spigot,
-                            "Purpur" => InstanceEngine::Purpur,
-                            "Folia" => InstanceEngine::Folia,
-                            "Velocity" => InstanceEngine::Velocity,
-                            "Waterfall" => InstanceEngine::Waterfall,
-                            "NeoForge" => InstanceEngine::NeoForge,
-                            "Quilt" => InstanceEngine::Quilt,
-                            _ => InstanceEngine::Vanilla,
-                        };
-                    }
-                    let new_json =
-                        serde_json::to_string_pretty(&inst).map_err(|e| e.to_string())?;
-                    fs::write(json_path, new_json).map_err(|e| e.to_string())?;
-                    return Ok(());
-                }
-            }
-        }
+    inst.version = version;
+    if build.is_some() {
+        inst.build = build;
     }
-    Err("Instance not found".to_string())
+    if let Some(l) = loader {
+        inst.loader = match l.as_str() {
+            "Fabric" => InstanceEngine::Fabric,
+            "Forge" => InstanceEngine::Forge,
+            "Paper" => InstanceEngine::Paper,
+            "Spigot" => InstanceEngine::Spigot,
+            "Purpur" => InstanceEngine::Purpur,
+            "Folia" => InstanceEngine::Folia,
+            "Velocity" => InstanceEngine::Velocity,
+            "Waterfall" => InstanceEngine::Waterfall,
+            "NeoForge" => InstanceEngine::NeoForge,
+            "Quilt" => InstanceEngine::Quilt,
+            _ => InstanceEngine::Vanilla,
+        };
+    }
+    let json_path = instance_path.join("instance.json");
+    let new_json = serde_json::to_string_pretty(&inst).map_err(|e| e.to_string())?;
+    fs::write(json_path, new_json).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
 pub async fn get_instance_addons_type(app: tauri::AppHandle, id: String) -> Result<String, String> {
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instances_dir = app_data.join("instances");
+    let (instance_path, _) = get_instance_info(&app, &id)?;
 
-    if !instances_dir.exists() {
-        return Ok("none".to_string());
+    let dot_minecraft = instance_path.join(".minecraft");
+    let mods_path = dot_minecraft.join("mods");
+    let plugins_path = dot_minecraft.join("plugins");
+    
+    if mods_path.exists() && mods_path.is_dir() {
+        return Ok("mods".to_string());
     }
-
-    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let json_path = entry.path().join("instance.json");
-        if json_path.exists() {
-            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
-            if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
-                if inst.id == id {
-                    let dot_minecraft = entry.path().join(".minecraft");
-                    let mods_path = dot_minecraft.join("mods");
-                    let plugins_path = dot_minecraft.join("plugins");
-                    
-                    if mods_path.exists() && mods_path.is_dir() {
-                        return Ok("mods".to_string());
-                    }
-                    if plugins_path.exists() && plugins_path.is_dir() {
-                        return Ok("plugins".to_string());
-                    }
-                    return Ok("none".to_string());
-                }
-            }
-        }
+    if plugins_path.exists() && plugins_path.is_dir() {
+        return Ok("plugins".to_string());
     }
     Ok("none".to_string())
 }
@@ -686,33 +626,20 @@ fn get_addons_internal(
 
 #[tauri::command]
 pub async fn get_instance_addons(app: tauri::AppHandle, id: String, force_scan: bool) -> Result<Vec<Addon>, String> {
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instances_dir = app_data.join("instances");
+    let (instance_path, _) = get_instance_info(&app, &id)?;
 
-    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let json_path = entry.path().join("instance.json");
-        if json_path.exists() {
-            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
-            if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
-                if inst.id == id {
-                    let dot_minecraft = entry.path().join(".minecraft");
-                    let mods_path = dot_minecraft.join("mods");
-                    let plugins_path = dot_minecraft.join("plugins");
-                    let cache_path = entry.path().join("addons_cache.json");
+    let dot_minecraft = instance_path.join(".minecraft");
+    let mods_path = dot_minecraft.join("mods");
+    let plugins_path = dot_minecraft.join("plugins");
+    let cache_path = instance_path.join("addons_cache.json");
 
-                    let target_dir = if mods_path.exists() {
-                        mods_path
-                    } else {
-                        plugins_path
-                    };
+    let target_dir = if mods_path.exists() {
+        mods_path
+    } else {
+        plugins_path
+    };
 
-                    return get_addons_internal(&target_dir, &cache_path, force_scan);
-                }
-            }
-        }
-    }
-    Err("Instance not found".to_string())
+    get_addons_internal(&target_dir, &cache_path, force_scan)
 }
 
 #[tauri::command]
@@ -721,107 +648,65 @@ pub async fn save_instance_settings(
     settings: InstanceSettings,
     app: tauri::AppHandle,
 ) -> Result<(), String> {
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instances_dir = app_data.join("instances");
+    let (instance_path, mut inst) = get_instance_info(&app, &instance_id)?;
+    
+    inst.settings = settings.clone();
+    let json_path = instance_path.join("instance.json");
+    let new_json = serde_json::to_string_pretty(&inst).map_err(|e| e.to_string())?;
+    fs::write(json_path, new_json).map_err(|e| e.to_string())?;
 
-    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let json_path = entry.path().join("instance.json");
-        if json_path.exists() {
-            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
-            if let Ok(mut inst) = serde_json::from_str::<Instance>(&content) {
-                if inst.id == instance_id {
-                    inst.settings = settings.clone();
-                    let new_json =
-                        serde_json::to_string_pretty(&inst).map_err(|e| e.to_string())?;
-                    fs::write(json_path, new_json).map_err(|e| e.to_string())?;
+    // Sync server.properties
+    let props_path = instance_path.join(".minecraft").join("server.properties");
+    sync_server_properties(&props_path, settings.port)?;
 
-                    // Sync server.properties
-                    let props_path = entry.path().join(".minecraft").join("server.properties");
-                    let _ = sync_server_properties(&props_path, settings.port);
-
-                    return Ok(());
-                }
-            }
-        }
-    }
-    Err("Instance not found".to_string())
+    Ok(())
 }
 
 #[tauri::command]
 pub async fn get_instance_max_players(app: tauri::AppHandle, id: String) -> Result<u16, String> {
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instances_dir = app_data.join("instances");
-
-    if instances_dir.exists() {
-        for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
-            let entry = entry.map_err(|e| e.to_string())?;
-            let json_path = entry.path().join("instance.json");
-            if json_path.exists() {
-                let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
-                if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
-                    if inst.id == id {
-                        let props_path = entry.path().join(".minecraft").join("server.properties");
-                        if props_path.exists() {
-                            if let Ok(props) = fs::read_to_string(props_path) {
-                                for line in props.lines() {
-                                    if line.starts_with("max-players=") {
-                                        if let Ok(p) = line
-                                            .replace("max-players=", "")
-                                            .trim()
-                                            .parse::<u16>()
-                                        {
-                                            return Ok(p);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        return Ok(20); // Default if not found
+    let (instance_path, _) = get_instance_info(&app, &id)?;
+    
+    let props_path = instance_path.join(".minecraft").join("server.properties");
+    if props_path.exists() {
+        if let Ok(props) = fs::read_to_string(props_path) {
+            for line in props.lines() {
+                if line.starts_with("max-players=") {
+                    if let Ok(p) = line
+                        .replace("max-players=", "")
+                        .trim()
+                        .parse::<u16>()
+                    {
+                        return Ok(p);
                     }
                 }
             }
         }
     }
-    Err("Instance not found".to_string())
+    Ok(20) // Default if not found
 }
 
 #[tauri::command]
 pub async fn get_instance_port(app: tauri::AppHandle, id: String) -> Result<u16, String> {
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instances_dir = app_data.join("instances");
-
-    if instances_dir.exists() {
-        for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
-            let entry = entry.map_err(|e| e.to_string())?;
-            let json_path = entry.path().join("instance.json");
-            if json_path.exists() {
-                let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
-                if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
-                    if inst.id == id {
-                        let props_path = entry.path().join(".minecraft").join("server.properties");
-                        if props_path.exists() {
-                            if let Ok(props) = fs::read_to_string(props_path) {
-                                for line in props.lines() {
-                                    if line.starts_with("server-port=") {
-                                        if let Ok(p) = line
-                                            .replace("server-port=", "")
-                                            .trim()
-                                            .parse::<u16>()
-                                        {
-                                            return Ok(p);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        return Ok(inst.settings.port);
+    let (instance_path, inst) = get_instance_info(&app, &id)?;
+    
+    let props_path = instance_path.join(".minecraft").join("server.properties");
+    if props_path.exists() {
+        if let Ok(props) = fs::read_to_string(props_path) {
+            for line in props.lines() {
+                if line.starts_with("server-port=") {
+                    if let Ok(p) = line
+                        .replace("server-port=", "")
+                        .trim()
+                        .parse::<u16>()
+                    {
+                        return Ok(p);
                     }
                 }
             }
         }
     }
-    Err("Instance not found".to_string())
+    
+    Ok(inst.settings.port)
 }
 
 fn sync_server_properties(path: &std::path::Path, port: u16) -> Result<(), String> {
@@ -1278,57 +1163,43 @@ pub async fn create_instance_from_path(
 
 #[tauri::command]
 pub async fn open_instance_addons_folder(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instances_dir = app_data.join("instances");
+    let (instance_path, _) = get_instance_info(&app, &id)?;
+    let dot_minecraft = instance_path.join(".minecraft");
+    let mods_path = dot_minecraft.join("mods");
+    let plugins_path = dot_minecraft.join("plugins");
 
-    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let json_path = entry.path().join("instance.json");
-        if json_path.exists() {
-            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
-            if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
-                if inst.id == id {
-                    let dot_minecraft = entry.path().join(".minecraft");
-                    let mods_path = dot_minecraft.join("mods");
-                    let plugins_path = dot_minecraft.join("plugins");
+    let target = if mods_path.exists() {
+        mods_path
+    } else if plugins_path.exists() {
+        plugins_path
+    } else {
+        // Create plugins folder by default if none exist
+        fs::create_dir_all(&plugins_path).map_err(|e| e.to_string())?;
+        plugins_path
+    };
 
-                    let target = if mods_path.exists() {
-                        mods_path
-                    } else if plugins_path.exists() {
-                        plugins_path
-                    } else {
-                        // Create plugins folder by default if none exist
-                        fs::create_dir_all(&plugins_path).map_err(|e| e.to_string())?;
-                        plugins_path
-                    };
-
-                    #[cfg(target_os = "windows")]
-                    {
-                        std::process::Command::new("explorer")
-                            .arg(target)
-                            .spawn()
-                            .map_err(|e| e.to_string())?;
-                    }
-                    #[cfg(target_os = "linux")]
-                    {
-                        std::process::Command::new("xdg-open")
-                            .arg(target)
-                            .spawn()
-                            .map_err(|e| e.to_string())?;
-                    }
-                    #[cfg(target_os = "macos")]
-                    {
-                        std::process::Command::new("open")
-                            .arg(target)
-                            .spawn()
-                            .map_err(|e| e.to_string())?;
-                    }
-                    return Ok(());
-                }
-            }
-        }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(target)
+            .spawn()
+            .map_err(|e| e.to_string())?;
     }
-    Err("Instance not found".to_string())
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(target)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(target)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -1337,28 +1208,7 @@ pub async fn analyze_instance_addons(
     id: String,
     source_paths: Vec<String>,
 ) -> Result<Vec<AddonAnalysis>, String> {
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instances_dir = app_data.join("instances");
-
-    // 1. Find Instance
-    let mut instance_folder = PathBuf::new();
-    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let json_path = entry.path().join("instance.json");
-        if json_path.exists() {
-            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
-            if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
-                if inst.id == id {
-                    instance_folder = entry.path();
-                    break;
-                }
-            }
-        }
-    }
-
-    if instance_folder.as_os_str().is_empty() {
-        return Err("Instance not found".to_string());
-    }
+    let (instance_folder, _) = get_instance_info(&app, &id)?;
 
     let dot_minecraft = instance_folder.join(".minecraft");
     let mods_path = dot_minecraft.join("mods");
@@ -1465,28 +1315,7 @@ pub async fn install_instance_addons(
     id: String,
     items: Vec<AddonInstallItem>,
 ) -> Result<(), String> {
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instances_dir = app_data.join("instances");
-
-    // 1. Find Instance
-    let mut instance_folder = PathBuf::new();
-    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let json_path = entry.path().join("instance.json");
-        if json_path.exists() {
-            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
-            if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
-                if inst.id == id {
-                    instance_folder = entry.path();
-                    break;
-                }
-            }
-        }
-    }
-
-    if instance_folder.as_os_str().is_empty() {
-        return Err("Instance not found".to_string());
-    }
+    let (instance_folder, _) = get_instance_info(&app, &id)?;
 
     let dot_minecraft = instance_folder.join(".minecraft");
     let mods_path = dot_minecraft.join("mods");
@@ -1543,58 +1372,44 @@ pub async fn toggle_instance_addon(
         return Err("No se puede gestionar complementos mientras el servidor está encendido".to_string());
     }
 
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let instances_dir = app_data.join("instances");
+    let (instance_folder, _) = get_instance_info(&app, &id)?;
+    let dot_minecraft = instance_folder.join(".minecraft");
+    let mods_path = dot_minecraft.join("mods");
+    let plugins_path = dot_minecraft.join("plugins");
 
-    for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let json_path = entry.path().join("instance.json");
-        if json_path.exists() {
-            let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
-            if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
-                if inst.id == id {
-                    let dot_minecraft = entry.path().join(".minecraft");
-                    let mods_path = dot_minecraft.join("mods");
-                    let plugins_path = dot_minecraft.join("plugins");
+    let target_dir = if mods_path.exists() {
+        mods_path
+    } else {
+        plugins_path
+    };
 
-                    let target_dir = if mods_path.exists() {
-                        mods_path
-                    } else {
-                        plugins_path
-                    };
+    let source_path = target_dir.join(&file_name);
+    if !source_path.exists() {
+        return Err("File not found".to_string());
+    }
 
-                    let source_path = target_dir.join(&file_name);
-                    if !source_path.exists() {
-                        return Err("File not found".to_string());
-                    }
-
-                    let mut new_name = file_name.clone();
-                    if enabled {
-                        // Remove any "off" suffix and ensure it ends with .jar
-                        for suffix in &[".disabled", ".bkp", ".bak", ".old", ".off"] {
-                            if new_name.ends_with(suffix) {
-                                new_name = new_name.replace(suffix, "");
-                            }
-                        }
-                        if !new_name.ends_with(".jar") {
-                            new_name.push_str(".jar");
-                        }
-                    } else {
-                        // Add .disabled suffix
-                        if !new_name.ends_with(".disabled") {
-                            new_name.push_str(".disabled");
-                        }
-                    }
-
-                    if new_name != file_name {
-                        fs::rename(source_path, target_dir.join(new_name)).map_err(|e| e.to_string())?;
-                    }
-                    return Ok(());
-                }
+    let mut new_name = file_name.clone();
+    if enabled {
+        // Remove any "off" suffix and ensure it ends with .jar
+        for suffix in &[".disabled", ".bkp", ".bak", ".old", ".off"] {
+            if new_name.ends_with(suffix) {
+                new_name = new_name.replace(suffix, "");
             }
         }
+        if !new_name.ends_with(".jar") {
+            new_name.push_str(".jar");
+        }
+    } else {
+        // Add .disabled suffix
+        if !new_name.ends_with(".disabled") {
+            new_name.push_str(".disabled");
+        }
     }
-    Err("Instance not found".to_string())
+
+    if new_name != file_name {
+        fs::rename(source_path, target_dir.join(new_name)).map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -1611,8 +1426,55 @@ pub async fn delete_instance_addon(
         return Err("No se puede eliminar complementos mientras el servidor está encendido".to_string());
     }
 
+    let (instance_folder, _) = get_instance_info(&app, &id)?;
+    let dot_minecraft = instance_folder.join(".minecraft");
+    let mods_path = dot_minecraft.join("mods");
+    let plugins_path = dot_minecraft.join("plugins");
+
+    let target_dir = if mods_path.exists() {
+        mods_path
+    } else {
+        plugins_path
+    };
+
+    let file_path = target_dir.join(&file_name);
+    if file_path.exists() {
+        // 1. Detect possible folder before deleting the file (to have metadata if needed)
+        if delete_folder {
+            let addon_meta = extract_addon_metadata(&file_path);
+            let folder_names = vec![
+                file_name.replace(".jar", "").replace(".disabled", "").replace(".bkp", "").replace(".bak", "").replace(".old", "").replace(".off", ""),
+                addon_meta.map(|m| m.name).unwrap_or_default(),
+            ];
+
+            for f_name in folder_names {
+                if f_name.is_empty() { continue; }
+                let possible_dir = target_dir.join(&f_name);
+                if possible_dir.exists() && possible_dir.is_dir() {
+                    let _ = fs::remove_dir_all(possible_dir);
+                    break;
+                }
+            }
+        }
+
+        // 2. Delete the file
+        fs::remove_file(file_path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn export_instance(
+    app: tauri::AppHandle,
+    id: String,
+    destination: String,
+    include_metadata: bool,
+) -> Result<String, String> {
     let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let instances_dir = app_data.join("instances");
+
+    // Find the instance folder
+    let mut instance_root = PathBuf::new();
 
     for entry in fs::read_dir(&instances_dir).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
@@ -1621,43 +1483,303 @@ pub async fn delete_instance_addon(
             let content = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
             if let Ok(inst) = serde_json::from_str::<Instance>(&content) {
                 if inst.id == id {
-                    let dot_minecraft = entry.path().join(".minecraft");
-                    let mods_path = dot_minecraft.join("mods");
-                    let plugins_path = dot_minecraft.join("plugins");
-
-                    let target_dir = if mods_path.exists() {
-                        mods_path
-                    } else {
-                        plugins_path
-                    };
-
-                    let file_path = target_dir.join(&file_name);
-                    if file_path.exists() {
-                        // 1. Detect possible folder before deleting the file (to have metadata if needed)
-                        if delete_folder {
-                            let addon_meta = extract_addon_metadata(&file_path);
-                            let folder_names = vec![
-                                file_name.replace(".jar", "").replace(".disabled", "").replace(".bkp", "").replace(".bak", "").replace(".old", "").replace(".off", ""),
-                                addon_meta.map(|m| m.name).unwrap_or_default(),
-                            ];
-
-                            for f_name in folder_names {
-                                if f_name.is_empty() { continue; }
-                                let possible_dir = target_dir.join(&f_name);
-                                if possible_dir.exists() && possible_dir.is_dir() {
-                                    let _ = fs::remove_dir_all(possible_dir);
-                                    break;
-                                }
-                            }
-                        }
-
-                        // 2. Delete the file
-                        fs::remove_file(file_path).map_err(|e| e.to_string())?;
-                    }
-                    return Ok(());
+                    instance_root = entry.path();
+                    break;
                 }
             }
         }
     }
-    Err("Instance not found".to_string())
+
+    if !instance_root.exists() {
+        return Err("Instance not found".to_string());
+    }
+
+    // Determine source directory
+    let source_dir = if include_metadata {
+        instance_root.clone()
+    } else {
+        instance_root.join(".minecraft")
+    };
+
+    if !source_dir.exists() {
+        return Err("Source directory does not exist".to_string());
+    }
+
+    // Count total files for progress
+    fn count_files(dir: &Path) -> u64 {
+        let mut count = 0u64;
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    count += count_files(&path);
+                } else {
+                    count += 1;
+                }
+            }
+        }
+        count
+    }
+
+    let total_files = count_files(&source_dir);
+    let mut processed: u64 = 0;
+
+    // Emit initial progress
+    let _ = app.emit(
+        "export-progress",
+        serde_json::json!({
+            "progress": 0,
+            "total": total_files,
+            "step": "starting"
+        }),
+    );
+
+    // Build the ZIP
+    let dest_path = PathBuf::from(&destination);
+    let zip_file =
+        fs::File::create(&dest_path).map_err(|e| format!("Cannot create file: {}", e))?;
+    let mut zip_writer = zip::ZipWriter::new(zip_file);
+    let options =
+        zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+
+    // Recursive file walker with progress
+    fn add_directory_to_zip(
+        zip_writer: &mut zip::ZipWriter<fs::File>,
+        base_path: &Path,
+        current_path: &Path,
+        options: zip::write::SimpleFileOptions,
+        app: &tauri::AppHandle,
+        processed: &mut u64,
+        total: u64,
+    ) -> Result<(), String> {
+        let mut entries: Vec<_> = fs::read_dir(current_path)
+            .map_err(|e| format!("Cannot read directory {:?}: {}", current_path, e))?
+            .filter_map(|e| e.ok())
+            .collect();
+        entries.sort_by_key(|e| e.path());
+
+        for entry in entries {
+            let path = entry.path();
+            let relative = path
+                .strip_prefix(base_path)
+                .map_err(|e| e.to_string())?
+                .to_string_lossy()
+                .replace('\\', "/");
+
+            if path.is_dir() {
+                let _ = zip_writer.add_directory(format!("{}/", relative), options);
+                add_directory_to_zip(zip_writer, base_path, &path, options, app, processed, total)?;
+            } else {
+                zip_writer
+                    .start_file(&relative, options)
+                    .map_err(|e| format!("Cannot add file '{}': {}", relative, e))?;
+                let mut f = fs::File::open(&path)
+                    .map_err(|e| format!("Cannot open file {:?}: {}", path, e))?;
+                std::io::copy(&mut f, zip_writer)
+                    .map_err(|e| format!("Cannot write file '{}': {}", relative, e))?;
+
+                *processed += 1;
+                let progress = if total > 0 {
+                    (*processed * 100) / total
+                } else {
+                    0
+                };
+                let _ = app.emit(
+                    "export-progress",
+                    serde_json::json!({
+                        "progress": progress,
+                        "total": total,
+                        "step": "packing"
+                    }),
+                );
+            }
+        }
+        Ok(())
+    }
+
+    add_directory_to_zip(
+        &mut zip_writer,
+        &source_dir,
+        &source_dir,
+        options,
+        &app,
+        &mut processed,
+        total_files,
+    )?;
+    zip_writer.finish().map_err(|e| e.to_string())?;
+
+    // Verify ZIP integrity
+    let _ = app.emit(
+        "export-progress",
+        serde_json::json!({
+            "progress": 100,
+            "total": total_files,
+            "step": "verifying"
+        }),
+    );
+
+    let verify_file = fs::File::open(&dest_path)
+        .map_err(|e| format!("Cannot open ZIP for verification: {}", e))?;
+    let mut verify_archive = zip::ZipArchive::new(verify_file)
+        .map_err(|e| format!("ZIP verification failed (corrupt archive): {}", e))?;
+
+    // Quick check: try reading all entry headers
+    for i in 0..verify_archive.len() {
+        let entry = verify_archive
+            .by_index(i)
+            .map_err(|e| format!("ZIP entry {} is corrupt: {}", i, e))?;
+        // Just access the name to verify the entry is readable
+        let _ = entry.name();
+    }
+
+    let _ = app.emit(
+        "export-progress",
+        serde_json::json!({
+            "progress": 100,
+            "total": total_files,
+            "step": "done"
+        }),
+    );
+
+    Ok(dest_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn import_instance(
+    app: tauri::AppHandle,
+    zip_path: String,
+) -> Result<String, String> {
+    use std::io::Read;
+    use chrono::Utc;
+    use slug::slugify;
+    use uuid::Uuid;
+
+    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let instances_dir = app_data.join("instances");
+
+    if !instances_dir.exists() {
+        fs::create_dir_all(&instances_dir).map_err(|e| e.to_string())?;
+    }
+
+    let file = fs::File::open(&zip_path).map_err(|e| format!("Cannot open zip: {}", e))?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Invalid zip archive: {}", e))?;
+
+    // Determine if it's a full export (has instance.json at root)
+    let mut has_instance_json = false;
+    let mut instance_json_content = String::new();
+    for i in 0..archive.len() {
+        let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
+        if entry.name() == "instance.json" {
+            has_instance_json = true;
+            entry.read_to_string(&mut instance_json_content).map_err(|e| e.to_string())?;
+            break;
+        }
+    }
+
+    let new_id = Uuid::new_v4().to_string();
+    
+    let mut inst = if has_instance_json {
+        let mut parsed: Instance = serde_json::from_str(&instance_json_content)
+            .map_err(|e| format!("Invalid instance.json: {}", e))?;
+        parsed.id = new_id.clone();
+        parsed.name = format!("{} (Imported)", parsed.name);
+        parsed
+    } else {
+        Instance {
+            id: new_id.clone(),
+            name: "Imported Server".to_string(),
+            version: "1.20.4".to_string(),
+            loader: InstanceEngine::Vanilla,
+            date_created: Utc::now(),
+            icon: String::from("vanilla"),
+            path: String::from(""), 
+            last_played: None,
+            state: InstanceState::Stopped,
+            build: None,
+            settings: InstanceSettings {
+                min_ram: 2048,
+                max_ram: 4096,
+                port: 25565,
+                args: String::new(),
+                jar_file: String::from("server.jar"),
+                java_path: None,
+            },
+        }
+    };
+
+    let slug = slugify(&inst.name);
+    inst.path = slug.clone();
+    let target_dir = instances_dir.join(&slug);
+
+    let final_target_dir = if target_dir.exists() && fs::read_dir(&target_dir).map(|mut d| d.next().is_some()).unwrap_or(false) {
+        let unique_slug = format!("{}-{}", slug, &new_id[0..6]);
+        inst.path = unique_slug.clone();
+        instances_dir.join(unique_slug)
+    } else {
+        target_dir
+    };
+
+    fs::create_dir_all(&final_target_dir).map_err(|e| e.to_string())?;
+
+    let dot_minecraft_dir = final_target_dir.join(".minecraft");
+    if !has_instance_json {
+        fs::create_dir_all(&dot_minecraft_dir).map_err(|e| e.to_string())?;
+    }
+
+    let total_files = archive.len();
+    let mut processed = 0;
+
+    let _ = app.emit("import-progress", serde_json::json!({
+        "progress": 0,
+        "total": total_files,
+        "step": "starting"
+    }));
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+        let outpath = match file.enclosed_name() {
+            Some(path) => {
+                if has_instance_json {
+                    final_target_dir.join(path)
+                } else {
+                    dot_minecraft_dir.join(path)
+                }
+            },
+            None => continue,
+        };
+
+        if file.name().ends_with('/') {
+            fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
+        } else {
+            if let Some(p) = outpath.parent() {
+                if !p.exists() {
+                    fs::create_dir_all(p).map_err(|e| e.to_string())?;
+                }
+            }
+            if file.name() != "instance.json" || !has_instance_json {
+                let mut outfile = fs::File::create(&outpath).map_err(|e| e.to_string())?;
+                std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
+            }
+        }
+        
+        processed += 1;
+        let progress = if total_files > 0 { (processed * 100) / total_files } else { 0 };
+        let _ = app.emit("import-progress", serde_json::json!({
+            "progress": progress,
+            "total": total_files,
+            "step": "extracting"
+        }));
+    }
+
+    // Write the new instance.json
+    let new_json_content = serde_json::to_string_pretty(&inst).map_err(|e| e.to_string())?;
+    fs::write(final_target_dir.join("instance.json"), new_json_content).map_err(|e| e.to_string())?;
+
+    let _ = app.emit("import-progress", serde_json::json!({
+        "progress": 100,
+        "total": total_files,
+        "step": "done"
+    }));
+
+    Ok(inst.id)
 }

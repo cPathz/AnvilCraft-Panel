@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v.*'
+  workflow_dispatch:
 
 jobs:
   publish-tauri:
@@ -14,7 +15,11 @@ jobs:
       matrix:
         include:
           - platform: "windows-latest"
+            target: "standalone"
             args: ""
+          - platform: "windows-latest"
+            target: "msix"
+            args: "--config src-tauri/tauri.msix.conf.json"
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -31,6 +36,29 @@ jobs:
       - name: install frontend dependencies
         run: npm install
 
+      - name: Patch Version for MS Store (MSIX)
+        if: matrix.target == 'msix'
+        shell: pwsh
+        run: |
+          $config = Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json
+          $rawVersion = $config.version
+          
+          # MSIX requires 4 digits (e.g. 0.1.11.0)
+          if ($rawVersion -notlike "*.*.*.*") {
+            $newVersion = "$rawVersion.0"
+            $config.version = $newVersion
+            $config | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.conf.json
+            Write-Host "Patched version from $rawVersion to $newVersion for MS Store"
+          }
+          
+          # Also update tauri.msix.conf.json if it exists to ensure consistency
+          if (Test-Path src-tauri/tauri.msix.conf.json) {
+            $msixConfig = Get-Content src-tauri/tauri.msix.conf.json | ConvertFrom-Json
+            # You can add more MSIX specific overrides here if needed
+            # $msixConfig.bundle.windows.msix.displayName = "AnvilCraft Panel"
+            # $msixConfig | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.msix.conf.json
+          }
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -38,20 +66,24 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v.__VERSION__
-          releaseName: "🔨 AnvilCraft Panel v.__VERSION__ (Beta)"
+          releaseName: "🔨 AnvilCraft Panel v.__VERSION__"
           releaseBody: |
+            ### 🚀 Nueva Versión Disponible
+            
+            Esta entrega incluye las últimas mejoras de AnvilCraft Panel.
+            
+            #### 📦 Distribución
+            - **Instalador Estándar (.exe)**: Para uso tradicional fuera de la tienda.
+            - **Microsoft Store**: Disponible próximamente en la tienda oficial (usa el paquete MSIX si eres beta tester).
+            
+            ---
             > ⚠️ **Beta release** — This software is under active development.
-
-            See the [full changelog](https://github.com/cPathz/AnvilCraft-Panel/releases) for details on what changed in this version.
-
-            ## 📥 Installation
-            Download the `.exe` installer below and run it. Windows may show a SmartScreen warning — click **More info → Run anyway**.
-
+            
             ## 🔄 Auto-update
-            If you already have AnvilCraft Panel installed, it will detect this update automatically and prompt you to install it.
-
+            Si ya tienes AnvilCraft instalado, detectará esta actualización automáticamente.
+            
             ## 💬 Community
-            Join the Discord server for support and feedback: **discord.gg/E4PFVUe8vz**
+            Únete a nuestro Discord: **discord.gg/E4PFVUe8vz**
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

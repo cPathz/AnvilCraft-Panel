@@ -51,9 +51,14 @@
             <div class="flex flex-col gap-0.5">
                 <div class="flex items-center gap-2">
                     <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                    <h3 class="text-sm font-bold text-zinc-100 uppercase tracking-widest">
-                        {$_('instance_detail.tab_errors')}
-                    </h3>
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-xl font-bold text-white tracking-tight">
+                            {$_("instance_detail.tab_errors")}
+                        </h2>
+                        <span class="px-2 py-1 rounded text-[11px] font-black bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase tracking-widest">
+                            {$_("common.experimental")}
+                        </span>
+                    </div>
                     <span class="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-bold border border-red-500/20">
                         {issues.length}
                     </span>

@@ -399,68 +399,57 @@
                         <!-- Clear Console -->
                         <button
                             onclick={() => consoleView.clearLogs()}
-                            class="text-xs text-zinc-500 hover:text-red-400 transition-colors flex items-center gap-1.5"
+                            class="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-400/5 transition-all"
                             title={$_("instance_detail.btn_clear_console")}
                         >
-                            <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                ><path d="M3 6h18" /><path
-                                    d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"
-                                /><path
-                                    d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"
-                                /></svg
-                            >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
                         </button>
 
-                        <!-- Console Settings Toggle -->
+                        <!-- Vertical Separator -->
+                        <div class="w-px h-4 bg-zinc-700/40 mx-1"></div>
+
+                        <!-- Console Settings (Ajustes) -->
                         <button
                             onclick={() => (appState.applyConsoleSettings = !appState.applyConsoleSettings)}
-                            class="text-xs px-2 py-1 rounded transition-colors {appState.applyConsoleSettings
-                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
-                                : 'text-zinc-500 hover:text-zinc-300 border border-zinc-700/50'} border flex items-center gap-1"
-                            title={appState.applyConsoleSettings ? $_("instance_detail.tooltip_disable_settings") : $_("instance_detail.tooltip_enable_settings")}
+                            class="p-1.5 rounded-lg transition-all {appState.applyConsoleSettings
+                                ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                                : 'text-zinc-500 hover:text-zinc-300 border-transparent hover:bg-white/5'} border"
+                            title={$_("instance_detail.label_settings")}
                         >
-                            {appState.applyConsoleSettings ? '✓' : '○'} {$_("instance_detail.label_settings")}
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                         </button>
 
-                        <!-- Text Wrap Toggle -->
+                        <!-- Text Wrap (Wrap) -->
                         <button
                             onclick={() => (appState.wrapConsoleText = !appState.wrapConsoleText)}
-                            class="text-xs px-2 py-1 rounded transition-colors {appState.wrapConsoleText
-                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
-                                : 'text-zinc-500 hover:text-zinc-300 border border-zinc-700/50'} border flex items-center gap-1"
-                            title={appState.wrapConsoleText ? $_("instance_detail.tooltip_disable_wrap") : $_("instance_detail.tooltip_enable_wrap")}
+                            class="p-1.5 rounded-lg transition-all {appState.wrapConsoleText
+                                ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                                : 'text-zinc-500 hover:text-zinc-300 border-transparent hover:bg-white/5'} border"
+                            title={$_("instance_detail.label_wrap")}
                         >
-                            {appState.wrapConsoleText ? '✓' : '○'} {$_("instance_detail.label_wrap")}
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></svg>
                         </button>
 
-                        <!-- Hide Levels Toggle -->
+                        <!-- Compact Mode (Compacto) -->
                         <button
                             onclick={() => (appState.hideConsoleLevels = !appState.hideConsoleLevels)}
-                            class="text-xs px-2 py-1 rounded transition-colors {appState.hideConsoleLevels
-                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
-                                : 'text-zinc-500 hover:text-zinc-300 border border-zinc-700/50'} border flex items-center gap-1"
-                            title={appState.hideConsoleLevels ? $_("instance_detail.tooltip_show_levels") : $_("instance_detail.tooltip_hide_levels")}
+                            class="p-1.5 rounded-lg transition-all {appState.hideConsoleLevels
+                                ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                                : 'text-zinc-500 hover:text-zinc-300 border-transparent hover:bg-white/5'} border"
+                            title={$_("instance_detail.label_compact")}
                         >
-                            {appState.hideConsoleLevels ? '✓' : '○'} {$_("instance_detail.label_compact")}
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
                         </button>
 
-                        <!-- Show Time Toggle -->
+                        <!-- Time Toggle (Hora) -->
                         <button
                             onclick={() => (appState.showConsoleTimestamps = !appState.showConsoleTimestamps)}
-                            class="text-xs px-2 py-1 rounded transition-colors {appState.showConsoleTimestamps
-                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
-                                : 'text-zinc-500 hover:text-zinc-300 border border-zinc-700/50'} border flex items-center gap-1"
-                            title={appState.showConsoleTimestamps ? $_("instance_detail.tooltip_hide_time") : $_("instance_detail.tooltip_show_time")}
+                            class="p-1.5 rounded-lg transition-all {appState.showConsoleTimestamps
+                                ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                                : 'text-zinc-500 hover:text-zinc-300 border-transparent hover:bg-white/5'} border"
+                            title={$_("instance_detail.label_time")}
                         >
-                            {appState.showConsoleTimestamps ? '✓' : '○'} {$_("instance_detail.label_time")}
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                         </button>
                     {/if}
                 </div>

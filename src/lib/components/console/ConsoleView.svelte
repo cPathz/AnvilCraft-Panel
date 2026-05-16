@@ -538,11 +538,7 @@
                 (p) => p.includes(currentTyped) || p.startsWith("<"),
             );
             if (matches.length > 0) {
-                console.log(
-                    "Autocomplete triggering with:",
-                    matches.length,
-                    "matches",
-                );
+
                 autocompleteSuggestions = matches
                     .sort((a, b) => {
                         const aIsArg = a.startsWith("<");
@@ -555,7 +551,7 @@
                 showAutocomplete = true;
                 autocompleteIndex = 0;
             } else {
-                console.log("No matches found for autocomplete");
+
                 showAutocomplete = false;
             }
         } else {
@@ -876,8 +872,7 @@
                     </div>
                 </div>
             {:else if panelTab === 'format'}
-                <!-- Format Console Panel -->
-                <!-- Header -->
+                <!-- Format Console                <!-- Header -->
                 <div class="px-4 py-3 border-b border-white/5 bg-white/5 flex items-center justify-between">
                     <div class="flex items-center gap-2">
                         <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">{$_("console.format_title")}</span>
@@ -904,7 +899,7 @@
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                             : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
                     >
-                        {$_("console.format_1")}
+                        {$_("console.format_f1")}
                     </button>
 
                     <!-- Formato 2 Button -->
@@ -914,7 +909,7 @@
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                             : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
                     >
-                        {$_("console.format_2")}
+                        {$_("console.format_f2")}
                     </button>
 
                     <!-- Formato 3 Button -->
@@ -924,8 +919,15 @@
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                             : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
                     >
-                        {$_("console.format_3")}
+                        {$_("console.format_f3")}
                     </button>
+
+                    <!-- Experimental Badge at Bottom -->
+                    <div class="pt-4 mt-auto flex justify-center">
+                        <span class="px-2 py-1 rounded text-[9px] font-black bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase tracking-widest">
+                            {$_("common.experimental_feature")}
+                        </span>
+                    </div>
                 </div>
             {/if}
         </div>

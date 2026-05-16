@@ -30,6 +30,16 @@
                     body = body.replace("[CRITICAL]", "");
                 }
 
+                // Distribution logic
+                const isStore = appState.appInfo.distChannel === 'msix';
+                
+                // If it's Store version, only show if CRITICAL. 
+                // Normal updates are handled by Windows Store in the background.
+                if (isStore && !isForced) {
+                    show = false;
+                    return;
+                }
+                
                 // Extract fun in-app notes if APP_NOTES tags are present
                 const appNotesMatch = body.match(/\[APP_NOTES\]([\s\S]*?)\[\/APP_NOTES\]/);
                 if (appNotesMatch && appNotesMatch[1]) {
@@ -42,12 +52,12 @@
                 
                 // Smart Zen Mode Logic: 
                 // If manual mode is on, only show if it's a NEW version we haven't ignored yet
-                if (appState.settings.manualUpdate) {
+                if (appState.settings.manualUpdate && !isForced) {
                     if (update.version !== appState.settings.lastIgnoredVersion) {
                         show = true;
                     }
                 } else {
-                    // Standard mode: always show popup on startup
+                    // Standard mode or Critical: show popup
                     show = true;
                 }
             }
@@ -138,7 +148,11 @@
         <!-- Body (Changelog) -->
         <div class="p-5 flex flex-col gap-3">
             <p class="text-sm text-zinc-300">
-                {isForced ? 'Esta es una actualización de seguridad obligatoria. Por favor, instala la nueva versión para continuar.' : 'Hemos mejorado AnvilCraft. Esto es lo nuevo en esta versión:'}
+                {#if appState.appInfo.distChannel === 'msix'}
+                    Esta es una actualización crítica requerida por seguridad. Por favor, abre la <b>Microsoft Store</b> para descargar la última versión.
+                {:else}
+                    {isForced ? 'Esta es una actualización de seguridad obligatoria. Por favor, instala la nueva versión para continuar.' : 'Hemos mejorado AnvilCraft. Esto es lo nuevo en esta versión:'}
+                {/if}
             </p>
             
             <div class="bg-black/30 rounded-lg border border-white/5 p-3 max-h-[120px] overflow-y-auto custom-scrollbar">
@@ -172,17 +186,24 @@
                         Quizás después
                     </button>
                 {/if}
-                <button 
-                    onclick={handleInstall}
-                    disabled={downloading}
-                    class="flex-1 py-2 {isForced ? 'bg-red-600 hover:bg-red-500 shadow-red-900/20 w-full' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20'} text-white text-xs font-bold rounded-lg transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
-                >
-                    {#if downloading}
-                        Procesando...
-                    {:else}
-                        Instalar y Reiniciar
-                    {/if}
-                </button>
+                
+                {#if appState.appInfo.distChannel === 'msix'}
+                    <div class="flex-1 py-2 bg-zinc-800 text-zinc-400 text-xs font-bold rounded-lg text-center border border-white/5">
+                        Esperando actualización de la Store...
+                    </div>
+                {:else}
+                    <button 
+                        onclick={handleInstall}
+                        disabled={downloading}
+                        class="flex-1 py-2 {isForced ? 'bg-red-600 hover:bg-red-500 shadow-red-900/20 w-full' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20'} text-white text-xs font-bold rounded-lg transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                        {#if downloading}
+                            Procesando...
+                        {:else}
+                            Instalar y Reiniciar
+                        {/if}
+                    </button>
+                {/if}
             </div>
             
             {#if !isForced && !downloading}

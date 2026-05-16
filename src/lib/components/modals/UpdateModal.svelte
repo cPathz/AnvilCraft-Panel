@@ -24,7 +24,7 @@
                 switch (event.event) {
                     case 'Started':
                         contentLength = event.data.contentLength;
-                        console.log(`started downloading ${event.data.contentLength} bytes`);
+                        // console.log(`started downloading ${event.data.contentLength} bytes`);
                         break;
                     case 'Progress':
                         downloaded += event.data.chunkLength;
@@ -33,7 +33,7 @@
                         }
                         break;
                     case 'Finished':
-                        console.log('download finished');
+                        // console.log('download finished');
                         break;
                 }
             });

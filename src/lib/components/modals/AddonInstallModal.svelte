@@ -57,8 +57,8 @@
     >
         <!-- Header -->
         <div class="p-6 border-b border-white/5">
-            <h2 class="text-xl font-bold text-white">Instalar Complementos</h2>
-            <p class="text-zinc-400 text-sm mt-1">Revisa los archivos antes de proceder con la instalación.</p>
+            <h2 class="text-xl font-bold text-white">{$_('addons.install_modal_title')}</h2>
+            <p class="text-zinc-400 text-sm mt-1">{$_('addons.install_modal_desc')}</p>
         </div>
 
         <!-- List -->
@@ -88,19 +88,19 @@
                                 {/if}
                                 
                                 {#if item.status === 'invalid'}
-                                    <span class="text-red-400 font-bold uppercase tracking-tight">No es un complemento válido</span>
+                                    <span class="text-red-400 font-bold uppercase tracking-tight">{$_('addons.status_invalid')}</span>
                                 {:else if item.status === 'duplicate'}
-                                    <span class="text-orange-400 font-bold uppercase tracking-tight">Ya existe en el servidor</span>
+                                    <span class="text-orange-400 font-bold uppercase tracking-tight">{$_('addons.status_exists')}</span>
                                 {:else if item.status === 'duplicate_selection'}
-                                    <span class="text-amber-400 font-bold uppercase tracking-tight">Carga duplicada (Ya seleccionado)</span>
+                                    <span class="text-amber-400 font-bold uppercase tracking-tight">{$_('addons.status_duplicate_selection')}</span>
                                 {:else if item.status === 'update'}
                                     <div class="flex items-center gap-1 text-blue-400">
-                                        <span class="font-bold uppercase tracking-tight">Actualización disponible</span>
+                                        <span class="font-bold uppercase tracking-tight">{$_('addons.status_update_available')}</span>
                                         <span class="text-zinc-500 font-mono">(v{item.old_version} &rarr; v{item.version})</span>
                                     </div>
                                 {:else if item.status === 'update_selection'}
                                     <div class="flex items-center gap-1 text-indigo-400">
-                                        <span class="font-bold uppercase tracking-tight">Versión diferente en selección</span>
+                                        <span class="font-bold uppercase tracking-tight">{$_('addons.status_version_mismatch')}</span>
                                         <span class="text-zinc-500 font-mono">(v{item.old_version} &rarr; v{item.version})</span>
                                     </div>
                                 {/if}
@@ -116,25 +116,25 @@
                                     <button 
                                         onclick={() => item.action = 'skip'}
                                         class={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${item.action === 'skip' ? 'bg-orange-500 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
-                                    >Omitir</button>
+                                    >{$_('addons.action_skip')}</button>
                                     <button 
                                         onclick={() => item.action = 'replace'}
                                         class={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${item.action === 'replace' ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                                    >Sobreescribir</button>
+                                    >{$_('addons.action_overwrite')}</button>
                                 </div>
                             {:else if item.status === 'update' || item.status === 'update_selection'}
                                 <div class="flex bg-white/5 rounded-xl p-1">
                                     <button 
                                         onclick={() => item.action = 'replace'}
                                         class={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${item.action === 'replace' ? 'bg-blue-500 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
-                                    >Actualizar</button>
+                                    >{$_('addons.action_update')}</button>
                                     <button 
                                         onclick={() => item.action = 'skip'}
                                         class={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${item.action === 'skip' ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                                    >Ignorar</button>
+                                    >{$_('addons.action_ignore')}</button>
                                 </div>
                             {:else}
-                                <span class="px-3 py-1.5 text-xs text-green-400 font-bold uppercase tracking-tight">Nuevo</span>
+                                <span class="px-3 py-1.5 text-xs text-green-400 font-bold uppercase tracking-tight">{$_('common.new')}</span>
                             {/if}
                         </div>
                     </div>
@@ -152,13 +152,13 @@
                     onclick={onCancel}
                     class="px-5 py-2.5 rounded-2xl font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-all text-sm"
                 >
-                    Cancelar
+                    {$_('instance_detail.btn_cancel')}
                 </button>
                 <button 
                     onclick={confirm}
                     class="px-8 py-2.5 rounded-2xl font-bold bg-blue-500 hover:bg-blue-600 text-white shadow-xl shadow-blue-500/20 transition-all active:scale-95 text-sm"
                 >
-                    Confirmar
+                    {$_('addons.btn_install_all', { values: { count: items.filter(i => i.action !== 'skip' && i.status !== 'invalid').length } })}
                 </button>
             </div>
         </div>

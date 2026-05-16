@@ -1,0 +1,15 @@
+{
+  "bundle": {
+    "windows": {
+      "msix": {
+        "publisher": "CN=4C5C6D2B-352B-4EDE-B886-2F082C336275",
+        "identityName": "cPathz.AnvilCraftPanel",
+        "publisherDisplayName": "Luis Macias",
+        "displayName": "AnvilCraft Panel",
+        "description": "El panel definitivo para gestionar tus instancias de Minecraft con facilidad y elegancia.",
+        "languages": ["es-ES", "en-US"],
+        "installLocation": "Local"
+      }
+    }
+  }
+}

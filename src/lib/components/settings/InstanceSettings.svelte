@@ -1,7 +1,7 @@
 <script lang="ts">
     import { appState, type Instance } from "$lib/runes/store.svelte";
     import { invoke } from "@tauri-apps/api/core";
-    import { open } from "@tauri-apps/plugin-dialog";
+    import { open, save } from "@tauri-apps/plugin-dialog";
     import { toast } from "$lib/runes/toast.svelte";
     import { onMount, tick } from "svelte";
     import { fade, slide } from "svelte/transition";
@@ -47,6 +47,49 @@
     >({});
     let unlistenProgress: any = null;
 
+    // Export State
+    let exportFull = $state(false);
+    let isExporting = $state(false);
+    let exportProgress = $state(0);
+    let exportStep = $state("");
+
+    async function handleExport() {
+        const t = get(_);
+        const fileName = `${instance.name.replace(/[^a-zA-Z0-9_\- ]/g, "")}.zip`;
+        const dest = await save({
+            defaultPath: fileName,
+            filters: [{ name: "ZIP", extensions: ["zip"] }],
+        });
+
+        if (!dest) return;
+
+        isExporting = true;
+        exportProgress = 0;
+        exportStep = "starting";
+
+        // Listen to progress events
+        const unlisten = await listen<any>("export-progress", (event) => {
+            exportProgress = event.payload.progress;
+            exportStep = event.payload.step;
+        });
+
+        try {
+            await invoke("export_instance", {
+                id: instance.id,
+                destination: dest,
+                includeMetadata: exportFull,
+            });
+            toast.success(t("instance_settings.toast_export_success"));
+        } catch (e: any) {
+            toast.error(t("instance_settings.toast_export_error") + e);
+        } finally {
+            unlisten();
+            isExporting = false;
+            exportProgress = 0;
+            exportStep = "";
+        }
+    }
+
     // derived max allowed RAM (75% of system RAM, at least 512 MB)
     // Fallback to 65536 MB (64 GB) when systemRam is unknown to prevent
     // HTML range inputs from clamping formSettings values via bind:value.
@@ -77,36 +120,46 @@
             await loadJavaRuntimes();
 
             // Listen for Java download progress
-            unlistenProgress = await listen<any>("install-progress", (event) => {
-                const payload = event.payload;
-                if (payload.id.startsWith("java-download-")) {
-                    let step = payload.step;
-                    
-                    // Map backend steps to translations
-                    if (step.startsWith("Downloading")) {
-                        step = get(_)("common.status_downloading");
-                    } else if (step === "Done" || payload.progress === 100) {
-                        step = get(_)("common.status_completed");
-                    } else if (step === "Preparing") {
-                        step = get(_)("common.status_preparing");
-                    } else if (step === "Creating files...") {
-                        step = get(_)("create_instance.status_creating_files");
-                    } else if (step === "Finalizing download...") {
-                        step = get(_)("create_instance.status_finalizing_download");
-                    }
+            unlistenProgress = await listen<any>(
+                "install-progress",
+                (event) => {
+                    const payload = event.payload;
+                    if (payload.id.startsWith("java-download-")) {
+                        let step = payload.step;
 
-                    downloadProgress[payload.id] = {
-                        step,
-                        progress: payload.progress,
-                    };
-                    if (payload.step === "Done") {
-                        loadJavaRuntimes();
-                        setTimeout(() => {
-                            delete downloadProgress[payload.id];
-                        }, 3000);
+                        // Map backend steps to translations
+                        if (step.startsWith("Downloading")) {
+                            step = get(_)("common.status_downloading");
+                        } else if (
+                            step === "Done" ||
+                            payload.progress === 100
+                        ) {
+                            step = get(_)("common.status_completed");
+                        } else if (step === "Preparing") {
+                            step = get(_)("common.status_preparing");
+                        } else if (step === "Creating files...") {
+                            step = get(_)(
+                                "create_instance.status_creating_files",
+                            );
+                        } else if (step === "Finalizing download...") {
+                            step = get(_)(
+                                "create_instance.status_finalizing_download",
+                            );
+                        }
+
+                        downloadProgress[payload.id] = {
+                            step,
+                            progress: payload.progress,
+                        };
+                        if (payload.step === "Done") {
+                            loadJavaRuntimes();
+                            setTimeout(() => {
+                                delete downloadProgress[payload.id];
+                            }, 3000);
+                        }
                     }
-                }
-            });
+                },
+            );
         };
 
         init();
@@ -126,16 +179,27 @@
 
     async function handleDownloadJava(version: number) {
         const id = `java-download-${version}`;
-        downloadProgress[id] = { step: get(_)("common.status_starting"), progress: 0 };
+        downloadProgress[id] = {
+            step: get(_)("common.status_starting"),
+            progress: 0,
+        };
         try {
             const path = await invoke<string>("download_java_runtime", {
                 version,
             });
             formSettings.java_path = path;
-            toast.success(get(_)("instance_settings.toast_java_downloaded", { values: { version } }));
+            toast.success(
+                get(_)("instance_settings.toast_java_downloaded", {
+                    values: { version },
+                }),
+            );
         } catch (e) {
             console.error(e);
-            toast.error(get(_)("instance_settings.toast_java_error", { values: { version } }) + e);
+            toast.error(
+                get(_)("instance_settings.toast_java_error", {
+                    values: { version },
+                }) + e,
+            );
             delete downloadProgress[id];
         }
     }
@@ -154,7 +218,8 @@
                 lastSyncedId = instance.id;
 
                 // Derive link state from loaded values
-                linkMemory = instance.settings.min_ram === instance.settings.max_ram;
+                linkMemory =
+                    instance.settings.min_ram === instance.settings.max_ram;
 
                 // Sync actual port from server.properties
                 invoke<number>("get_instance_port", { id: instance.id })
@@ -162,7 +227,9 @@
                         formSettings.port = actualPort;
                         originalSettings.port = actualPort;
                     })
-                    .catch((e) => console.error("Failed to sync actual port", e));
+                    .catch((e) =>
+                        console.error("Failed to sync actual port", e),
+                    );
             }
         }
     });
@@ -411,9 +478,14 @@
                                                 d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
                                             ></path>
                                         {:else}
-                                            <path d="M18.84 12.25l1.72-1.71a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                                            <path d="M5.16 11.75l-1.72 1.71a5 5 0 0 0 7.07 7.07l1.72-1.71"></path>
-                                            <line x1="2" y1="2" x2="22" y2="22"></line>
+                                            <path
+                                                d="M18.84 12.25l1.72-1.71a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                                            ></path>
+                                            <path
+                                                d="M5.16 11.75l-1.72 1.71a5 5 0 0 0 7.07 7.07l1.72-1.71"
+                                            ></path>
+                                            <line x1="2" y1="2" x2="22" y2="22"
+                                            ></line>
                                         {/if}
                                     </svg>
                                 </button>
@@ -449,7 +521,11 @@
                             <div
                                 class="col-span-2 flex justify-between text-xs text-zinc-500 mt-4 pr-1"
                             >
-                                <span>{$_("instance_settings.system_ram")}{formatBytes(systemRam)}</span>
+                                <span
+                                    >{$_(
+                                        "instance_settings.system_ram",
+                                    )}{formatBytes(systemRam)}</span
+                                >
                                 {#if systemRam > 0}
                                     <span
                                         class={formSettings.max_ram >
@@ -592,7 +668,9 @@
                                 bind:value={formSettings.java_path}
                                 oninput={null}
                                 disabled={isServerRunning}
-                                placeholder={$_("instance_settings.java_default")}
+                                placeholder={$_(
+                                    "instance_settings.java_default",
+                                )}
                                 class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl pl-12 pr-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 placeholder:text-zinc-700 shadow-inner"
                             />
                         </div>
@@ -702,10 +780,12 @@
                                 >
                             </div>
                             <div class="flex flex-col gap-0.5">
-                                <h3 class="text-base font-bold text-zinc-200">
+                                <h3 class="text-lg font-bold text-zinc-200">
                                     {$_("instance_settings.java_portable")}
                                 </h3>
-                                <p class="text-xs text-zinc-500 font-medium max-w-lg">
+                                <p
+                                    class="text-sm text-zinc-500 font-medium max-w-lg"
+                                >
                                     {$_("instance_settings.java_portable_desc")}
                                 </p>
                             </div>
@@ -724,8 +804,15 @@
                                     >
                                         <div class="flex items-center gap-2">
                                             <span
-                                                class="text-xs font-black uppercase tracking-tighter transition-colors {runtime.version === 16 ? 'text-yellow-500/60 cursor-help' : 'text-zinc-500'}"
-                                                title={runtime.version === 16 ? $_("instance_settings.java_retired_tip") : null}
+                                                class="text-xs font-black uppercase tracking-tighter transition-colors {runtime.version ===
+                                                16
+                                                    ? 'text-yellow-500/60 cursor-help'
+                                                    : 'text-zinc-500'}"
+                                                title={runtime.version === 16
+                                                    ? $_(
+                                                          "instance_settings.java_retired_tip",
+                                                      )
+                                                    : null}
                                                 >Java {runtime.version}</span
                                             >
                                         </div>
@@ -784,8 +871,12 @@
                                                 >
                                                     {formSettings.java_path ===
                                                     runtime.path
-                                                        ? $_("instance_settings.java_in_use")
-                                                        : $_("instance_settings.java_use")}
+                                                        ? $_(
+                                                              "instance_settings.java_in_use",
+                                                          )
+                                                        : $_(
+                                                              "instance_settings.java_use",
+                                                          )}
                                                 </button>
                                             {:else}
                                                 <button
@@ -795,7 +886,9 @@
                                                         )}
                                                     class="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold uppercase tracking-wider transition-all shadow-lg shadow-blue-600/20"
                                                 >
-                                                    {$_("instance_settings.java_download")}
+                                                    {$_(
+                                                        "instance_settings.java_download",
+                                                    )}
                                                 </button>
                                             {/if}
                                         </div>
@@ -837,6 +930,113 @@
                         placeholder="-XX:+UseG1GC..."
                         class="w-full bg-[#0f172a] border-2 border-[#1e293b] rounded-xl px-4 py-3 font-jetbrains text-sm focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 placeholder:text-zinc-700 shadow-inner"
                     />
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Instance Section -->
+        <div class="mt-6 pt-6 border-t border-white/5">
+            <div class="flex items-start gap-4">
+                <div class="p-2.5 bg-indigo-500/10 rounded-xl flex-none">
+                    <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#818cf8"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h4 class="text-base font-bold text-white">
+                        {$_("instance_settings.export_title")}
+                    </h4>
+                    <p class="text-sm text-zinc-500 mt-0.5">
+                        {$_("instance_settings.export_desc")}
+                    </p>
+
+                    <label
+                        class="flex items-center gap-2 mt-3 cursor-pointer group select-none"
+                    >
+                        <input
+                            type="checkbox"
+                            bind:checked={exportFull}
+                            class="w-4 h-4 rounded border-2 border-zinc-600 bg-zinc-900 checked:bg-indigo-500 checked:border-indigo-500 transition-colors accent-indigo-500"
+                        />
+                        <div>
+                            <span
+                                class="text-sm font-bold text-zinc-300 group-hover:text-white transition-colors"
+                                >{$_("instance_settings.export_full")}</span
+                            >
+                            <p class="text-xs text-zinc-600">
+                                {$_("instance_settings.export_full_desc")}
+                            </p>
+                        </div>
+                    </label>
+
+                    {#if isExporting}
+                        <div class="mt-3 space-y-1.5">
+                            <div
+                                class="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider"
+                            >
+                                <span class="text-indigo-400">
+                                    {exportStep === "verifying"
+                                        ? $_(
+                                              "instance_settings.export_step_verifying",
+                                          )
+                                        : exportStep === "packing"
+                                          ? $_(
+                                                "instance_settings.export_step_packing",
+                                            )
+                                          : $_(
+                                                "instance_settings.export_step_starting",
+                                            )}
+                                </span>
+                                <span class="text-zinc-500"
+                                    >{exportProgress}%</span
+                                >
+                            </div>
+                            <div
+                                class="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden"
+                            >
+                                <div
+                                    class="h-full bg-indigo-500 rounded-full transition-all duration-300 ease-out"
+                                    style="width: {exportProgress}%"
+                                ></div>
+                            </div>
+                        </div>
+                    {:else}
+                        <button
+                            onclick={handleExport}
+                            disabled={isServerRunning}
+                            class="mt-3 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed
+                                bg-indigo-500 hover:bg-indigo-400 text-white shadow-lg shadow-indigo-900/20"
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path
+                                    d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                                />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            {$_("instance_settings.export_btn")}
+                        </button>
+                    {/if}
                 </div>
             </div>
         </div>

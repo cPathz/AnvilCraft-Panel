@@ -13,7 +13,19 @@ New-Item -ItemType Directory -Path $AssetsDir
 
 # 2. Copiar archivos de la aplicación
 Write-Host "--- Copiando binarios de la aplicación ---"
-Copy-Item "$TauriReleaseDir\AnvilCraft Panel.exe" "$StagingDir\"
+$OriginalExe = "$TauriReleaseDir\anvil-craft.exe"
+if (-Not (Test-Path $OriginalExe)) {
+    $OriginalExe = Get-ChildItem -Path $TauriReleaseDir -Filter "*.exe" | Select-Object -ExpandProperty FullName -First 1
+}
+
+if (-Not $OriginalExe) {
+    Write-Error "No se encontró ningún archivo .exe en $TauriReleaseDir"
+    exit 1
+}
+
+Copy-Item $OriginalExe "$StagingDir\AnvilCraft Panel.exe"
+Write-Host "Copiado y renombrado: $OriginalExe -> AnvilCraft Panel.exe"
+
 # Copiar DLLs necesarias si existen
 if (Test-Path "$TauriReleaseDir\*.dll") { Copy-Item "$TauriReleaseDir\*.dll" "$StagingDir\" }
 

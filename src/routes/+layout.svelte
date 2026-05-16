@@ -37,6 +37,9 @@
     let { children } = $props();
 
     onMount(() => {
+        // --- CAMBIO DE TÍTULO PRIORITARIO ---
+        getCurrentWindow().setTitle("AnvilCraft Panel v.0.1.12 (beta)");
+        
         let unlisten: () => void;
 
         // Close prevention logic
@@ -76,14 +79,10 @@
 
         const init = async () => {
             try {
-                // Fetch and set dynamic version
-                const version = await getVersion();
-                appState.appInfo.version = version;
-                
-                // Set window title dynamically
-                await getCurrentWindow().setTitle(`AnvilCraft Panel v.${version} (${appState.appInfo.tag})`);
+                // Fetch version for internal state
+                appState.appInfo.version = await getVersion();
             } catch (e) {
-                console.error("Failed to set app version:", e);
+                console.error("Failed to fetch version for state:", e);
             }
 
             // Global Log Listener
@@ -122,19 +121,28 @@
                 console.error("Failed to setup listeners:", e);
             }
 
-            // Get App Version and Channel
+            // 1. Título Inmediato (PRUEBA DE FUEGO)
             try {
-                appState.appInfo.version = await invoke("get_app_version");
-                appState.appInfo.distChannel = await invoke("get_distribution_channel");
-                console.log("App loaded via:", appState.appInfo.distChannel);
+                await getCurrentWindow().setTitle("si se ve el cambio");
+            } catch (e) {
+                console.error("Immediate title failed:", e);
+            }
+
+            // 2. Título Refinado (Cuando el canal responda)
+            try {
+                const channel = await invoke<string>("get_distribution_channel");
+                appState.appInfo.distChannel = channel as any;
                 
-                if (appState.appInfo.distChannel === 'msix') {
-                    const { getCurrentWindow } = await import('@tauri-apps/api/window');
-                    const win = getCurrentWindow();
-                    await win.setTitle(`AnvilCraft Panel v.${appState.appInfo.version} (Microsoft Store)`);
+                const win = getCurrentWindow();
+                const v = appState.appInfo.version;
+                
+                if (channel === 'msix') {
+                    await win.setTitle(`AnvilCraft Panel v.${v}.0 (Microsoft Store)`);
+                } else {
+                    await win.setTitle(`AnvilCraft Panel v.${v} (${appState.appInfo.tag})`);
                 }
             } catch (e) {
-                console.error("Failed to get app info:", e);
+                console.error("Refined title failed:", e);
             }
 
             // Check for updates with a small delay for stability

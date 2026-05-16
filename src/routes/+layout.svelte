@@ -137,33 +137,37 @@
                 console.error("Failed to get app info:", e);
             }
 
-            // Check for updates
-            try {
-                const update = await check();
-                if (update) {
-                    let body = update.body || "No changelog provided.";
-                    let isCritical = false;
+            // Check for updates with a small delay for stability
+            setTimeout(async () => {
+                try {
+                    console.log("Checking for updates...");
+                    const update = await check();
+                    if (update) {
+                        let body = update.body || "No changelog provided.";
+                        let isCritical = false;
 
-                    if (body.includes("[CRITICAL]")) {
-                        isCritical = true;
-                        body = body.replace("[CRITICAL]", "");
+                        if (body.includes("[CRITICAL]")) {
+                            isCritical = true;
+                            body = body.replace("[CRITICAL]", "");
+                        }
+
+                        appState.updateData = {
+                            version: update.version,
+                            body: body.trim(),
+                            date: update.date || "",
+                            isCritical: isCritical,
+                            available: true,
+                            rawUpdate: update
+                        };
+                        console.log("Update found:", update.version, isCritical ? "(CRITICAL)" : "");
+                    } else {
+                        appState.updateData = null;
+                        console.log("No updates available.");
                     }
-
-                    appState.updateData = {
-                        version: update.version,
-                        body: body.trim(),
-                        date: update.date || "",
-                        isCritical: isCritical,
-                        available: true,
-                        rawUpdate: update // Store the original update object for installation
-                    };
-                    console.log("Update found:", update.version, isCritical ? "(CRITICAL)" : "");
-                } else {
-                    appState.updateData = null;
+                } catch (e) {
+                    console.error("Failed to check for updates on startup:", e);
                 }
-            } catch (e) {
-                console.error("Failed to check for updates:", e);
-            }
+            }, 1500);
 
             await refreshInstances();
         };

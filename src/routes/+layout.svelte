@@ -122,6 +122,21 @@
                 console.error("Failed to setup listeners:", e);
             }
 
+            // Get App Version and Channel
+            try {
+                appState.appInfo.version = await invoke("get_app_version");
+                appState.appInfo.distChannel = await invoke("get_distribution_channel");
+                console.log("App loaded via:", appState.appInfo.distChannel);
+                
+                if (appState.appInfo.distChannel === 'msix') {
+                    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+                    const win = getCurrentWindow();
+                    await win.setTitle(`AnvilCraft Panel v.${appState.appInfo.version} (Microsoft Store)`);
+                }
+            } catch (e) {
+                console.error("Failed to get app info:", e);
+            }
+
             // Check for updates
             try {
                 const update = await check();

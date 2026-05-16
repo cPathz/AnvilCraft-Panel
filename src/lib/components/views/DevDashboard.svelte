@@ -496,12 +496,40 @@
                                 {/if}
                             </section>
                         {/if}
+                    {:else if activeTab === "tab_menu2"}
+                        <section class="space-y-6 pt-4">
+                            <div class="flex items-center space-x-3 text-zinc-100 border-b border-zinc-800 pb-4">
+                                <span class="text-2xl">🏷️</span>
+                                <h2 class="text-2xl font-bold">
+                                    {$_("dev.tab_menu2")}
+                                </h2>
+                            </div>
+
+                            <div class="bg-[#18181b]/60 backdrop-blur-md border border-zinc-800/50 rounded-2xl p-8 space-y-8 shadow-xl relative overflow-hidden">
+                                <div class="flex items-center justify-between">
+                                    <div class="space-y-1">
+                                        <h3 class="text-lg font-bold text-white">{$_("dev.eval_copy_toggle")}</h3>
+                                        <p class="text-zinc-500 text-sm">Controla la visibilidad de la marca de agua en la interfaz principal.</p>
+                                    </div>
+                                    
+                                    <button 
+                                        onclick={() => appState.appInfo.isEvalCopy = !appState.appInfo.isEvalCopy}
+                                        class={`px-6 py-2 rounded-xl font-black transition-all active:scale-95 border ${
+                                            appState.appInfo.isEvalCopy 
+                                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.1)]' 
+                                            : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-500'
+                                        }`}
+                                    >
+                                        {appState.appInfo.isEvalCopy ? $_("dev.eval_copy_on") : $_("dev.eval_copy_off")}
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
                     {:else}
                         <!-- Placeholder for other tabs -->
                         <div
                             class="flex flex-col items-center justify-center h-[500px] border-2 border-dashed border-zinc-800 rounded-3xl text-zinc-600 bg-zinc-900/10 backdrop-blur-sm"
                         >
-
                             <span class="text-6xl mb-4 opacity-50">🚧</span>
                             <h3 class="text-2xl font-bold text-zinc-500">
                                 {$_("dev.wip_title")}

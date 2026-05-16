@@ -11,7 +11,10 @@
     "toast_success": "Success",
     "toast_error": "Error",
     "toast_warning": "Warning",
-    "toast_info": "Information"
+    "toast_info": "Information",
+    "experimental": "Experimental",
+    "experimental_feature": "Experimental Feature",
+    "new": "New"
   },
   "nav": {
     "home": "Home",
@@ -23,7 +26,11 @@
     "welcome": "Welcome to AnvilCraft",
     "subtitle_1": "Manage your local Minecraft servers",
     "subtitle_2": "Simple, fast, and powerful.",
-    "create": "Create new instance"
+    "create": "Create new instance",
+    "update_restart_warning": "This action will restart the application to apply changes.",
+    "update_preparing": "Preparing update...",
+    "redirect_title": "You are being redirected",
+    "redirect_confirm": "Do you want to continue in your browser?"
   },
   "gallery": {
     "title": "My Instances",
@@ -150,15 +157,29 @@
     "java_retired_tip": "This version has been retired by Adoptium. Java 17 is recommended.",
     "java_folder_info": "Javas are downloaded to ",
     "java_args": "Java Arguments",
-    "btn_reset": "Reset Values"
+    "btn_reset": "Reset Values",
+    "export_title": "Export Instance",
+    "export_desc": "Package server files into a ZIP archive.",
+    "export_full": "Package full instance",
+    "export_full_desc": "Includes AnvilCraft metadata for reimporting into another installation.",
+    "export_btn": "Export",
+    "export_exporting": "Exporting...",
+    "toast_export_success": "Instance exported successfully",
+    "toast_export_error": "Error exporting: ",
+    "export_step_starting": "Starting...",
+    "export_step_packing": "Packing...",
+    "export_step_verifying": "Verifying integrity..."
   },
   "dev": {
     "title": "Developer Dashboard",
     "subtitle": "Internal development tools.",
     "tab_commands": "Commands",
-    "tab_menu2": "Menu 2",
+    "tab_menu2": "Branding Settings",
     "tab_menu3": "Menu 3",
     "tab_menu4": "Menu 4",
+    "eval_copy_toggle": "Watermark (Evaluation Copy)",
+    "eval_copy_on": "Enabled",
+    "eval_copy_off": "Disabled",
     "build": "Build: ",
     "stat_loaded": "LOADED VERSIONS",
     "stat_latest": "LATEST VERSION",
@@ -202,7 +223,16 @@
     "install_update": "Install and Restart",
     "downloading_update": "Downloading update...",
     "update_error": "Error during update",
-    "toast_force_close_error": "Error forcing close: "
+    "toast_force_close_error": "Error forcing close: ",
+    "updates_controlled_by_store": "Managed by Microsoft Store",
+    "updates_controlled_by_store_desc": "Updates are automatically managed through the official store.",
+    "zen_mode": "Zen Mode",
+    "zen_mode_desc": "Notify only once per update.",
+    "import_title": "Import Instance",
+    "import_desc": "Restore a server from a previously exported .zip file.",
+    "import_btn": "Import Server",
+    "toast_import_success": "Instance imported successfully",
+    "toast_import_error": "Error importing: "
   },
   "terminal": {
     "title": "Terminal",
@@ -299,7 +329,19 @@
     "locked_tooltip": "Server is running",
     "no_addons": "No {type} found",
     "no_addons_desc": "The folder is empty. Add JAR files to get started.",
-    "community": "Community"
+    "community": "Community",
+    "install_modal_title": "Install Addons",
+    "install_modal_desc": "Review the files before proceeding with the installation.",
+    "status_invalid": "Not a valid addon",
+    "status_exists": "Already exists on the server",
+    "status_duplicate_selection": "Duplicate upload (Already selected)",
+    "status_update_available": "Update available",
+    "status_version_mismatch": "Different version in selection",
+    "action_skip": "Skip",
+    "action_overwrite": "Overwrite",
+    "action_update": "Update",
+    "action_ignore": "Ignore",
+    "btn_install_all": "Install {count} files"
   },
   "errors": {
     "empty_title": "No critical plugin errors detected",

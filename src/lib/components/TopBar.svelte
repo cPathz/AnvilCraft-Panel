@@ -14,7 +14,7 @@
             <span
                 class="text-[10px] font-normal text-yellow-500/80 uppercase tracking-wider bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20"
             >
-                v{store.appInfo.version} ({store.appInfo.tag}) - {$_("settings.eval_copy_branding")}
+                v{store.appInfo.version} ({store.appInfo.tag}){#if store.appInfo.isEvalCopy} - {$_("settings.eval_copy_branding")}{/if}
             </span>
         </h1>
 

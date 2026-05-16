@@ -32,13 +32,17 @@ class AppState {
     wrapConsoleText = $state<boolean>(false);
     hideConsoleLevels = $state<boolean>(false);
     showConsoleTimestamps = $state<boolean>(false);
-    logFormat = $state<'raw' | 'formato1' | 'formato2' | 'formato3'>('formato1');
+    logFormat = $state<'raw' | 'formato1' | 'formato2' | 'formato3'>('formato3');
+
+    // App Settings
+    manualUpdate = $state<boolean>(false);
 
     // App Identity
     appInfo = $state({
         version: "",
         tag: "Beta",
-        isEvalCopy: true
+        isEvalCopy: false,
+        distChannel: 'standalone' as 'standalone' | 'msix'
     });
 
     // Update Data

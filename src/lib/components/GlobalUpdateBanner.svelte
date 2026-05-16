@@ -15,54 +15,38 @@
     let downloadProgress = $state(0);
     let contentLength = $state<number | undefined>(0);
 
-    onMount(async () => {
-        try {
-            const result = await check();
-            if (result) {
-                update = result;
-                
-                // Parse the body to check for [CRITICAL] tag
-                let body = result.body || "No changelog provided.";
-                
-                // Check if it's forced
-                if (body.includes("[CRITICAL]")) {
-                    isForced = true;
-                    body = body.replace("[CRITICAL]", "");
-                }
+    // Reactive effect to sync with global appState
+    $effect(() => {
+        if (appState.updateData) {
+            const data = appState.updateData;
+            update = data.rawUpdate;
+            isForced = data.isCritical;
+            
+            let body = data.body;
+            // Extract fun in-app notes if APP_NOTES tags are present
+            const appNotesMatch = body.match(/\[APP_NOTES\]([\s\S]*?)\[\/APP_NOTES\]/);
+            if (appNotesMatch && appNotesMatch[1]) {
+                body = appNotesMatch[1].trim();
+            }
+            releaseNotes = body;
 
-                // Distribution logic
-                const isStore = appState.appInfo.distChannel === 'msix';
-                
-                // If it's Store version, only show if CRITICAL. 
-                // Normal updates are handled by Windows Store in the background.
-                if (isStore && !isForced) {
-                    show = false;
-                    return;
-                }
-                
-                // Extract fun in-app notes if APP_NOTES tags are present
-                const appNotesMatch = body.match(/\[APP_NOTES\]([\s\S]*?)\[\/APP_NOTES\]/);
-                if (appNotesMatch && appNotesMatch[1]) {
-                    body = appNotesMatch[1].trim();
-                } else {
-                    body = body.trim();
-                }
-                
-                releaseNotes = body;
-                
-                // Smart Zen Mode Logic: 
-                // If manual mode is on, only show if it's a NEW version we haven't ignored yet
-                if (appState.settings.manualUpdate && !isForced) {
-                    if (update.version !== appState.settings.lastIgnoredVersion) {
-                        show = true;
-                    }
-                } else {
-                    // Standard mode or Critical: show popup
+            // Distribution logic
+            const isStore = appState.appInfo.distChannel === 'msix';
+            if (isStore && !isForced) {
+                show = false;
+                return;
+            }
+
+            // Zen Mode Logic
+            if (appState.settings.manualUpdate && !isForced) {
+                if (data.version !== appState.settings.lastIgnoredVersion) {
                     show = true;
                 }
+            } else {
+                show = true;
             }
-        } catch (e) {
-            console.error("Failed to check for updates on startup:", e);
+        } else {
+            show = false;
         }
     });
 

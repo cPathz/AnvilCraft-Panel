@@ -1,0 +1,11 @@
+{
+  "identifier": "AnvilCraftPanel",
+  "bundle": {
+    "windows": {
+      "wix": {
+        "language": ["es-ES", "en-US"],
+        "manufacturer": "Luis Macias (cPathz)"
+      }
+    }
+  }
+}

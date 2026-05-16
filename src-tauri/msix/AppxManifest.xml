@@ -12,7 +12,7 @@
 
   <Properties>
     <DisplayName>AnvilCraft Panel</DisplayName>
-    <PublisherDisplayName>Luis Macias</PublisherDisplayName>
+    <PublisherDisplayName>cPathz</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
     <Description>El panel definitivo para gestionar tus instancias de Minecraft con facilidad y elegancia.</Description>
   </Properties>
@@ -22,7 +22,7 @@
   </Dependencies>
 
   <Resources>
-    <Resource Language="x-generate" />
+    <Resource Language="es-ES" />
   </Resources>
 
   <Applications>

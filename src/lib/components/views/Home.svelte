@@ -261,12 +261,12 @@
                             </span>
                         </div>
                         <p class="text-zinc-400 text-[14px] font-medium leading-tight">
-                            Hay mejoras listas para instalar. 
+                            Revisa los cambios en 
                             <button 
                                 class="text-amber-400 font-bold hover:underline"
-                                onclick={(e) => { e.stopPropagation(); showRedirectConfirm = true; }}
+                                onclick={(e) => { e.stopPropagation(); openUrl('https://github.com/cPathz/AnvilCraft-Panel/releases/latest'); }}
                             >
-                                {$_('settings.check_updates')}
+                                Github.
                             </button>
                         </p>
                     </div>
@@ -328,8 +328,8 @@
         class="fixed inset-0 z-[100] flex items-center justify-center p-6"
         transition:fade={{ duration: 200 }}
     >
-        <!-- Overlay -->
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick={() => showUpdateConfirm = false}></div>
+        <!-- Overlay (BLOQUEO TOTAL) -->
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-lg"></div>
         
         <!-- Modal -->
         <div 
@@ -371,12 +371,14 @@
                     >
                         {$_('common.toast_success')}
                     </button>
-                    <button 
-                        class="w-full py-2.5 bg-white/5 hover:bg-white/10 text-zinc-500 text-xs font-bold rounded-xl transition-all active:scale-[0.98]"
-                        onclick={() => showUpdateConfirm = false}
-                    >
-                        Quizás luego
-                    </button>
+                    {#if !appState.updateData?.isCritical}
+                        <button 
+                            class="w-full py-2.5 bg-white/5 hover:bg-white/10 text-zinc-500 text-xs font-bold rounded-xl transition-all active:scale-[0.98]"
+                            onclick={() => showUpdateConfirm = false}
+                        >
+                            Quizás luego
+                        </button>
+                    {/if}
                 {/if}
             </div>
         </div>

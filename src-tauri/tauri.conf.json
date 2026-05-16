@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "AnvilCraft Panel v.0.1.11 (Beta)",
+        "title": "AnvilCraft Panel",
         "width": 1024,
         "height": 660,
         "minWidth": 1024,

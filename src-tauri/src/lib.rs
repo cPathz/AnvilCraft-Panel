@@ -24,6 +24,12 @@ pub fn run() {
             
             // Setup Addon Watcher
             let app_handle = app.app_handle().clone();
+            
+            // Forzar el título correcto desde Rust
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_title(&format!("AnvilCraft Panel v.{} (beta)", env!("CARGO_PKG_VERSION")));
+            }
+
             let app_data = app_handle.path().app_data_dir().unwrap();
             let instances_dir = app_data.join("instances");
             

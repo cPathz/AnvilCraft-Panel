@@ -34,9 +34,6 @@ class AppState {
     showConsoleTimestamps = $state<boolean>(false);
     logFormat = $state<'raw' | 'formato1' | 'formato2' | 'formato3'>('formato3');
 
-    // App Settings
-    manualUpdate = $state<boolean>(false);
-
     // App Identity
     appInfo = $state({
         version: "",
@@ -78,6 +75,44 @@ class AppState {
             theme: "Campbell"
         }
     });
+
+    constructor() {
+        if (typeof window !== 'undefined' && window.localStorage) {
+            // Load global settings
+            const savedSettings = window.localStorage.getItem('anvilcraft_settings');
+            if (savedSettings) {
+                try {
+                    const parsed = JSON.parse(savedSettings);
+                    this.settings = {
+                        ...this.settings,
+                        ...parsed,
+                        console: {
+                            ...this.settings.console,
+                            ...(parsed.console || {})
+                        }
+                    };
+                } catch (e) {
+                    console.error("Error loading global settings:", e);
+                }
+            }
+
+            // Load transient console toggles
+            const savedConsoleToggles = window.localStorage.getItem('anvilcraft_console_toggles');
+            if (savedConsoleToggles) {
+                try {
+                    const parsed = JSON.parse(savedConsoleToggles);
+                    if (parsed.applyConsoleSettings !== undefined) this.applyConsoleSettings = parsed.applyConsoleSettings;
+                    if (parsed.wrapConsoleText !== undefined) this.wrapConsoleText = parsed.wrapConsoleText;
+                    if (parsed.hideConsoleLevels !== undefined) this.hideConsoleLevels = parsed.hideConsoleLevels;
+                    if (parsed.showConsoleTimestamps !== undefined) this.showConsoleTimestamps = parsed.showConsoleTimestamps;
+                    if (parsed.logFormat !== undefined) this.logFormat = parsed.logFormat;
+                } catch (e) {
+                    console.error("Error loading console toggles:", e);
+                }
+            }
+        }
+    }
+
 
     ensureRuntime(id: string) {
         if (!this.instanceRuntime[id]) {

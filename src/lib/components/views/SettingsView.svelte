@@ -194,10 +194,10 @@
                                 <p class="text-[10px] text-zinc-500 mt-1 leading-tight">{$_("settings.zen_mode_desc")}</p>
                             </div>
                             <button 
-                                class="relative w-10 h-5.5 rounded-full flex-none transition-colors duration-200 outline-none {appState.manualUpdate ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'bg-zinc-700'}"
-                                onclick={() => appState.manualUpdate = !appState.manualUpdate}
+                                class="relative w-10 h-5.5 rounded-full flex-none transition-colors duration-200 outline-none {appState.settings.manualUpdate ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'bg-zinc-700'}"
+                                onclick={() => appState.settings.manualUpdate = !appState.settings.manualUpdate}
                             >
-                                <div class="absolute top-1 left-1 w-3.5 h-3.5 bg-white rounded-full shadow-md transition-transform duration-200 {appState.manualUpdate ? 'translate-x-4.5' : ''}"></div>
+                                <div class="absolute top-1 left-1 w-3.5 h-3.5 bg-white rounded-full shadow-md transition-transform duration-200 {appState.settings.manualUpdate ? 'translate-x-4.5' : ''}"></div>
                             </button>
                         </div>
                     {/if}

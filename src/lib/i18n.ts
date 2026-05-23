@@ -11,10 +11,18 @@ register('es', () => import('./locales/es.json'));
 const fallbackLocale = 'en';
 
 export function setupI18n() {
-	let initialLocale = browser ? getLocaleFromNavigator() : fallbackLocale;
+	let initialLocale = fallbackLocale;
 
-	if (initialLocale && initialLocale.includes('-')) {
-		initialLocale = initialLocale.split('-')[0];
+	if (browser) {
+		const savedLocale = window.localStorage.getItem('anvilcraft_locale');
+		if (savedLocale) {
+			initialLocale = savedLocale;
+		} else {
+			const navLocale = getLocaleFromNavigator();
+			if (navLocale) {
+				initialLocale = navLocale.includes('-') ? navLocale.split('-')[0] : navLocale;
+			}
+		}
 	}
 
 	// Ensure the initial locale is supported, otherwise use fallback

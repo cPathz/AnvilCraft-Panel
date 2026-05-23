@@ -1505,36 +1505,42 @@ pub async fn export_instance(
         return Err("Source directory does not exist".to_string());
     }
 
-    // Count total files for progress
-    fn count_files(dir: &Path) -> u64 {
-        let mut count = 0u64;
+    // ── SCAN: calcular bytes totales para progreso preciso basado en datos reales ──
+    fn collect_files_with_sizes(dir: &Path) -> Vec<(PathBuf, u64)> {
+        let mut files = Vec::new();
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_dir() {
-                    count += count_files(&path);
+                    files.extend(collect_files_with_sizes(&path));
                 } else {
-                    count += 1;
+                    let size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+                    files.push((path, size));
                 }
             }
         }
-        count
+        files
     }
 
-    let total_files = count_files(&source_dir);
-    let mut processed: u64 = 0;
+    let all_files = collect_files_with_sizes(&source_dir);
+    let total_bytes: u64 = all_files.iter().map(|(_, s)| s).sum();
+    let total_files = all_files.len() as u64;
 
     // Emit initial progress
     let _ = app.emit(
         "export-progress",
         serde_json::json!({
             "progress": 0,
-            "total": total_files,
+            "total_bytes": total_bytes,
             "step": "starting"
         }),
     );
 
-    // Build the ZIP
+    // ── BUILD ZIP ──────────────────────────────────────────────────────────────
+    // FASES:
+    //   0% → 90% = bytes escritos al ZIP (packing)
+    //   90% → 95% = zip_writer.finish() escribe el central directory al disco
+    //   95% → 100% = verificación de integridad entrada por entrada
     let dest_path = PathBuf::from(&destination);
     let zip_file =
         fs::File::create(&dest_path).map_err(|e| format!("Cannot create file: {}", e))?;
@@ -1542,15 +1548,15 @@ pub async fn export_instance(
     let options =
         zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
-    // Recursive file walker with progress
+    // Recursive file walker — progreso basado en BYTES reales
     fn add_directory_to_zip(
         zip_writer: &mut zip::ZipWriter<fs::File>,
         base_path: &Path,
         current_path: &Path,
         options: zip::write::SimpleFileOptions,
         app: &tauri::AppHandle,
-        processed: &mut u64,
-        total: u64,
+        processed_bytes: &mut u64,
+        total_bytes: u64,
     ) -> Result<(), String> {
         let mut entries: Vec<_> = fs::read_dir(current_path)
             .map_err(|e| format!("Cannot read directory {:?}: {}", current_path, e))?
@@ -1568,8 +1574,10 @@ pub async fn export_instance(
 
             if path.is_dir() {
                 let _ = zip_writer.add_directory(format!("{}/", relative), options);
-                add_directory_to_zip(zip_writer, base_path, &path, options, app, processed, total)?;
+                add_directory_to_zip(zip_writer, base_path, &path, options, app, processed_bytes, total_bytes)?;
             } else {
+                let file_size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+
                 zip_writer
                     .start_file(&relative, options)
                     .map_err(|e| format!("Cannot add file '{}': {}", relative, e))?;
@@ -1578,17 +1586,20 @@ pub async fn export_instance(
                 std::io::copy(&mut f, zip_writer)
                     .map_err(|e| format!("Cannot write file '{}': {}", relative, e))?;
 
-                *processed += 1;
-                let progress = if total > 0 {
-                    (*processed * 100) / total
+                *processed_bytes += file_size;
+
+                // Fase 1: 0% → 90% proporcional a bytes escritos
+                let packing_progress = if total_bytes > 0 {
+                    ((*processed_bytes as f64 / total_bytes as f64) * 90.0) as u64
                 } else {
                     0
                 };
+
                 let _ = app.emit(
                     "export-progress",
                     serde_json::json!({
-                        "progress": progress,
-                        "total": total,
+                        "progress": packing_progress,
+                        "total_bytes": total_bytes,
                         "step": "packing"
                     }),
                 );
@@ -1597,23 +1608,36 @@ pub async fn export_instance(
         Ok(())
     }
 
+    let mut processed_bytes: u64 = 0;
     add_directory_to_zip(
         &mut zip_writer,
         &source_dir,
         &source_dir,
         options,
         &app,
-        &mut processed,
-        total_files,
+        &mut processed_bytes,
+        total_bytes,
     )?;
-    zip_writer.finish().map_err(|e| e.to_string())?;
 
-    // Verify ZIP integrity
+    // Fase 2: 90% → 95% — flush del ZIP central directory al disco
+    // zip_writer.finish() es la operación que realmente sella el archivo.
+    // La barra NO debe llegar a 100% antes de que este paso complete.
     let _ = app.emit(
         "export-progress",
         serde_json::json!({
-            "progress": 100,
-            "total": total_files,
+            "progress": 90,
+            "total_bytes": total_bytes,
+            "step": "flushing"
+        }),
+    );
+    zip_writer.finish().map_err(|e| e.to_string())?;
+
+    // Fase 3: 95% → 100% — verificación de integridad entrada por entrada
+    let _ = app.emit(
+        "export-progress",
+        serde_json::json!({
+            "progress": 95,
+            "total_bytes": total_bytes,
             "step": "verifying"
         }),
     );
@@ -1623,24 +1647,36 @@ pub async fn export_instance(
     let mut verify_archive = zip::ZipArchive::new(verify_file)
         .map_err(|e| format!("ZIP verification failed (corrupt archive): {}", e))?;
 
-    // Quick check: try reading all entry headers
-    for i in 0..verify_archive.len() {
+    let verify_total = verify_archive.len();
+    for i in 0..verify_total {
         let entry = verify_archive
             .by_index(i)
             .map_err(|e| format!("ZIP entry {} is corrupt: {}", i, e))?;
-        // Just access the name to verify the entry is readable
         let _ = entry.name();
+
+        // 95% + fracción del 5% restante por entradas verificadas
+        let verify_progress = 95 + ((i as u64 + 1) * 5) / (verify_total.max(1) as u64);
+        let _ = app.emit(
+            "export-progress",
+            serde_json::json!({
+                "progress": verify_progress,
+                "total_bytes": total_bytes,
+                "step": "verifying"
+            }),
+        );
     }
 
     let _ = app.emit(
         "export-progress",
         serde_json::json!({
             "progress": 100,
-            "total": total_files,
+            "total_bytes": total_bytes,
             "step": "done"
         }),
     );
 
+    // Sanity log
+    let _ = total_files; // silence unused warning
     Ok(dest_path.to_string_lossy().to_string())
 }
 

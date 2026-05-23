@@ -211,6 +211,50 @@
             isForceClosing = false;
         }
     }
+
+    // Persistence Effects for settings and preferences
+    $effect(() => {
+        // Leer explícitamente cada propiedad para que Svelte 5 rastree los cambios profundos.
+        // Sin esto, mutaciones directas como `appState.settings.manualUpdate = true`
+        // no activan el efecto porque Svelte solo rastrea lo que se lee aquí.
+        const settingsSnapshot = {
+            manualUpdate: appState.settings.manualUpdate,
+            lastIgnoredVersion: appState.settings.lastIgnoredVersion,
+            console: {
+                fontFamily: appState.settings.console.fontFamily,
+                fontSize: appState.settings.console.fontSize,
+                lineHeight: appState.settings.console.lineHeight,
+                letterSpacing: appState.settings.console.letterSpacing,
+                fontWeight: appState.settings.console.fontWeight,
+                theme: appState.settings.console.theme,
+            }
+        };
+        if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem('anvilcraft_settings', JSON.stringify(settingsSnapshot));
+        }
+    });
+
+    $effect(() => {
+        // Save console toggles whenever they change
+        if (typeof window !== 'undefined' && window.localStorage) {
+            const toggles = {
+                applyConsoleSettings: appState.applyConsoleSettings,
+                wrapConsoleText: appState.wrapConsoleText,
+                hideConsoleLevels: appState.hideConsoleLevels,
+                showConsoleTimestamps: appState.showConsoleTimestamps,
+                logFormat: appState.logFormat,
+            };
+            window.localStorage.setItem('anvilcraft_console_toggles', JSON.stringify(toggles));
+        }
+    });
+
+    $effect(() => {
+        // Save selected locale whenever it changes
+        const currentLocale = $locale;
+        if (currentLocale && typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem('anvilcraft_locale', currentLocale);
+        }
+    });
 </script>
 
 <!-- Close Warning Modal -->

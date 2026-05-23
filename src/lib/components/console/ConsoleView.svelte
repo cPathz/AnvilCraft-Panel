@@ -899,7 +899,7 @@
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                             : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
                     >
-                        {$_("console.format_f1")}
+                        {$_("console.format_1")}
                     </button>
 
                     <!-- Formato 2 Button -->
@@ -909,7 +909,7 @@
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                             : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
                     >
-                        {$_("console.format_f2")}
+                        {$_("console.format_2")}
                     </button>
 
                     <!-- Formato 3 Button -->
@@ -919,7 +919,7 @@
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                             : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}"
                     >
-                        {$_("console.format_f3")}
+                        {$_("console.format_3")}
                     </button>
 
                     <!-- Experimental Badge at Bottom -->

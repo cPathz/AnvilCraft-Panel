@@ -163,6 +163,8 @@ class AppState {
     }
 
     parseLog(id: string, line: string) {
+        const runtime = this.instanceRuntime[id];
+        if (!runtime) return;
 
         // Strip ANSI escape codes first
         const cleanLine = line.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').trim();
@@ -175,10 +177,13 @@ class AppState {
             msg = headerMatch[1].trim();
         }
 
-        // Join detection (Vanilla, Forge, ES)
-        const joinMatch = msg.match(/^(.*) joined the game$/) || 
-                          msg.match(/^(.*)\[\/.*\] logged in with entity id/) ||
-                          msg.match(/^(.*) se ha unido al juego$/);
+        // Clean up common prefixes that modloaders or vanilla add to system messages
+        msg = msg.replace(/^\[Not Secure\]\s*/i, "");
+
+        // Join detection (Rely on NMS internal network logs + chat fallback)
+        const joinMatch = msg.match(/^(.*?)\[\/.*?\] logged in with entity id/) ||
+                          msg.match(/^(.*?) joined the game$/) || 
+                          msg.match(/^(.*?) se ha unido al juego$/);
         if (joinMatch) {
             const name = joinMatch[1].trim();
             if (!runtime.players.includes(name)) {
@@ -186,16 +191,17 @@ class AppState {
             }
         }
 
-        // Leave detection (EN, ES)
-        const leaveMatch = msg.match(/^(.*) left the game$/) ||
-                           msg.match(/^(.*) ha abandonado el juego$/);
+        // Leave detection (Rely on NMS internal network logs + chat fallback)
+        const leaveMatch = msg.match(/^(.*?) lost connection:/) ||
+                           msg.match(/^(.*?) left the game$/) ||
+                           msg.match(/^(.*?) ha abandonado el juego$/);
         if (leaveMatch) {
             const name = leaveMatch[1].trim();
             runtime.players = runtime.players.filter(p => p !== name);
         }
 
         // /list command detection
-        const listMatch = msg.match(/^There are \d+ (?:of a max of \d+ )?players online: (.*)$/);
+        const listMatch = msg.match(/^(?:There are|Hay) \d+.*?(?:players online|jugadores en l[íi]nea):\s*(.*)$/i);
         if (listMatch) {
             const namesPart = listMatch[1].trim();
             if (namesPart) {

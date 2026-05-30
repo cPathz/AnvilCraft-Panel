@@ -1,4 +1,5 @@
-use crate::commands::versions::{install_project_server, install_vanilla};
+use crate::commands::versions::{install_neoforge, install_project_server, install_vanilla};
+
 use crate::models::{
     ChildProcessMap, Instance, InstanceEngine, InstanceInstallProgress, InstanceSettings,
     InstanceState, Addon, AddonCache, AddonAnalysis, AddonInstallItem
@@ -78,14 +79,17 @@ pub async fn create_instance(
     let engine = match loader.as_str() {
         "Fabric" => InstanceEngine::Fabric,
         "Forge" => InstanceEngine::Forge,
+        "NeoForge" => InstanceEngine::NeoForge,
         "Paper" => InstanceEngine::Paper,
         "Spigot" => InstanceEngine::Spigot,
         "Purpur" => InstanceEngine::Purpur,
         "Folia" => InstanceEngine::Folia,
         "Velocity" => InstanceEngine::Velocity,
         "Waterfall" => InstanceEngine::Waterfall,
+        "Quilt" => InstanceEngine::Quilt,
         _ => InstanceEngine::Vanilla,
     };
+
 
     // Calculate build (simplified)
     let build = if let Some(url) = &custom_download_url {
@@ -148,6 +152,17 @@ pub async fn create_instance(
         std::thread::sleep(std::time::Duration::from_millis(500));
 
         let result = match loader_engine {
+            InstanceEngine::NeoForge => {
+                // NeoForge: version string IS the full neoforge version (e.g. "21.1.172" or "1.20.1-47.2.0")
+                install_neoforge(
+                    &app_handle,
+                    &instance_id,
+                    &instance_version,
+                    &instance_path_clone.join(".minecraft"),
+                    accept_eula_clone,
+                )
+                .await
+            }
             InstanceEngine::Paper
             | InstanceEngine::Purpur
             | InstanceEngine::Spigot
@@ -184,6 +199,7 @@ pub async fn create_instance(
                 .await
             }
         };
+
 
         if let Err(e) = result {
             let _ = app_handle.emit(

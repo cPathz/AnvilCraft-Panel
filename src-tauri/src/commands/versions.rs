@@ -209,26 +209,42 @@ pub async fn download_file(
     let mut downloaded: u64 = 0;
     let mut stream = response.bytes_stream();
 
+    let mut last_emit = std::time::Instant::now();
+    let mut last_progress = 0;
+    let mut last_logged_mb = 0;
+
     while let Some(item) = stream.next().await {
         let chunk = item.map_err(|e| e.to_string())?;
         file.write_all(&chunk).map_err(|e| e.to_string())?;
         downloaded += chunk.len() as u64;
 
+        let current_mb = downloaded / (1024 * 1024);
+        let mut progress = 0;
+        let mut is_finished = false;
+
         if let Some(size) = total_size {
-            let progress = (downloaded as f64 / size as f64 * 100.0) as u64;
-            // Emit sparingly
-            if downloaded % (1024 * 1024) == 0 || downloaded == size {
-                // Log every MB
-                if let Some(ref mut f) = log_file {
-                    let _ = writeln!(
-                        f,
-                        "[{}] Progress: {}% ({} bytes)",
-                        Local::now().format("%H:%M:%S"),
-                        progress,
-                        downloaded
-                    );
-                }
+            progress = (downloaded as f64 / size as f64 * 100.0) as u64;
+            is_finished = downloaded == size;
+        }
+
+        // Log every MB
+        if current_mb > last_logged_mb || is_finished {
+            last_logged_mb = current_mb;
+            if let Some(ref mut f) = log_file {
+                let _ = writeln!(
+                    f,
+                    "[{}] Progress: {}% ({} bytes)",
+                    Local::now().format("%H:%M:%S"),
+                    progress,
+                    downloaded
+                );
             }
+        }
+
+        // Throttle UI events to prevent freezing the WebView
+        if progress > last_progress || last_emit.elapsed().as_millis() > 50 || is_finished {
+            last_progress = progress;
+            last_emit = std::time::Instant::now();
 
             let _ = app.emit(
                 "install-progress",
@@ -236,7 +252,7 @@ pub async fn download_file(
                     id: id.to_string(),
                     step: format!("Downloading..."),
                     progress,
-                    total_size: Some(size),
+                    total_size,
                     downloaded,
                 },
             );
@@ -456,6 +472,296 @@ pub async fn install_project_server(
             id: id,
             step: "Done".into(),
             progress: 100,
+            total_size: None,
+            downloaded: 0,
+        },
+    );
+
+    Ok(())
+}
+
+// ─── NeoForge ────────────────────────────────────────────────────────────────
+
+/// Helper to extract the "Minecraft Version" category from a NeoForge version string.
+fn extract_neoforge_category(nf_version: &str) -> Option<String> {
+    if nf_version.starts_with("1.") {
+        nf_version.split('-').next().map(|s| s.to_string())
+    } else {
+        let parts: Vec<&str> = nf_version.split('.').collect();
+        if parts.len() >= 2 {
+            let major = parts[0].parse::<u32>().unwrap_or(0);
+            if major >= 20 && major <= 21 {
+                // Map 20.x and 21.x to 1.20.x and 1.21.x
+                Some(format!("1.{}.{}", parts[0], parts[1]))
+            } else {
+                // For 26.x.x onwards, it uses the direct prefix.
+                // E.g., 26.1.2.65-beta -> category 26.1.2
+                // We join all parts except the last one (which is the build/beta number).
+                let cat = parts[0..parts.len() - 1].join(".");
+                Some(cat)
+            }
+        } else {
+            None
+        }
+    }
+}
+
+/// Returns NeoForge versions for a given Minecraft version (e.g. "1.20.1" or "26.1.2").
+/// Queries the Maven Metadata XML from the official NeoForged Maven repository.
+#[tauri::command]
+pub async fn get_neoforge_versions(mc_version: String, betas: bool) -> Result<Vec<String>, String> {
+    // NeoForge versions have the format: <mc_major>.<mc_minor>.<mc_patch>-<neoforge_build>
+    // The metadata XML for a MC version like 1.20.1 lives at:
+    // https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml
+    let url = "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml";
+
+    let client = reqwest::Client::builder()
+        .user_agent("AnvilCraft/1.0")
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let xml = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {}", e))?
+        .text()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Parse <version> tags from XML using simple string scanning (no heavy XML parser needed)
+    let mut versions: Vec<String> = Vec::new();
+
+    for line in xml.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("<version>") && trimmed.ends_with("</version>") {
+            let inner = trimmed
+                .trim_start_matches("<version>")
+                .trim_end_matches("</version>");
+            
+            let ext_mc = extract_neoforge_category(inner);
+            
+            if let Some(ver) = ext_mc {
+                if ver == mc_version {
+                    // Filter out betas if the user didn't request them
+                    let is_beta = inner.contains("-beta");
+                    if betas || !is_beta {
+                        versions.push(inner.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    // Reverse so newest builds come first
+    versions.reverse();
+    Ok(versions)
+}
+
+/// Lists all Minecraft versions that have at least one NeoForge release.
+#[tauri::command]
+pub async fn get_neoforge_mc_versions() -> Result<Vec<String>, String> {
+    let url = "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml";
+
+    let client = reqwest::Client::builder()
+        .user_agent("AnvilCraft/1.0")
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let xml = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {}", e))?
+        .text()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let mut mc_versions: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+
+    for line in xml.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("<version>") && trimmed.ends_with("</version>") {
+            let inner = trimmed
+                .trim_start_matches("<version>")
+                .trim_end_matches("</version>");
+            
+            let ext_mc = extract_neoforge_category(inner);
+
+            if let Some(ver) = ext_mc {
+                // Ensure it looks like a valid category version (e.g., numbers separated by dots)
+                if ver.split('.').all(|p| p.parse::<u32>().is_ok()) {
+                    mc_versions.insert(ver);
+                }
+            }
+        }
+    }
+
+    let mut result: Vec<String> = mc_versions.into_iter().collect();
+    result.reverse(); // newest first
+    Ok(result)
+}
+
+/// Downloads the NeoForge installer and runs it headlessly to set up the server.
+/// Emits `install-progress` events to the frontend during the process.
+pub async fn install_neoforge(
+    app: &tauri::AppHandle,
+    id: &str,
+    neoforge_version: &str,
+    minecraft_dir: &std::path::Path,
+    accept_eula: bool,
+) -> Result<(), String> {
+    use std::io::Write as IoWrite;
+    use tauri::Emitter;
+    #[cfg(windows)]
+    use std::os::windows::process::CommandExt;
+
+    // NeoForge installer URL pattern:
+    // https://maven.neoforged.net/releases/net/neoforged/neoforge/<version>/neoforge-<version>-installer.jar
+    let installer_url = format!(
+        "https://maven.neoforged.net/releases/net/neoforged/neoforge/{}/neoforge-{}-installer.jar",
+        neoforge_version, neoforge_version
+    );
+
+    let installer_path = minecraft_dir.join(format!("neoforge-{}-installer.jar", neoforge_version));
+
+    // Ensure dir exists
+    fs::create_dir_all(minecraft_dir).map_err(|e| e.to_string())?;
+
+    // Step 1 – Emit "downloading installer"
+    let _ = app.emit(
+        "install-progress",
+        crate::models::InstanceInstallProgress {
+            id: id.to_string(),
+            step: format!("Downloading NeoForge {} installer...", neoforge_version),
+            progress: 0,
+            total_size: None,
+            downloaded: 0,
+        },
+    );
+
+    let log_file = minecraft_dir
+        .parent()
+        .unwrap_or(minecraft_dir)
+        .join("install.log");
+
+    // Download installer JAR
+    download_file(app, &installer_url, &installer_path, id, None, Some(&log_file)).await?;
+
+    // Step 2 – Run installer headlessly
+    let _ = app.emit(
+        "install-progress",
+        crate::models::InstanceInstallProgress {
+            id: id.to_string(),
+            step: format!("Ejecutando instalador NeoForge {}...", neoforge_version),
+            progress: 50,
+            total_size: None,
+            downloaded: 0,
+        },
+    );
+
+    if let Ok(mut f) = fs::OpenOptions::new().append(true).open(&log_file) {
+        let _ = writeln!(
+            f,
+            "[{}] Running NeoForge installer headlessly...",
+            chrono::Local::now().format("%H:%M:%S")
+        );
+    }
+
+    let mut std_cmd = std::process::Command::new("java");
+    std_cmd.arg("-jar")
+        .arg(&installer_path)
+        .arg("--installServer")
+        .current_dir(minecraft_dir)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+
+    #[cfg(windows)]
+    std_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+
+    let mut cmd = tokio::process::Command::from(std_cmd);
+    
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| format!("Failed to run NeoForge installer: {}", e))?;
+
+    // Drain stderr in a background task to prevent pipe deadlock
+    let stderr_log = log_file.clone();
+    let stderr_handle = if let Some(stderr) = child.stderr.take() {
+        Some(tokio::spawn(async move {
+            use tokio::io::AsyncBufReadExt;
+            let mut reader = tokio::io::BufReader::new(stderr).lines();
+            while let Ok(Some(line)) = reader.next_line().await {
+                if let Ok(mut f) = fs::OpenOptions::new().append(true).open(&stderr_log) {
+                    let _ = writeln!(f, "[STDERR] {}", line);
+                }
+            }
+        }))
+    } else {
+        None
+    };
+
+    // Read stdout and emit progress to UI
+    if let Some(stdout) = child.stdout.take() {
+        use tokio::io::AsyncBufReadExt;
+        let mut reader = tokio::io::BufReader::new(stdout).lines();
+        while let Ok(Some(line)) = reader.next_line().await {
+            if let Ok(mut f) = fs::OpenOptions::new().append(true).open(&log_file) {
+                let _ = writeln!(f, "{}", line);
+            }
+            
+            let mut short_line = line.clone();
+            if short_line.len() > 60 {
+                short_line.truncate(60);
+                short_line.push_str("...");
+            }
+
+            let _ = app.emit(
+                "install-progress",
+                crate::models::InstanceInstallProgress {
+                    id: id.to_string(),
+                    step: format!("NeoForge: {}", short_line),
+                    progress: 50,
+                    total_size: None,
+                    downloaded: 0,
+                },
+            );
+        }
+    }
+
+    // Wait for stderr reader to finish
+    if let Some(handle) = stderr_handle {
+        let _ = handle.await;
+    }
+
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| format!("Failed to wait for NeoForge installer: {}", e))?;
+
+    if !status.success() {
+        return Err("NeoForge installer failed".into());
+    }
+
+    // Step 3 – EULA
+    write_eula_txt(minecraft_dir.join("eula.txt"), accept_eula)?;
+
+    // Cleanup installer JAR to save space
+    let _ = fs::remove_file(&installer_path);
+    // Also remove the installer log that NeoForge generates in the same dir
+    let _ = fs::remove_file(
+        minecraft_dir.join(format!("neoforge-{}-installer.jar.log", neoforge_version)),
+    );
+
+    // Step 4 – Done
+    let _ = app.emit(
+        "install-progress",
+        crate::models::InstanceInstallProgress {
+            id: id.to_string(),
+            step: "Instalación completada".into(),
+            progress: 90,
             total_size: None,
             downloaded: 0,
         },

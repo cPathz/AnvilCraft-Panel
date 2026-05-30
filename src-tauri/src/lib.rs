@@ -6,8 +6,8 @@ use tauri::{Emitter, Manager};
 pub mod commands;
 mod version;
 pub mod parser;
-
 pub mod models;
+
 
 use notify::{Watcher, RecursiveMode, Event};
 use models::{ChildProcessMap, AddonWatcherState};
@@ -105,6 +105,10 @@ pub fn run() {
             // Versions
             commands::versions::get_minecraft_versions,
             commands::versions::get_project_versions,
+            commands::versions::get_neoforge_versions,
+            commands::versions::get_neoforge_mc_versions,
+            // CurseForge / Modpack Importer
+            commands::curseforge::import_curseforge_zip,
             // System
             commands::system::get_system_memory,
             commands::system::get_java_version,

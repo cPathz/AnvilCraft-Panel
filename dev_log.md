@@ -4,6 +4,33 @@ Bitácora de desarrollo en formato machine-readable. Solo hechos concretos, fech
 
 ---
 
+## 2026-05-29
+
+### NeoForge Engine Support (Full Pipeline)
+- **Backend**: Nuevos comandos `get_neoforge_builds` y `get_neoforge_mc_versions` en `versions.rs` — parseo directo del `maven-metadata.xml` de NeoForge sin dependencia de XML parser pesado.
+- **Installer**: Función `install_neoforge()` — descarga el installer JAR, lo ejecuta headlessly (`--installServer`), emite progreso al frontend via `install-progress`, y limpia artefactos temporales.
+- **Version Mapping**: Helper `extract_neoforge_category()` que extrae la versión de Minecraft desde el formato de versión NeoForge (ej: `21.1.172` → `1.21.1`).
+- **UI**: Rama condicional en `CreateInstanceModal.svelte` para NeoForge — dropdown de versiones MC disponibles + selector de builds NeoForge específicos + checkbox para betas.
+- **i18n**: Claves `neoforge_version`, `neoforge_mc_version` en `en.json` y `es.json`.
+- **Cargo.toml**: Añadida dependencia `slug` para slugificación de nombres de instancia.
+
+### CurseForge / Modrinth Modpack Importer
+- **New File**: `src-tauri/src/commands/curseforge.rs` (598 líneas) — importador completo de modpacks ZIP.
+- **Dual Format**: Detección automática `manifest.json` (CurseForge) vs `modrinth.index.json` (Modrinth).
+- **CurseForge Flow**: Parseo manifest → resolución URLs via CurseForge API (`$2a$10...` key) → descarga concurrente en batches de 10 → copia overrides → instalación loader.
+- **Modrinth Flow**: Parseo index → descarga directa CDN en batches de 8 → respeta rutas relativas (`mods/`, `config/`) → copia overrides.
+- **ZIP Extraction**: Helper `extract_zip_to_dir` con validación `enclosed_name()` para seguridad path traversal.
+- **UI**: Nueva pestaña "Import" en `CreateInstanceModal` con selector ZIP premium (gradiente naranja), campo CurseForge Profile Code con modal de restricción Cloudflare, y feedback visual de progreso.
+- **i18n**: 12 nuevas claves para importación (`import_modpack_zip`, `import_modpack_cf_blocked_title`, etc.).
+
+### Smart Server Launch Mode (NeoForge/Forge)
+- **Detection**: `find_forge_args_file()` en `server.rs` — busca recursivamente `win_args.txt` (Windows) o `unix_args.txt` (Unix) dentro de `libraries/` hasta 8 niveles de profundidad.
+- **Dual Launch**: Si encuentra args file → lanza con `java @user_jvm_args.txt @libraries/.../win_args.txt nogui` (NeoForge/Forge moderno). Si no → lanza clásico con `-jar server.jar nogui`.
+- **Auto-Config**: Genera `user_jvm_args.txt` automáticamente si no existe, con encoding UTF-8.
+- **Fallback**: JAR lookup alternativo en raíz de instancia para servidores Paper/Purpur con estructura no estándar.
+
+---
+
 ## 2026-05-25
 
 ### Console: Smart Player Detection Fix

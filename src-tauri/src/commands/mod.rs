@@ -1,3 +1,4 @@
+pub mod curseforge;
 pub mod dev;
 pub mod instance;
 pub mod java;

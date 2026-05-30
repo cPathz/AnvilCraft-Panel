@@ -23,8 +23,10 @@
         | "Folia"
         | "Velocity"
         | "Waterfall"
+        | "NeoForge"
         | null
     >("Vanilla");
+
     let acceptEula = $state(true);
     let hoveredIcon = $state(false);
 
@@ -61,6 +63,17 @@
     let sourcePath = $state("");
     let isDetectingVersion = $state(false);
 
+    // ── Modpack Import (ZIP) ───────────────────────────────────────────────
+    let modpackZipPath = $state("");
+    let showCfBlockedModal = $state(false);
+    let cfProfileCode = $state("");
+
+    // ── NeoForge specific ─────────────────────────────────────────────────
+    let neoforgeVersions = $state<string[]>([]);
+    let loadingNeoforge = $state(false);
+    let showNeoforgeVersionDropdown = $state(false);
+
+
     async function selectSource() {
         if (activeTab === "file") {
             const selected = await open({
@@ -82,6 +95,22 @@
             }
         }
     }
+
+    async function selectModpackZip() {
+        const selected = await open({
+            multiple: false,
+            filters: [{ name: "Modpack ZIP", extensions: ["zip"] }],
+        });
+        if (selected && typeof selected === "string") {
+            modpackZipPath = selected;
+            // Auto-fill name from filename if empty
+            if (!instanceName.trim()) {
+                const fname = selected.split(/[\\/]/).pop() || "";
+                instanceName = fname.replace(/\.zip$/i, "").replace(/[_-]/g, " ").trim().slice(0, 30);
+            }
+        }
+    }
+
 
     async function detectVersion(path: string) {
         isDetectingVersion = true;
@@ -122,46 +151,55 @@
                 const payload = event.payload;
                 if (createdId && payload.id !== createdId) return;
 
-                if (payload.step.startsWith("Downloading")) {
-                    installStep = get(_)("create_instance.status_downloading");
+                if (payload.step.startsWith("Downloading") || payload.step.startsWith("Descargando")) {
+                    installStep = get(_("create_instance.status_downloading"));
                     const formatSize = (bytes: number) =>
                         (bytes / 1024 / 1024).toFixed(1);
 
                     if (payload.total_size) {
-                        installStep = get(_)("create_instance.status_download_progress", {
+                        installStep = get(_("create_instance.status_download_progress", {
                             values: {
                                 downloaded: formatSize(payload.downloaded),
                                 total: formatSize(payload.total_size)
                             }
-                        });
+                        }));
                         installProgress = payload.progress;
                     } else {
-                        installStep = get(_)("create_instance.status_download_simple", {
+                        installStep = get(_("create_instance.status_download_simple", {
                             values: {
                                 downloaded: formatSize(payload.downloaded)
                             }
-                        });
+                        }));
                         installProgress = payload.progress;
                     }
                 } else if (
                     payload.step === "Done" ||
                     payload.progress === 100
                 ) {
-                    installStep = get(_)("create_instance.status_completed");
+                    installStep = get(_("create_instance.status_completed"));
                     installProgress = 100;
                     setTimeout(() => finishInstallation(payload.id), 500);
                 } else if (payload.step === "Creating files...") {
-                    installStep = get(_)("create_instance.status_creating_files");
+                    installStep = get(_("create_instance.status_creating_files"));
                 } else if (payload.step === "Finalizing download...") {
-                    installStep = get(_)("create_instance.status_finalizing_download");
-                } else if (payload.step.startsWith("Ejecutando instalador")) {
-                    installStep = get(_)("create_instance.status_executing_installer");
-                } else if (payload.step.startsWith("Instalación completada")) {
-                    installStep = get(_)("create_instance.status_configuring");
+                    installStep = get(_("create_instance.status_finalizing_download"));
+                } else if (payload.step.startsWith("Ejecutando instalador") || payload.step.startsWith("Downloading NeoForge")) {
+                    installStep = get(_("create_instance.status_executing_installer"));
+                } else if (payload.step.startsWith("Instalación completada") || payload.step.startsWith("Installing NeoForge")) {
+                    installStep = get(_("create_instance.status_installing_loader"));
+                } else if (payload.step.startsWith("Extracting")) {
+                    installStep = get(_("create_instance.status_extracting"));
+                    installProgress = payload.progress;
+                } else if (payload.step.startsWith("Copying")) {
+                    installStep = get(_("create_instance.status_copying_overrides"));
+                    installProgress = payload.progress;
+                } else if (payload.step.startsWith("Downloaded") || payload.step.startsWith("Downloading")) {
+                    installStep = get(_("create_instance.status_downloading_mods"));
+                    installProgress = payload.progress;
                 } else if (payload.step.startsWith("Error")) {
-                    installStep = get(_)("create_instance.status_error");
+                    installStep = get(_("create_instance.status_error"));
                     installing = false;
-                    toast.error(get(_)("create_instance.alert_install_error") + payload.step);
+                    toast.error(get(_("create_instance.alert_install_error")) + payload.step);
                     if (unlisten) unlisten();
                 } else {
                     installStep = payload.step;
@@ -170,7 +208,16 @@
                 }
             });
 
-            if (activeTab === "custom") {
+            if (activeTab === "import" && modpackZipPath) {
+                // ── Modpack ZIP import flow ──
+                const id = await invoke<string>("import_curseforge_zip", {
+                    name: instanceName.trim(),
+                    zipPath: modpackZipPath,
+                    icon: selectedIcon,
+                    acceptEula,
+                });
+                createdId = id;
+            } else if (activeTab === "custom") {
                 const id = await invoke<string>("create_instance", {
                     name: instanceName.trim(),
                     loader: selectedLoader,
@@ -182,7 +229,7 @@
                 });
                 createdId = id;
             } else {
-                // File or Import
+                // File or legacy Import (folder)
                 const id = await invoke<string>("create_instance_from_path", {
                     name: instanceName.trim(),
                     icon: selectedIcon,
@@ -242,6 +289,12 @@
                 versions = await invoke("get_minecraft_versions", {
                     snapshots: showSnapshots,
                 });
+            } else if (selectedLoader === "NeoForge") {
+                // NeoForge: first load MC versions, then the user selects MC version
+                // which triggers loading NeoForge builds
+                // We don't use the generic versions list for NeoForge
+                loadingVersions = false;
+                return;
             } else {
                 // Custom API Loaders
                 try {
@@ -271,10 +324,58 @@
         }
     }
 
+    async function loadNeoforgeVersions(mcVersion: string) {
+        if (!mcVersion) return;
+        loadingNeoforge = true;
+        neoforgeVersions = [];
+        try {
+            neoforgeVersions = await invoke<string[]>("get_neoforge_versions", { mcVersion, betas: showSnapshots });
+            if (neoforgeVersions.length > 0) {
+                gameVersion = neoforgeVersions[0]; // select latest build by default
+            } else {
+                gameVersion = "";
+            }
+        } catch (e) {
+            console.error("Failed to load NeoForge versions:", e);
+        } finally {
+            loadingNeoforge = false;
+        }
+    }
+
+    // Separate state for NeoForge MC version picker
+    let nfMcVersion = $state("");
+    let nfMcVersions = $state<string[]>([]);
+    let loadingNfMcVersions = $state(false);
+    let showNfMcDropdown = $state(false);
+
+    async function loadNeoForgeMcVersions() {
+        loadingNfMcVersions = true;
+        try {
+            nfMcVersions = await invoke<string[]>("get_neoforge_mc_versions");
+            if (nfMcVersions.length > 0 && !nfMcVersion) {
+                nfMcVersion = nfMcVersions[0];
+                loadNeoforgeVersions(nfMcVersion);
+            }
+        } catch (e) {
+            console.error("Failed to load NeoForge MC versions:", e);
+        } finally {
+            loadingNfMcVersions = false;
+        }
+    }
+
+
     $effect(() => {
         // Trigger load options when loader/snapshots changes
         if (selectedLoader) {
-            loadVersions();
+            if (selectedLoader === "NeoForge") {
+                if (nfMcVersion) {
+                    loadNeoforgeVersions(nfMcVersion);
+                } else {
+                    loadNeoForgeMcVersions();
+                }
+            } else {
+                loadVersions();
+            }
         }
     });
 
@@ -453,7 +554,7 @@
                                 <div
                                     class="absolute z-20 bottom-full mb-1 left-0 right-0 bg-[#18181b] border border-zinc-700 rounded-lg shadow-xl overflow-hidden animate-fade-in max-h-[260px] overflow-y-auto custom-scrollbar"
                                 >
-                                    {#each ["Vanilla", "Paper", "Purpur", "Folia", "Velocity", "Waterfall"] as loader}
+                                    {#each ["Vanilla", "Paper", "Purpur", "Folia", "Velocity", "Waterfall", "NeoForge"] as loader}
                                         <button
                                             class="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors flex items-center justify-between"
                                             class:bg-green-900_20={selectedLoader ===
@@ -465,7 +566,12 @@
                                                 showLoaderDropdown = false;
                                             }}
                                         >
-                                            {loader}
+                                            <span class="flex items-center gap-2">
+                                                {loader}
+                                                {#if loader === "NeoForge"}
+                                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30">MODS</span>
+                                                {/if}
+                                            </span>
                                             {#if selectedLoader === loader}
                                                 <svg
                                                     width="14"
@@ -536,6 +642,88 @@
                             </div>
                         </div>
 
+                        <!-- Version column: NeoForge = 2 step picker, others = generic -->
+                        {#if selectedLoader === "NeoForge"}
+                            <!-- NeoForge: MC Version + Build selector (2 rows, spanning full grid) -->
+                            <div class="col-span-2 grid grid-cols-2 gap-3 mt-1">
+                                <!-- MC Version -->
+                                <div class="space-y-1.5 relative">
+                                    <span class="text-xs font-bold text-white tracking-wider">{$_("create_instance.neoforge_mc_version")}</span>
+                                    <button
+                                        type="button"
+                                        class="w-full bg-black/20 border border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-300 flex items-center justify-between focus:outline-none focus:border-orange-500/50 transition-all disabled:opacity-50"
+                                        disabled={loadingNfMcVersions}
+                                        onclick={() => (showNfMcDropdown = !showNfMcDropdown)}
+                                        id="neoforge-mc-version"
+                                    >
+                                        <span class="font-bold text-sm truncate">{loadingNfMcVersions ? "..." : (nfMcVersion || "Select")}</span>
+                                        {#if loadingNfMcVersions}
+                                            <span class="animate-spin text-orange-400">↻</span>
+                                        {:else}
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="transition-transform {showNfMcDropdown ? 'rotate-180' : ''}"><path d="m6 9 6 6 6-6"/></svg>
+                                        {/if}
+                                    </button>
+                                    {#if showNfMcDropdown && nfMcVersions.length > 0}
+                                        <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                        <!-- svelte-ignore a11y_no_static_element_interactions -->
+                                        <div class="fixed inset-0 z-10" onclick={() => (showNfMcDropdown = false)}></div>
+                                        <div class="absolute z-20 bottom-full mb-1 left-0 right-0 bg-[#18181b] border border-zinc-700 rounded-lg shadow-xl overflow-y-auto custom-scrollbar animate-fade-in max-h-[200px]">
+                                            {#each nfMcVersions as v}
+                                                <button
+                                                    class="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors {nfMcVersion === v ? 'text-orange-400' : ''}"
+                                                    onclick={() => { nfMcVersion = v; showNfMcDropdown = false; loadNeoforgeVersions(v); }}
+                                                >{v}</button>
+                                            {/each}
+                                        </div>
+                                    {/if}
+                                </div>
+                                <!-- NeoForge Build -->
+                                <div class="space-y-1.5 relative">
+                                    <span class="text-xs font-bold text-white tracking-wider">{$_("create_instance.neoforge_version")}</span>
+                                    <button
+                                        type="button"
+                                        class="w-full bg-black/20 border border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-300 flex items-center justify-between focus:outline-none focus:border-orange-500/50 transition-all disabled:opacity-50"
+                                        disabled={loadingNeoforge || !nfMcVersion}
+                                        onclick={() => (showNeoforgeVersionDropdown = !showNeoforgeVersionDropdown)}
+                                        id="neoforge-build-version"
+                                    >
+                                        <span class="font-bold text-sm truncate">{loadingNeoforge ? "..." : (gameVersion || "Select MC first")}</span>
+                                        {#if loadingNeoforge}
+                                            <span class="animate-spin text-orange-400">↻</span>
+                                        {:else}
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="transition-transform {showNeoforgeVersionDropdown ? 'rotate-180' : ''}"><path d="m6 9 6 6 6-6"/></svg>
+                                        {/if}
+                                    </button>
+                                    {#if showNeoforgeVersionDropdown && neoforgeVersions.length > 0}
+                                        <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                        <!-- svelte-ignore a11y_no_static_element_interactions -->
+                                        <div class="fixed inset-0 z-10" onclick={() => (showNeoforgeVersionDropdown = false)}></div>
+                                        <div class="absolute z-20 bottom-full mb-1 left-0 right-0 bg-[#18181b] border border-zinc-700 rounded-lg shadow-xl overflow-y-auto custom-scrollbar animate-fade-in max-h-[200px]">
+                                            {#each neoforgeVersions as v}
+                                                <button
+                                                    class="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors {gameVersion === v ? 'text-orange-400' : ''}"
+                                                    onclick={() => { gameVersion = v; showNeoforgeVersionDropdown = false; }}
+                                                >{v}</button>
+                                            {/each}
+                                        </div>
+                                    {/if}
+                                </div>
+                                <!-- NeoForge Betas Checkbox -->
+                                <div class="col-span-2 flex items-center gap-2 mt-1">
+                                    <input
+                                        type="checkbox"
+                                        id="nf-snapshots"
+                                        bind:checked={showSnapshots}
+                                        class="rounded border-zinc-700 bg-zinc-900 text-orange-500 focus:ring-0 focus:ring-offset-0 w-3 h-3"
+                                    />
+                                    <label
+                                        for="nf-snapshots"
+                                        class="text-xs text-zinc-500 select-none cursor-pointer"
+                                        >{$_("create_instance.show_snapshots")}</label
+                                    >
+                                </div>
+                            </div>
+                        {:else}
                         <!-- Unified Version Selection Logic -->
                         <div class="space-y-1.5 relative">
                             <span
@@ -606,16 +794,76 @@
                                 </div>
                             {/if}
                         </div>
+                        {/if}
                     </div>
                 {:else}
                     <!-- File / Import UI -->
                     <div class="space-y-4">
+                        {#if activeTab === "import"}
+                            <!-- ── Premium Modpack ZIP Importer ── -->
+                            <div class="space-y-3">
+                                <!-- ZIP selector card -->
+                                <div class="bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20 rounded-xl p-4 space-y-3">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold text-orange-300">{$_("create_instance.import_modpack_zip")}</p>
+                                            <p class="text-[10px] text-zinc-500">{$_("create_instance.import_modpack_zip_desc")}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button
+                                            onclick={selectModpackZip}
+                                            class="flex-1 bg-black/30 border border-zinc-700 rounded-lg px-3 py-2 text-xs font-bold text-zinc-300 hover:text-white hover:border-orange-500/50 hover:bg-orange-500/5 transition-all text-left truncate"
+                                            id="modpack-zip-selector"
+                                        >
+                                            {modpackZipPath ? modpackZipPath.split(/[\\/]/).pop() : $_("create_instance.import_modpack_btn")}
+                                        </button>
+                                        {#if modpackZipPath}
+                                            <button
+                                                onclick={() => (modpackZipPath = "")}
+                                                class="p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors"
+                                                aria-label="Clear"
+                                            >
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                            </button>
+                                        {/if}
+                                    </div>
+                                    {#if modpackZipPath}
+                                        <div class="flex items-center gap-1.5 text-[10px] text-green-400">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                            ZIP seleccionado: {modpackZipPath.split(/[\\/]/).pop()}
+                                        </div>
+                                    {/if}
+                                </div>
+
+                                <!-- CurseForge Profile Code section (with Cloudflare warning) -->
+                                <div class="border border-zinc-800 rounded-xl p-3 space-y-2">
+                                    <p class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{$_("create_instance.import_modpack_cf_code_title")}</p>
+                                    <div class="flex gap-2">
+                                        <input
+                                            type="text"
+                                            bind:value={cfProfileCode}
+                                            placeholder={$_("create_instance.import_modpack_cf_code_placeholder")}
+                                            class="flex-1 bg-black/20 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition-all font-mono"
+                                            id="cf-profile-code"
+                                        />
+                                        <button
+                                            onclick={() => { if (cfProfileCode.trim()) showCfBlockedModal = true; }}
+                                            disabled={!cfProfileCode.trim()}
+                                            class="px-3 py-2 text-xs font-bold bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-all disabled:opacity-40"
+                                        >Import</button>
+                                    </div>
+                                </div>
+                            </div>
+                        {:else}
+                        <!-- File Tab (JAR) -->
                         <div class="space-y-1.5">
                             <span
                                 class="text-xs font-bold text-white tracking-wider"
-                                >{activeTab === "file"
-                                    ? $_("create_instance.select_jar")
-                                    : $_("create_instance.select_folder")}</span
+                                >{$_("create_instance.select_jar")}</span
                             >
                             <div class="flex gap-2">
                                 <button
@@ -681,6 +929,7 @@
                                 {$_("create_instance.detection_tip")}
                             </p>
                         </div>
+                        {/if}
 
                         <!-- EULA Checkbox for File/Import Tab -->
                         <div class="flex items-center gap-2 mt-2">

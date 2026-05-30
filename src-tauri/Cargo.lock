@@ -75,6 +75,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-process",
  "tauri-plugin-updater",
+ "tokio",
  "toml 1.1.2+spec-1.1.0",
  "uuid",
  "zip 7.0.0",

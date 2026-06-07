@@ -11,7 +11,9 @@
 ///   4. Download every listed mod concurrently using the respective API.
 ///   5. Copy the `overrides/` (CurseForge) or `overrides/` (Modrinth) folder.
 ///   6. Install the mod loader (NeoForge or Forge) headlessly if needed.
-use crate::commands::versions::{install_neoforge, write_eula_txt};
+use crate::loaders::common::write_eula_txt;
+use crate::loaders::registry::LoaderRegistry;
+use crate::loaders::types::VersionMeta;
 use crate::models::{Instance, InstanceEngine, InstanceInstallProgress, InstanceSettings, InstanceState};
 use chrono::Utc;
 use futures_util::future::join_all;
@@ -408,7 +410,20 @@ async fn import_cf_manifest(
                 downloaded: 0,
             },
         );
-        install_neoforge(&app, &id, nf_ver, &mc_dir, accept_eula).await?;
+        // Route through the registry.
+        let loader = LoaderRegistry::global()
+            .by_engine(InstanceEngine::NeoForge)
+            .ok_or_else(|| "NeoForge loader missing from registry".to_string())?;
+        let version_meta = VersionMeta {
+            id: nf_ver.clone(),
+            build: Some(nf_ver.clone()),
+            url: None,
+            display_name: nf_ver.clone(),
+            requires_mc_version: None,
+        };
+        loader
+            .install(&app, &id, &instance_path, &version_meta, None, accept_eula)
+            .await?;
     }
     // Note: Forge installation could be added here in a future update
 
@@ -576,7 +591,20 @@ async fn import_mr_index(
                 downloaded: 0,
             },
         );
-        install_neoforge(&app, &id, nf_ver, &mc_dir, accept_eula).await?;
+        // Step 3: route through LoaderRegistry.
+        let loader = LoaderRegistry::global()
+            .by_engine(InstanceEngine::NeoForge)
+            .ok_or_else(|| "NeoForge loader missing from registry".to_string())?;
+        let version_meta = VersionMeta {
+            id: nf_ver.clone(),
+            build: Some(nf_ver.clone()),
+            url: None,
+            display_name: nf_ver.clone(),
+            requires_mc_version: None,
+        };
+        loader
+            .install(&app, &id, &instance_path, &version_meta, None, accept_eula)
+            .await?;
     }
 
     // Cleanup

@@ -1,9 +1,10 @@
 import type { ParsedLog } from "$lib/types/parser";
+import type { LoaderName } from "$lib/loaders";
 
 export interface Instance {
     id: string;
     name: string;
-    loader: 'Vanilla' | 'Paper' | 'Fabric' | 'Forge' | 'NeoForge' | 'Quilt';
+    loader: LoaderName;
     version: string;
     path: string;
     icon: string;
@@ -213,45 +214,155 @@ class AppState {
             }
         }
 
-        // Version & Loader detection
+        // ── Version & Loader detection ───────────────────────────────────
+        //
+        // The msg passed here is the *message body* of the log line (not
+        // the raw line with the `[HH:MM:SS] [logger]` prefix). Anything
+        // that assumes a leading "[" is wrong — see the bug history in
+        // dev_log for the `msg.startsWith("[")` mistake.
+        //
+        // Detection priority (most specific match fires first):
+        //   1. loaderMatch   — Paper/Purpur "This server is running X version Y"
+        //   2. neoforgeMatch — NeoForge/Forge "NeoForge mod loading, version X, for MC Y"
+        //                       **Source of truth** for NeoForge: gives both
+        //                       build and MC version in a single line.
+        //   3. modListMatch  — FML "Mod List" entry "NeoForge X.Y.Z (neoforge)"
+        //                       Validates the loader id canonically via the
+        //                       parens; redundant with neoforgeMatch for
+        //                       build/MC but kept as a cross-check.
+        //   4. vanillaMatch  — "Starting minecraft server version X" (universal)
+        //                       Only sets version; never overwrites loader
+        //                       (this line is emitted by every loader).
+        //
+        // Idempotency: every comparison below is `if (instance.X !== X)`,
+        // so repeated server starts with the same detected values are
+        // no-ops. The first start fills in the build + version detected
+        // from the console; subsequent starts confirm the stored value.
         const loaderMatch = msg.match(/This server is running (\w+) version ([^\s]+)/);
-        const vanillaMatch = msg.match(/Starting minecraft server version ([^\s]+)/);
-        
-        if (loaderMatch || vanillaMatch) {
+        const vanillaMatch = msg.match(/Starting minecraft server version (.*)/i);
+        // NeoForge/Forge explicit format. The (?:Neo)? prefix matches both
+        // "NeoForge mod loading" and "Forge mod loading" without ambiguity.
+        const neoforgeMatch = msg.match(/(?:Neo)?Forge mod loading, version ([\d\w.-]+), for MC ([\d\w.-]+)/i);
+        // FML "Mod List" entry. Cross-checks the loader id via the
+        // canonical parens suffix ("(neoforge)" vs "(forge)").
+        const modListMatch = msg.match(/^\s*(Neo)?Forge\s+(\S+)\s+\((neo)?forge\)/m);
+
+        if (loaderMatch || vanillaMatch || neoforgeMatch || modListMatch) {
             let fullVersionStr = "";
-            let detectedLoader: any = undefined;
-            
+            let detectedLoader: LoaderName | undefined = undefined;
+            // NeoForge/Forge get version + build assigned directly because
+            // their build format (`21.9.13-beta`) doesn't fit the
+            // `version-build` shape the PaperMC branch parses.
+            let neoforgeDirect: { loader: "NeoForge" | "Forge"; build: string; mc: string } | null = null;
+
             if (loaderMatch) {
-                detectedLoader = loaderMatch[1] as any; // e.g., "Purpur", "Paper"
+                // PaperMC / Purpur format. Captures the loader name
+                // directly from "This server is running X version Y".
+                detectedLoader = loaderMatch[1] as LoaderName; // e.g., "Purpur", "Paper"
                 fullVersionStr = loaderMatch[2].trim();
+            } else if (neoforgeMatch) {
+                // ── Source of truth for NeoForge/Forge ──────────────
+                // Capture[1] = build version (e.g., "21.11.42")
+                // Capture[2] = MC version (e.g., "1.21.11")
+                // isNeo: just look for "neoforge" in the message (the
+                // message body never has a leading "[", so we don't check
+                // for that). Case-insensitive for safety.
+                const isNeo = /neoforge/i.test(msg);
+                neoforgeDirect = {
+                    loader: isNeo ? "NeoForge" : "Forge",
+                    build: neoforgeMatch[1],
+                    mc: neoforgeMatch[2],
+                };
+            } else if (modListMatch) {
+                // FML Mod List — validacion cruzada del loader id.
+                // Capture[1] = "Neo" prefix (NeoForge), Capture[2] =
+                // build version, Capture[3] = "neo" prefix in the id
+                // (always present for NeoForge, absent for vanilla Forge).
+                // No MC version here — that comes from neoforgeMatch on
+                // a separate log line, or from the initial install
+                // selection. Leaving `mc: ""` so the comparison guard
+                // (`if (neoforgeDirect.mc)`) skips the version update
+                // and doesn't overwrite instance.version with an empty
+                // string.
+                const isNeo = !!modListMatch[1] || !!modListMatch[3];
+                neoforgeDirect = {
+                    loader: isNeo ? "NeoForge" : "Forge",
+                    build: modListMatch[2],
+                    mc: "",
+                };
             } else if (vanillaMatch) {
-                detectedLoader = "Vanilla";
+                // Universal fallback. Does NOT set detectedLoader because
+                // every loader (Vanilla, Paper, NeoForge, Forge, etc.)
+                // emits this line — using it to set loader="Vanilla"
+                // would silently overwrite a more specific detection
+                // (NeoForge/Forge/loaderMatch) that ran on an earlier
+                // log line. The loader is set correctly at instance
+                // creation; this branch only confirms the version.
                 fullVersionStr = vanillaMatch[1].trim();
             }
 
-            let detectedVersion = fullVersionStr;
-            let detectedBuild = undefined;
-            
-            if (fullVersionStr.includes('-')) {
-                const parts = fullVersionStr.split('-');
-                detectedVersion = parts[0];
-                if (parts.length > 1) {
-                     detectedBuild = parts[1];
-                     // Detect experimental/snapshot from the full log message
-                     if (msg.includes("experimental") || msg.includes("EXPERIMENTAL")) {
-                         detectedBuild += "-experimental";
-                     } else if (msg.includes("SNAPSHOT") || msg.includes("snapshot") || msg.includes("Snapshot")) {
-                         detectedBuild += "-snapshot";
-                     }
+            let detectedVersion: string | undefined;
+            let detectedBuild: string | undefined;
+            if (neoforgeDirect) {
+                detectedLoader = neoforgeDirect.loader;
+                detectedBuild = neoforgeDirect.build;
+                // Only assign version if this match actually carries MC
+                // version info. The modListMatch path doesn't (the
+                // "Minecraft X.Y.Z (minecraft)" line is processed in a
+                // separate parseLog call, by which time the version has
+                // already been set by neoforgeMatch or vanillaMatch).
+                // Without this guard, `detectedVersion` would be `""`
+                // and overwrite instance.version with an empty string.
+                if (neoforgeDirect.mc) {
+                    detectedVersion = neoforgeDirect.mc;
+                }
+            } else {
+                detectedVersion = fullVersionStr;
+                detectedBuild = undefined;
+
+                if (detectedLoader !== "Vanilla" && fullVersionStr.includes('-')) {
+                    const parts = fullVersionStr.split('-');
+                    detectedVersion = parts[0];
+                    if (parts.length > 1) {
+                        detectedBuild = parts[1];
+                        // Only append -snapshot/-experimental to the build if the
+                        // version string itself contains such an indicator. The
+                        // previous logic did a broad `msg.includes("SNAPSHOT")`
+                        // which false-positived on Paper builds because Paper
+                        // always references Mojang's `*-R0.1-SNAPSHOT` API
+                        // version in its log line, even for stable releases.
+                        // Real pre-releases still surface via the `-pre`/`-rc`
+                        // checks on `instance.version` in the display component.
+                        if (parts.some((p) => /snapshot/i.test(p))) {
+                            detectedBuild += "-snapshot";
+                        } else if (parts.some((p) => /experimental/i.test(p))) {
+                            detectedBuild += "-experimental";
+                        }
+                    }
                 }
             }
 
             const instance = this.instances.find(i => i.id === id);
             if (instance) {
                 let needsUpdate = false;
-                if (instance.version !== detectedVersion) {
-                    instance.version = detectedVersion;
-                    needsUpdate = true;
+                
+                const normalizeVersion = (v: string) => {
+                    return v.toLowerCase()
+                        .replace(/pre-release|prerelease/g, "pre")
+                        .replace(/releasecandidate/g, "rc")
+                        .replace(/[^a-z0-9]/g, "");
+                };
+
+                const normExisting = normalizeVersion(instance.version);
+                // Only compare/overwrite the version when we have a detected
+                // value. Some branches (modListMatch) intentionally leave
+                // detectedVersion undefined to avoid overwriting with `""`.
+                if (detectedVersion !== undefined) {
+                    const normDetected = normalizeVersion(detectedVersion);
+                    if (normExisting !== normDetected) {
+                        instance.version = detectedVersion;
+                        needsUpdate = true;
+                    }
                 }
                 if (detectedBuild && instance.build !== detectedBuild) {
                     instance.build = detectedBuild;
@@ -264,7 +375,7 @@ class AppState {
 
                 if (needsUpdate) {
                     if (this.selectedInstance?.id === id) {
-                        this.selectedInstance.version = detectedVersion;
+                        this.selectedInstance.version = instance.version;
                         if (detectedBuild) this.selectedInstance.build = detectedBuild;
                         if (detectedLoader) this.selectedInstance.loader = detectedLoader;
                     }
@@ -272,7 +383,7 @@ class AppState {
                     import('@tauri-apps/api/core').then(({ invoke }) => {
                         invoke('update_instance_version', { 
                             id, 
-                            version: detectedVersion, 
+                            version: instance.version, 
                             build: detectedBuild,
                             loader: detectedLoader
                         }).catch(console.error);

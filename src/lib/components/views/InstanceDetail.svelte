@@ -321,15 +321,14 @@
                     <span
                         class="-ml-0.5 translate-y-[4px] px-2 py-0.5 rounded-md text-[11px] font-bold capitalize tracking-wider bg-white/5 text-zinc-400 border border-white/5 backdrop-blur-sm flex items-center gap-1"
                     >
-                        {instance.loader || "Vanilla"}
-                        {instance.version}
-                        {#if instance.build}
+                        <span>{instance.loader || "Vanilla"} {instance.version}</span>
+                        {#if instance.build && instance.build !== instance.version}
                             <span>- {instance.build.replace('-experimental', '').replace('-snapshot', '')}</span>
-                            {#if instance.build.includes('-experimental')}
-                                <span title="Experimental" class="text-yellow-500 text-xs drop-shadow-md">🧪</span>
-                            {:else if instance.build.includes('-snapshot')}
-                                <span title="Snapshot" class="text-purple-400 text-xs drop-shadow-md">📸</span>
-                            {/if}
+                        {/if}
+                        {#if instance.version.includes('-pre') || instance.version.includes('-rc') || /^\d{2}w\d{2}[a-z]/i.test(instance.version) || instance.version.toLowerCase().includes('pre-release') || (instance.build?.includes('-snapshot') ?? false)}
+                            <span title="Snapshot / Pre-release" class="text-purple-400 text-[13px] drop-shadow-md -translate-y-[2.5px] inline-block">📸</span>
+                        {:else if instance.build?.includes('-experimental')}
+                            <span title="Experimental" class="text-yellow-500 text-[13px] drop-shadow-md -translate-y-[2.5px] inline-block">🧪</span>
                         {/if}
                     </span>
 

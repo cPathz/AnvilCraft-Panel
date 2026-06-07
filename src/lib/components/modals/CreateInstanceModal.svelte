@@ -8,6 +8,9 @@
     import { _, getLocaleFromNavigator } from "svelte-i18n";
     import { get } from "svelte/store";
 
+    import { CATEGORY_ORDER, LOADERS } from "$lib/loaders";
+    import type { LoaderCategory, LoaderName } from "$lib/loaders";
+
     import IconPicker from "./IconPicker.svelte";
 
     import iconList from "$lib/data/icons.json";
@@ -16,19 +19,64 @@
     let gameVersion = $state("");
     let activeTab = $state<"custom" | "file" | "import">("custom");
 
-    let selectedLoader = $state<
-        | "Vanilla"
-        | "Paper"
-        | "Purpur"
-        | "Folia"
-        | "Velocity"
-        | "Waterfall"
-        | "NeoForge"
-        | null
-    >("Vanilla");
+    let selectedLoader = $state<LoaderName | null>("Vanilla");
+
+    // True when the selected loader is a proxy (BungeeCord, Velocity, Waterfall).
+    // Proxies don't use Mojang's EULA, so the EULA checkbox is hidden for them.
+    const isProxyLoader = $derived(
+        selectedLoader
+            ? (LOADERS.find((l) => l.name === selectedLoader)?.capabilities?.isProxy ?? false)
+            : false
+    );
 
     let acceptEula = $state(true);
     let hoveredIcon = $state(false);
+
+    // Categorized Loader List (Visual Dummy)
+    const CATEGORY_COLORS = {
+        Vanilla: {
+            text: "text-emerald-400",
+            dot: "bg-emerald-400",
+            badge: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+        },
+        Bukkit: {
+            text: "text-blue-400",
+            dot: "bg-blue-400",
+            badge: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+        },
+        Mods: {
+            text: "text-orange-400",
+            dot: "bg-orange-400",
+            badge: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+        },
+        Proxies: {
+            text: "text-purple-400",
+            dot: "bg-purple-400",
+            badge: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+        },
+        Hybrids: {
+            text: "text-yellow-400",
+            dot: "bg-yellow-400",
+            badge: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+        },
+    } as const;
+
+    // Group the 16-entry `LOADERS` catalog by category, preserving
+    // `CATEGORY_ORDER` so the dropdown sections render in the planned order.
+    const loadersByCategory = $derived(
+        CATEGORY_ORDER.map((key) => ({
+            key,
+            loaders: LOADERS.filter((l) => l.category === key),
+        })),
+    );
+
+    function getLoaderCategory(loader: string): LoaderCategory | null {
+        return LOADERS.find((l) => l.name === loader)?.category ?? null;
+    }
+
+    function getLoaderBadge(loader: string): string | undefined {
+        return LOADERS.find((l) => l.name === loader)?.badge;
+    }
 
     // Custom URL State
     let useCustomUrl = $state(false);
@@ -46,6 +94,13 @@
     let dropdownLeft = $state(0);
     let dropdownWidth = $state(0);
     let dropdownMaxHeight = 260;
+
+    function closeAllDropdowns() {
+        showLoaderDropdown = false;
+        showVersionDropdown = false;
+        showNfMcDropdown = false;
+        showNeoforgeVersionDropdown = false;
+    }
 
     // Icon Selection State
     let showIconPicker = $state(false);
@@ -145,66 +200,84 @@
 
         let unlisten: (() => void) | null = null;
         let createdId: string | null = null;
+        let isFinished = false;
 
         try {
             unlisten = await listen<any>("install-progress", (event) => {
                 const payload = event.payload;
                 if (createdId && payload.id !== createdId) return;
 
+                if (isFinished) return;
+
                 if (payload.step.startsWith("Downloading") || payload.step.startsWith("Descargando")) {
-                    installStep = get(_("create_instance.status_downloading"));
+                    installStep = get(_)("create_instance.status_downloading");
                     const formatSize = (bytes: number) =>
                         (bytes / 1024 / 1024).toFixed(1);
 
                     if (payload.total_size) {
-                        installStep = get(_("create_instance.status_download_progress", {
+                        installStep = get(_)("create_instance.status_download_progress", {
                             values: {
                                 downloaded: formatSize(payload.downloaded),
                                 total: formatSize(payload.total_size)
                             }
-                        }));
+                        });
                         installProgress = payload.progress;
                     } else {
-                        installStep = get(_("create_instance.status_download_simple", {
+                        installStep = get(_)("create_instance.status_download_simple", {
                             values: {
                                 downloaded: formatSize(payload.downloaded)
                             }
-                        }));
+                        });
                         installProgress = payload.progress;
                     }
-                } else if (
-                    payload.step === "Done" ||
-                    payload.progress === 100
-                ) {
-                    installStep = get(_("create_instance.status_completed"));
+                } else if (payload.step === "Done") {
+                    isFinished = true;
+                    if (unlisten) unlisten();
+                    toast.success("Finalizando instalación correctamente...");
+                    installStep = get(_)("create_instance.status_completed");
                     installProgress = 100;
                     setTimeout(() => finishInstallation(payload.id), 500);
                 } else if (payload.step === "Creating files...") {
-                    installStep = get(_("create_instance.status_creating_files"));
+                    installStep = get(_)("create_instance.status_creating_files");
                 } else if (payload.step === "Finalizing download...") {
-                    installStep = get(_("create_instance.status_finalizing_download"));
+                    installStep = get(_)("create_instance.status_finalizing_download");
                 } else if (payload.step.startsWith("Ejecutando instalador") || payload.step.startsWith("Downloading NeoForge")) {
-                    installStep = get(_("create_instance.status_executing_installer"));
+                    installStep = get(_)("create_instance.status_executing_installer");
                 } else if (payload.step.startsWith("Instalación completada") || payload.step.startsWith("Installing NeoForge")) {
-                    installStep = get(_("create_instance.status_installing_loader"));
+                    installStep = get(_)("create_instance.status_installing_loader");
                 } else if (payload.step.startsWith("Extracting")) {
-                    installStep = get(_("create_instance.status_extracting"));
+                    installStep = get(_)("create_instance.status_extracting");
                     installProgress = payload.progress;
                 } else if (payload.step.startsWith("Copying")) {
-                    installStep = get(_("create_instance.status_copying_overrides"));
+                    installStep = get(_)("create_instance.status_copying_overrides");
                     installProgress = payload.progress;
                 } else if (payload.step.startsWith("Downloaded") || payload.step.startsWith("Downloading")) {
-                    installStep = get(_("create_instance.status_downloading_mods"));
+                    installStep = get(_)("create_instance.status_downloading_mods");
                     installProgress = payload.progress;
                 } else if (payload.step.startsWith("Error")) {
-                    installStep = get(_("create_instance.status_error"));
+                    isFinished = true;
+                    installStep = get(_)("create_instance.status_error");
                     installing = false;
-                    toast.error(get(_("create_instance.alert_install_error")) + payload.step);
+                    toast.error(get(_)("create_instance.alert_install_error") + payload.step);
                     if (unlisten) unlisten();
                 } else {
                     installStep = payload.step;
                     if (payload.progress > 0)
                         installProgress = payload.progress;
+                        
+                    // Fallback de seguridad: si se queda atascado en 95, forzar completado tras 5 segundos
+                    if (payload.progress === 95 && !isFinished) {
+                        setTimeout(() => {
+                            if (installing && !isFinished && installProgress === 95) {
+                                isFinished = true;
+                                if (unlisten) unlisten();
+                                toast.success("Finalizado por temporizador de seguridad.");
+                                installStep = get(_)("create_instance.status_completed");
+                                installProgress = 100;
+                                finishInstallation(payload.id);
+                            }
+                        }, 5000);
+                    }
                 }
             });
 
@@ -264,19 +337,25 @@
     }
 
     async function finishInstallation(targetId?: string | null) {
-        const instances = await invoke<any[]>("read_instances");
-        appState.instances = instances;
-
-        if (targetId) {
-            const found = instances.find((i) => i.id === targetId);
-            if (found) {
-                appState.selectedInstance = found;
-                appState.view = "instances"; // Ensure we are on the instances view context
-            }
-        }
-
+        // Cierre FORZADO inmediato para asegurar que la UI responda
         installing = false;
-        close();
+        appState.creatingInstance = false;
+        
+        try {
+            // Refrescar instancias en segundo plano una vez cerrado el modal
+            const instances = await invoke<any[]>("read_instances");
+            appState.instances = instances;
+
+            if (targetId) {
+                const found = instances.find((i) => i.id === targetId);
+                if (found) {
+                    appState.selectedInstance = found;
+                    appState.view = "instances";
+                }
+            }
+        } catch (e) {
+            console.error("Error al finalizar instalación:", e);
+        }
     }
 
     async function loadVersions() {
@@ -296,10 +375,30 @@
                 loadingVersions = false;
                 return;
             } else {
-                // Custom API Loaders
+                // Custom API Loaders (Paper, Purpur, Folia, Spigot)
                 try {
-                    versions = await invoke("get_project_versions", {
-                        project: selectedLoader.toLowerCase(),
+                    const fetched = await invoke<string[]>(
+                        "get_project_versions",
+                        {
+                            project: selectedLoader.toLowerCase(),
+                        },
+                    );
+                    // RCs (`-rc*`) are always filtered out — Paper lists them
+                    // in the versions endpoint but does NOT publish builds for
+                    // them (verified: all `-rc*` return HTTP 404 on
+                    // `/v2/projects/paper/versions/{rc}/builds` as of 2026-06-05).
+                    // Pre-releases (`-pre*`) are filtered only when
+                    // showSnapshots is OFF — they have working build endpoints.
+                    // The `-snapshot` check is defensive for other loaders.
+                    versions = fetched.filter((v) => {
+                        if (v.includes("-rc")) return false;
+                        if (
+                            v.includes("-pre") ||
+                            v.includes("-snapshot")
+                        ) {
+                            return showSnapshots;
+                        }
+                        return true;
                     });
                 } catch (e) {
                     console.error(
@@ -381,6 +480,19 @@
 
     $effect(() => {
         if (selectedLoader === "Vanilla") {
+            loadVersions();
+        }
+    });
+
+    $effect(() => {
+        // Re-apply pre-release filter when showSnapshots toggles. Vanilla
+        // already works via the effect above (loadVersions reads
+        // showSnapshots synchronously in the invoke args). Paper needs an
+        // explicit re-run because the filter happens AFTER the await —
+        // Svelte 5 only tracks state read synchronously, so without
+        // `void showSnapshots` this effect wouldn't re-run on toggle.
+        if (selectedLoader === "Paper") {
+            void showSnapshots;
             loadVersions();
         }
     });
@@ -510,22 +622,53 @@
             <!-- Group 2: Loader + Version / File Selection -->
             <div class="space-y-4">
                 {#if activeTab === "custom"}
-                    <div class="grid grid-cols-2 gap-4">
-                        <!-- Loader Selection Dropdown -->
-                        <div class="space-y-1.5 relative">
+                    <!-- Loader Dropdown Trigger -->
+                    <div class="space-y-1.5">
+                        <span class="text-xs font-bold text-white tracking-wider"
+                            >{$_("create_instance.loader")}</span
+                        >
+                        <button
+                            id="loader-trigger"
+                            type="button"
+                            class="w-full bg-black/20 border border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-300 flex items-center justify-between focus:outline-none focus:border-green-500/50 transition-all"
+                            onclick={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                dropdownBottom = window.innerHeight - rect.top + 5;
+                                dropdownLeft = rect.left;
+                                dropdownWidth = rect.width;
+                                showLoaderDropdown = !showLoaderDropdown;
+                                showVersionDropdown = false;
+                            }}
+                        >
                             <span
-                                class="text-xs font-bold text-white tracking-wider"
-                                >{$_("create_instance.loader")}</span
+                                class="flex items-center gap-2 truncate font-bold text-sm min-w-0"
                             >
-                            <button
-                                type="button"
-                                class="w-full bg-black/20 border border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-300 flex items-center justify-between focus:outline-none focus:border-green-500/50 transition-all font-medium text-left"
-                                onclick={() =>
-                                    (showLoaderDropdown = !showLoaderDropdown)}
-                            >
-                                <span class="font-bold text-sm"
-                                    >{selectedLoader || "Seleccionar"}</span
-                                >
+                                {#if selectedLoader}
+                                    {@const cat = getLoaderCategory(selectedLoader)}
+                                    <span
+                                        class="w-2 h-2 rounded-full shrink-0 {CATEGORY_COLORS[
+                                            cat || 'Vanilla'
+                                        ].dot}"
+                                    ></span>
+                                    <span class="truncate text-zinc-300"
+                                        >{selectedLoader}</span
+                                    >
+                                    {#if getLoaderBadge(selectedLoader)}
+                                        <span
+                                            class="text-[9px] font-bold px-1.5 py-0.5 rounded border tracking-wider shrink-0 {CATEGORY_COLORS[
+                                                cat || 'Mods'
+                                            ].badge}"
+                                        >
+                                            {getLoaderBadge(selectedLoader)}
+                                        </span>
+                                    {/if}
+                                {:else}
+                                    <span class="text-zinc-500"
+                                        >{$_("create_instance.placeholder_loader")}</span
+                                    >
+                                {/if}
+                            </span>
+                            <div class="text-zinc-500 shrink-0">
                                 <svg
                                     width="16"
                                     height="16"
@@ -541,195 +684,104 @@
                                 >
                                     <path d="m6 9 6 6 6-6" />
                                 </svg>
-                            </button>
+                            </div>
+                        </button>
+                    </div>
 
-                            <!-- Loader Dropdown Menu -->
-                            {#if showLoaderDropdown}
-                                <!-- svelte-ignore a11y_click_events_have_key_events -->
-                                <!-- svelte-ignore a11y_no_static_element_interactions -->
-                                <div
-                                    class="fixed inset-0 z-10"
-                                    onclick={() => (showLoaderDropdown = false)}
-                                ></div>
-                                <div
-                                    class="absolute z-20 bottom-full mb-1 left-0 right-0 bg-[#18181b] border border-zinc-700 rounded-lg shadow-xl overflow-hidden animate-fade-in max-h-[260px] overflow-y-auto custom-scrollbar"
+                    <!-- Version column (moved out of grid) -->
+                    {#if selectedLoader === "NeoForge"}
+                        <div class="grid grid-cols-2 gap-3">
+                            <!-- MC Version -->
+                            <div class="space-y-1.5 relative">
+                                <span class="text-xs font-bold text-white tracking-wider">{$_("create_instance.neoforge_mc_version")}</span>
+                                <button
+                                    type="button"
+                                    class="w-full bg-black/20 border border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-300 flex items-center justify-between focus:outline-none focus:border-orange-500/50 transition-all disabled:opacity-50"
+                                    disabled={loadingNfMcVersions}
+                                    onclick={() => {
+                                        showNfMcDropdown = !showNfMcDropdown;
+                                        showLoaderDropdown = false;
+                                        showVersionDropdown = false;
+                                        showNeoforgeVersionDropdown = false;
+                                    }}
+                                    id="neoforge-mc-version"
                                 >
-                                    {#each ["Vanilla", "Paper", "Purpur", "Folia", "Velocity", "Waterfall", "NeoForge"] as loader}
-                                        <button
-                                            class="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors flex items-center justify-between"
-                                            class:bg-green-900_20={selectedLoader ===
-                                                loader}
-                                            class:text-green-400={selectedLoader ===
-                                                loader}
-                                            onclick={() => {
-                                                selectedLoader = loader as any;
-                                                showLoaderDropdown = false;
-                                            }}
-                                        >
-                                            <span class="flex items-center gap-2">
-                                                {loader}
-                                                {#if loader === "NeoForge"}
-                                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30">MODS</span>
-                                                {/if}
-                                            </span>
-                                            {#if selectedLoader === loader}
-                                                <svg
-                                                    width="14"
-                                                    height="14"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    stroke-width="2"
-                                                    ><polyline
-                                                        points="20 6 9 17 4 12"
-                                                    ></polyline></svg
-                                                >
-                                            {/if}
-                                        </button>
-                                    {/each}
-                                </div>
-                            {/if}
-
-                            <!-- EULA Checkbox moved here for alignment -->
-                            <div class="flex items-center gap-2 mt-2">
+                                    <span class="font-bold text-sm truncate">{loadingNfMcVersions ? "..." : (nfMcVersion || "Select")}</span>
+                                    {#if loadingNfMcVersions}
+                                        <span class="animate-spin text-orange-400">↻</span>
+                                    {:else}
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="transition-transform {showNfMcDropdown ? 'rotate-180' : ''}"><path d="m6 9 6 6 6-6"/></svg>
+                                    {/if}
+                                </button>
+                                {#if showNfMcDropdown && nfMcVersions.length > 0}
+                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                                    <div class="fixed inset-0 z-10" onclick={() => (showNfMcDropdown = false)}></div>
+                                    <div class="absolute z-20 bottom-full mb-1 left-0 right-0 bg-[#18181b] border border-zinc-700 rounded-lg shadow-xl overflow-y-auto custom-scrollbar animate-fade-in max-h-[200px]">
+                                        {#each nfMcVersions as v}
+                                            <button
+                                                class="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors {nfMcVersion === v ? 'text-orange-400' : ''}"
+                                                onclick={() => { nfMcVersion = v; showNfMcDropdown = false; loadNeoforgeVersions(v); }}
+                                            >{v}</button>
+                                        {/each}
+                                    </div>
+                                {/if}
+                            </div>
+                            <!-- NeoForge Build -->
+                            <div class="space-y-1.5 relative">
+                                <span class="text-xs font-bold text-white tracking-wider">{$_("create_instance.neoforge_version")}</span>
+                                <button
+                                    type="button"
+                                    class="w-full bg-black/20 border border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-300 flex items-center justify-between focus:outline-none focus:border-orange-500/50 transition-all disabled:opacity-50"
+                                    disabled={loadingNeoforge || !nfMcVersion}
+                                    onclick={() => {
+                                        showNeoforgeVersionDropdown = !showNeoforgeVersionDropdown;
+                                        showLoaderDropdown = false;
+                                        showVersionDropdown = false;
+                                        showNfMcDropdown = false;
+                                    }}
+                                    id="neoforge-build-version"
+                                >
+                                    <span class="font-bold text-sm truncate">{loadingNeoforge ? "..." : (gameVersion || "Select MC first")}</span>
+                                    {#if loadingNeoforge}
+                                        <span class="animate-spin text-orange-400">↻</span>
+                                    {:else}
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="transition-transform {showNeoforgeVersionDropdown ? 'rotate-180' : ''}"><path d="m6 9 6 6 6-6"/></svg>
+                                    {/if}
+                                </button>
+                                {#if showNeoforgeVersionDropdown && neoforgeVersions.length > 0}
+                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                                    <div class="fixed inset-0 z-10" onclick={() => (showNeoforgeVersionDropdown = false)}></div>
+                                    <div class="absolute z-20 bottom-full mb-1 left-0 right-0 bg-[#18181b] border border-zinc-700 rounded-lg shadow-xl overflow-y-auto custom-scrollbar animate-fade-in max-h-[200px]">
+                                        {#each neoforgeVersions as v}
+                                            <button
+                                                class="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors {gameVersion === v ? 'text-orange-400' : ''}"
+                                                onclick={() => { gameVersion = v; showNeoforgeVersionDropdown = false; }}
+                                            >{v}</button>
+                                        {/each}
+                                    </div>
+                                {/if}
+                            </div>
+                            <!-- NeoForge Betas Checkbox -->
+                            <div class="col-span-2 flex items-center gap-2 mt-1">
                                 <input
                                     type="checkbox"
-                                    id="accept-eula-custom"
-                                    bind:checked={acceptEula}
-                                    class="rounded border-zinc-700 bg-zinc-900 text-green-500 focus:ring-0 focus:ring-offset-0 w-3 h-3 cursor-pointer"
+                                    id="nf-snapshots"
+                                    bind:checked={showSnapshots}
+                                    class="rounded border-zinc-700 bg-zinc-900 text-orange-500 focus:ring-0 focus:ring-offset-0 w-3 h-3"
                                 />
                                 <label
-                                    for="accept-eula-custom"
-                                    class="text-xs text-zinc-500 select-none cursor-pointer flex items-center gap-1.5"
+                                    for="nf-snapshots"
+                                    class="text-xs text-zinc-500 select-none cursor-pointer"
+                                    >{$_("create_instance.show_snapshots")}</label
                                 >
-                                    {$_("create_instance.accept_eula")}
-                                    <a
-                                        href="https://www.minecraft.net/eula"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        class="text-zinc-500 hover:text-green-500 transition-colors"
-                                        title={$_("create_instance.accept_eula") + " (https://www.minecraft.net/eula)"}
-                                        onclick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            openUrl(
-                                                "https://www.minecraft.net/eula",
-                                            );
-                                        }}
-                                    >
-                                        <svg
-                                            width="12"
-                                            height="12"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="2.5"
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            ><path
-                                                d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-                                            ></path><polyline
-                                                points="15 3 21 3 21 9"
-                                            ></polyline><line
-                                                x1="10"
-                                                y1="14"
-                                                x2="21"
-                                                y2="3"
-                                            ></line></svg
-                                        >
-                                    </a>
-                                </label>
                             </div>
                         </div>
-
-                        <!-- Version column: NeoForge = 2 step picker, others = generic -->
-                        {#if selectedLoader === "NeoForge"}
-                            <!-- NeoForge: MC Version + Build selector (2 rows, spanning full grid) -->
-                            <div class="col-span-2 grid grid-cols-2 gap-3 mt-1">
-                                <!-- MC Version -->
-                                <div class="space-y-1.5 relative">
-                                    <span class="text-xs font-bold text-white tracking-wider">{$_("create_instance.neoforge_mc_version")}</span>
-                                    <button
-                                        type="button"
-                                        class="w-full bg-black/20 border border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-300 flex items-center justify-between focus:outline-none focus:border-orange-500/50 transition-all disabled:opacity-50"
-                                        disabled={loadingNfMcVersions}
-                                        onclick={() => (showNfMcDropdown = !showNfMcDropdown)}
-                                        id="neoforge-mc-version"
-                                    >
-                                        <span class="font-bold text-sm truncate">{loadingNfMcVersions ? "..." : (nfMcVersion || "Select")}</span>
-                                        {#if loadingNfMcVersions}
-                                            <span class="animate-spin text-orange-400">↻</span>
-                                        {:else}
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="transition-transform {showNfMcDropdown ? 'rotate-180' : ''}"><path d="m6 9 6 6 6-6"/></svg>
-                                        {/if}
-                                    </button>
-                                    {#if showNfMcDropdown && nfMcVersions.length > 0}
-                                        <!-- svelte-ignore a11y_click_events_have_key_events -->
-                                        <!-- svelte-ignore a11y_no_static_element_interactions -->
-                                        <div class="fixed inset-0 z-10" onclick={() => (showNfMcDropdown = false)}></div>
-                                        <div class="absolute z-20 bottom-full mb-1 left-0 right-0 bg-[#18181b] border border-zinc-700 rounded-lg shadow-xl overflow-y-auto custom-scrollbar animate-fade-in max-h-[200px]">
-                                            {#each nfMcVersions as v}
-                                                <button
-                                                    class="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors {nfMcVersion === v ? 'text-orange-400' : ''}"
-                                                    onclick={() => { nfMcVersion = v; showNfMcDropdown = false; loadNeoforgeVersions(v); }}
-                                                >{v}</button>
-                                            {/each}
-                                        </div>
-                                    {/if}
-                                </div>
-                                <!-- NeoForge Build -->
-                                <div class="space-y-1.5 relative">
-                                    <span class="text-xs font-bold text-white tracking-wider">{$_("create_instance.neoforge_version")}</span>
-                                    <button
-                                        type="button"
-                                        class="w-full bg-black/20 border border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-300 flex items-center justify-between focus:outline-none focus:border-orange-500/50 transition-all disabled:opacity-50"
-                                        disabled={loadingNeoforge || !nfMcVersion}
-                                        onclick={() => (showNeoforgeVersionDropdown = !showNeoforgeVersionDropdown)}
-                                        id="neoforge-build-version"
-                                    >
-                                        <span class="font-bold text-sm truncate">{loadingNeoforge ? "..." : (gameVersion || "Select MC first")}</span>
-                                        {#if loadingNeoforge}
-                                            <span class="animate-spin text-orange-400">↻</span>
-                                        {:else}
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="transition-transform {showNeoforgeVersionDropdown ? 'rotate-180' : ''}"><path d="m6 9 6 6 6-6"/></svg>
-                                        {/if}
-                                    </button>
-                                    {#if showNeoforgeVersionDropdown && neoforgeVersions.length > 0}
-                                        <!-- svelte-ignore a11y_click_events_have_key_events -->
-                                        <!-- svelte-ignore a11y_no_static_element_interactions -->
-                                        <div class="fixed inset-0 z-10" onclick={() => (showNeoforgeVersionDropdown = false)}></div>
-                                        <div class="absolute z-20 bottom-full mb-1 left-0 right-0 bg-[#18181b] border border-zinc-700 rounded-lg shadow-xl overflow-y-auto custom-scrollbar animate-fade-in max-h-[200px]">
-                                            {#each neoforgeVersions as v}
-                                                <button
-                                                    class="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors {gameVersion === v ? 'text-orange-400' : ''}"
-                                                    onclick={() => { gameVersion = v; showNeoforgeVersionDropdown = false; }}
-                                                >{v}</button>
-                                            {/each}
-                                        </div>
-                                    {/if}
-                                </div>
-                                <!-- NeoForge Betas Checkbox -->
-                                <div class="col-span-2 flex items-center gap-2 mt-1">
-                                    <input
-                                        type="checkbox"
-                                        id="nf-snapshots"
-                                        bind:checked={showSnapshots}
-                                        class="rounded border-zinc-700 bg-zinc-900 text-orange-500 focus:ring-0 focus:ring-offset-0 w-3 h-3"
-                                    />
-                                    <label
-                                        for="nf-snapshots"
-                                        class="text-xs text-zinc-500 select-none cursor-pointer"
-                                        >{$_("create_instance.show_snapshots")}</label
-                                    >
-                                </div>
-                            </div>
-                        {:else}
+                    {:else}
                         <!-- Unified Version Selection Logic -->
                         <div class="space-y-1.5 relative">
-                            <span
-                                class="text-xs font-bold text-white tracking-wider"
-                                >{$_("create_instance.game_version")}</span
-                            >
+                            <span class="text-xs font-bold text-white tracking-wider">{$_("create_instance.game_version")}</span>
 
                             <button
                                 id="game-version"
@@ -737,13 +789,14 @@
                                 class="w-full bg-black/20 border border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-300 flex items-center justify-between focus:outline-none focus:border-green-500/50 transition-all font-medium disabled:opacity-50"
                                 disabled={loadingVersions}
                                 onclick={(e) => {
-                                    const rect =
-                                        e.currentTarget.getBoundingClientRect();
-                                    dropdownBottom =
-                                        window.innerHeight - rect.top + 5;
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    dropdownBottom = window.innerHeight - rect.top + 5;
                                     dropdownLeft = rect.left;
                                     dropdownWidth = rect.width;
                                     showVersionDropdown = !showVersionDropdown;
+                                    showLoaderDropdown = false;
+                                    showNfMcDropdown = false;
+                                    showNeoforgeVersionDropdown = false;
                                 }}
                             >
                                 <span class="truncate font-bold text-sm">
@@ -756,29 +809,16 @@
 
                                 <div class="text-zinc-500">
                                     {#if loadingVersions}
-                                        <span class="animate-spin block">↻</span
-                                        >
+                                        <span class="animate-spin block">↻</span>
                                     {:else}
-                                        <svg
-                                            width="16"
-                                            height="16"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="2"
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            class="transition-transform duration-200 {showVersionDropdown
-                                                ? 'rotate-180'
-                                                : ''}"
-                                        >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200 {showVersionDropdown ? 'rotate-180' : ''}">
                                             <path d="m6 9 6 6 6-6" />
                                         </svg>
                                     {/if}
                                 </div>
                             </button>
 
-                            {#if selectedLoader === "Vanilla"}
+                            {#if selectedLoader === "Vanilla" || selectedLoader === "Paper"}
                                 <div class="flex items-center gap-2 mt-2">
                                     <input
                                         type="checkbox"
@@ -794,8 +834,52 @@
                                 </div>
                             {/if}
                         </div>
-                        {/if}
+                    {/if}
+
+                    <!-- EULA Checkbox — hidden for proxy loaders (no Mojang EULA) -->
+                    {#if !isProxyLoader}
+                    <div class="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="accept-eula-custom"
+                            bind:checked={acceptEula}
+                            class="rounded border-zinc-700 bg-zinc-900 text-green-500 focus:ring-0 focus:ring-offset-0 w-3 h-3 cursor-pointer"
+                        />
+                        <label
+                            for="accept-eula-custom"
+                            class="text-xs text-zinc-500 select-none cursor-pointer flex items-center gap-1.5"
+                        >
+                            {$_("create_instance.accept_eula")}
+                            <a
+                                href="https://www.minecraft.net/eula"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="text-zinc-500 hover:text-green-500 transition-colors"
+                                title={$_("create_instance.accept_eula") + " (https://www.minecraft.net/eula)"}
+                                onclick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    openUrl("https://www.minecraft.net/eula");
+                                }}
+                            >
+                                <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2.5"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                </svg>
+                            </a>
+                        </label>
                     </div>
+                    {/if}
                 {:else}
                     <!-- File / Import UI -->
                     <div class="space-y-4">
@@ -1091,6 +1175,75 @@
                         >
                     {/if}
                 </button>
+            {/each}
+        </div>
+    </div>
+{/if}
+
+{#if showLoaderDropdown}
+    <!-- Loader Dropdown Portal (Fixed Position) -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div
+        class="fixed inset-0 z-[60]"
+        onclick={() => (showLoaderDropdown = false)}
+    ></div>
+
+    <div
+        class="fixed z-[70] bg-[#18181b] border border-zinc-700 rounded-lg shadow-xl overflow-hidden animate-fade-in flex flex-col"
+        style="bottom: {dropdownBottom}px; left: {dropdownLeft}px; width: {dropdownWidth}px; max-height: 320px;"
+    >
+        <div class="overflow-y-auto custom-scrollbar flex-1 py-1">
+            {#each loadersByCategory as section}
+                <div>
+                    <div class="flex items-center gap-2 px-3 pt-2.5 pb-1">
+                        <span
+                            class="text-[10px] font-bold {CATEGORY_COLORS[section.key]
+                                .text} tracking-wider uppercase whitespace-nowrap"
+                        >
+                            {$_(`create_instance.category_${section.key.toLowerCase()}`)}
+                        </span>
+                        <div class="flex-1 h-px bg-zinc-800"></div>
+                    </div>
+                    {#each section.loaders as loader}
+                        <button
+                            type="button"
+                            class="w-full flex items-center gap-2 px-3 py-1 text-base text-left transition-colors {selectedLoader ===
+                            loader.name
+                                ? 'bg-zinc-800/60 text-white'
+                                : 'text-zinc-300 hover:bg-zinc-800/30'}"
+                            onclick={() => {
+                                selectedLoader = loader.name;
+                                showLoaderDropdown = false;
+                            }}
+                        >
+                            <span
+                                class="w-1.5 h-1.5 rounded-full shrink-0 transition-colors {selectedLoader ===
+                                loader.name
+                                    ? CATEGORY_COLORS[section.key].dot
+                                    : 'bg-transparent'}"
+                            ></span>
+                            <span class="flex-1">{loader.name}</span>
+                            {#if !loader.tested}
+                                <span
+                                    class="text-zinc-600 text-sm"
+                                    title="Pendiente de probar"
+                                >
+                                    ✗
+                                </span>
+                            {/if}
+                            {#if loader.badge}
+                                <span
+                                    class="text-[9px] font-bold px-1.5 py-0.5 rounded border tracking-wider {CATEGORY_COLORS[
+                                        section.key
+                                    ].badge}"
+                                >
+                                    {loader.badge}
+                                </span>
+                            {/if}
+                        </button>
+                    {/each}
+                </div>
             {/each}
         </div>
     </div>

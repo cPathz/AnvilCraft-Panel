@@ -1,4 +1,5 @@
-use crate::commands::versions::{install_neoforge, install_project_server, install_vanilla};
+use crate::loaders::registry::LoaderRegistry;
+use crate::loaders::types::VersionMeta;
 
 use crate::models::{
     ChildProcessMap, Instance, InstanceEngine, InstanceInstallProgress, InstanceSettings,
@@ -16,6 +17,41 @@ use sysinfo::System;
 use tauri::{Emitter, Manager, State};
 use uuid::Uuid;
 use zip::ZipArchive;
+
+/// Look up a loader in the registry and run its `install`. Used by every
+/// non-hybrid engine (Vanilla, the 4 Bukkit loaders, NeoForge, the 3 proxies,
+/// and Fabric/Forge/Quilt). The 4 hybrids return an error from `create_instance`
+/// before reaching here because their real install logic is a follow-up.
+async fn dispatch_via_registry(
+    app: &tauri::AppHandle,
+    id: &str,
+    target_dir: &Path,
+    version_str: &str,
+    custom_url: Option<&str>,
+    accept_eula: bool,
+    engine: InstanceEngine,
+) -> Result<(), String> {
+    let engine_for_err = engine.clone();
+    let loader = match LoaderRegistry::global().by_engine(engine) {
+        Some(l) => l,
+        None => {
+            return Err(format!(
+                "{:?} loader missing from registry",
+                engine_for_err
+            ));
+        }
+    };
+    let version_meta = VersionMeta {
+        id: version_str.to_string(),
+        build: None,
+        url: None,
+        display_name: version_str.to_string(),
+        requires_mc_version: None,
+    };
+    loader
+        .install(app, id, target_dir, &version_meta, custom_url, accept_eula)
+        .await
+}
 
 fn get_instance_info(app: &tauri::AppHandle, id: &str) -> Result<(PathBuf, Instance), String> {
     let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
@@ -87,6 +123,11 @@ pub async fn create_instance(
         "Velocity" => InstanceEngine::Velocity,
         "Waterfall" => InstanceEngine::Waterfall,
         "Quilt" => InstanceEngine::Quilt,
+        "BungeeCord" => InstanceEngine::BungeeCord,
+        "Mohist" => InstanceEngine::Mohist,
+        "Arclight" => InstanceEngine::Arclight,
+        "Banner" => InstanceEngine::Banner,
+        "Magma" => InstanceEngine::Magma,
         _ => InstanceEngine::Vanilla,
     };
 
@@ -152,49 +193,29 @@ pub async fn create_instance(
         std::thread::sleep(std::time::Duration::from_millis(500));
 
         let result = match loader_engine {
-            InstanceEngine::NeoForge => {
-                // NeoForge: version string IS the full neoforge version (e.g. "21.1.172" or "1.20.1-47.2.0")
-                install_neoforge(
-                    &app_handle,
-                    &instance_id,
-                    &instance_version,
-                    &instance_path_clone.join(".minecraft"),
-                    accept_eula_clone,
-                )
-                .await
-            }
-            InstanceEngine::Paper
-            | InstanceEngine::Purpur
-            | InstanceEngine::Spigot
-            | InstanceEngine::Folia
-            | InstanceEngine::Velocity
-            | InstanceEngine::Waterfall => {
-                let project = match loader_engine {
-                    InstanceEngine::Purpur => "purpur",
-                    InstanceEngine::Spigot => "spigot",
-                    InstanceEngine::Folia => "folia",
-                    InstanceEngine::Velocity => "velocity",
-                    InstanceEngine::Waterfall => "waterfall",
-                    _ => "paper",
-                };
-                install_project_server(
-                    app_handle.clone(),
-                    instance_path_clone.join(".minecraft"),
-                    instance_version,
-                    instance_id.clone(),
-                    project.to_string(),
-                    custom_url_clone,
-                    accept_eula_clone,
-                )
-                .await
-            }
+            // Step 5 stub: hybrids are registered (UI shows them) but their
+            // install paths are not yet implemented. The registry returns an
+            // error from each stub install().
+            InstanceEngine::Mohist
+            | InstanceEngine::Arclight
+            | InstanceEngine::Banner
+            | InstanceEngine::Magma => Err(format!(
+                "{:?} is not yet supported by the new loader system",
+                loader_engine
+            )),
+            // Step 7 collapse: Vanilla, the 4 Bukkit loaders, NeoForge, the
+            // 3 proxies, and Fabric/Forge/Quilt all route through the
+            // registry. The per-category branching from Steps 1-4 is gone —
+            // the registry's `by_engine` lookup is the single source of truth.
             _ => {
-                install_vanilla(
+                dispatch_via_registry(
                     &app_handle,
                     &instance_id,
-                    &instance_version,
                     &instance_path_clone,
+                    &instance_version,
+                    custom_url_clone.as_deref(),
                     accept_eula_clone,
+                    loader_engine,
                 )
                 .await
             }
@@ -1170,7 +1191,7 @@ pub async fn create_instance_from_path(
 
     // handle EULA for local imports
     if accept_eula {
-        use crate::commands::versions::write_eula_txt;
+        use crate::loaders::common::write_eula_txt;
         write_eula_txt(instance_path.join(".minecraft").join("eula.txt"), true)?;
     }
 

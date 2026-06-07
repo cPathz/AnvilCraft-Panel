@@ -151,14 +151,14 @@
                                     >{instance.loader}</span
                                 >
                                 <span class="text-zinc-400 flex items-center gap-1 whitespace-nowrap truncate">
-                                    {instance.version}
-                                    {#if instance.build}
+                                    <span>{instance.version}</span>
+                                    {#if instance.build && instance.build !== instance.version}
                                         <span>- {instance.build.replace('-experimental', '').replace('-snapshot', '')}</span>
-                                        {#if instance.build.includes('-experimental')}
-                                            <span title="Experimental" class="text-yellow-500 drop-shadow-md">🧪</span>
-                                        {:else if instance.build.includes('-snapshot')}
-                                            <span title="Snapshot" class="text-purple-400 drop-shadow-md">📸</span>
-                                        {/if}
+                                    {/if}
+                                    {#if instance.version.includes('-pre') || instance.version.includes('-rc') || /^\d{2}w\d{2}[a-z]/i.test(instance.version) || instance.version.toLowerCase().includes('pre-release') || (instance.build?.includes('-snapshot') ?? false)}
+                                        <span title="Snapshot / Pre-release" class="text-purple-400 text-[13px] drop-shadow-md -translate-y-[2.5px] inline-block">📸</span>
+                                    {:else if instance.build?.includes('-experimental')}
+                                        <span title="Experimental" class="text-yellow-500 text-[13px] drop-shadow-md -translate-y-[2.5px] inline-block">🧪</span>
                                     {/if}
                                 </span>
                             </div>

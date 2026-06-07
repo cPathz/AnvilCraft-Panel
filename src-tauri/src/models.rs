@@ -29,6 +29,11 @@ pub enum InstanceEngine {
     Folia,
     Velocity,
     Waterfall,
+    BungeeCord,
+    Mohist,
+    Arclight,
+    Banner,
+    Magma,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

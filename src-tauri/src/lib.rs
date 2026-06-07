@@ -7,6 +7,7 @@ pub mod commands;
 mod version;
 pub mod parser;
 pub mod models;
+pub mod loaders;
 
 
 use notify::{Watcher, RecursiveMode, Event};

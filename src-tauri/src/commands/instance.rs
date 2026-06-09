@@ -50,20 +50,7 @@ async fn dispatch_via_registry(
     };
     loader
         .install(app, id, target_dir, &version_meta, custom_url, accept_eula)
-        .await?;
-    // Install completed successfully. Create mods/ and/or plugins/ folders
-    // inside .minecraft/ based on the loader's capabilities, so the user
-    // can drop addons in immediately without manually creating the
-    // directory on first start.
-    let caps = loader.capabilities();
-    let mc_dir = target_dir.join(".minecraft");
-    if caps.supports_mods {
-        let _ = std::fs::create_dir_all(mc_dir.join("mods"));
-    }
-    if caps.supports_plugins {
-        let _ = std::fs::create_dir_all(mc_dir.join("plugins"));
-    }
-    Ok(())
+        .await
 }
 
 fn get_instance_info(app: &tauri::AppHandle, id: &str) -> Result<(PathBuf, Instance), String> {
@@ -144,6 +131,21 @@ pub async fn create_instance(
         _ => InstanceEngine::Vanilla,
     };
 
+    // 5.5 Pre-create mods/ and plugins/ folders based on the loader's
+    // capabilities, so the user can drop addons in from minute 1 — even
+    // before the install finishes downloading the server jar. Done in the
+    // synchronous part of create_instance (NOT after install), so the
+    // folders exist immediately.
+    if let Some(loader) = crate::loaders::registry::LoaderRegistry::global().by_engine(engine.clone()) {
+        let caps = loader.capabilities();
+        let mc_dir = instance_path.join(".minecraft");
+        if caps.supports_mods {
+            let _ = fs::create_dir_all(mc_dir.join("mods"));
+        }
+        if caps.supports_plugins {
+            let _ = fs::create_dir_all(mc_dir.join("plugins"));
+        }
+    }
 
     // Calculate build (simplified)
     let build = if let Some(url) = &custom_download_url {

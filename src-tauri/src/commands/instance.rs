@@ -50,7 +50,20 @@ async fn dispatch_via_registry(
     };
     loader
         .install(app, id, target_dir, &version_meta, custom_url, accept_eula)
-        .await
+        .await?;
+    // Install completed successfully. Create mods/ and/or plugins/ folders
+    // inside .minecraft/ based on the loader's capabilities, so the user
+    // can drop addons in immediately without manually creating the
+    // directory on first start.
+    let caps = loader.capabilities();
+    let mc_dir = target_dir.join(".minecraft");
+    if caps.supports_mods {
+        let _ = std::fs::create_dir_all(mc_dir.join("mods"));
+    }
+    if caps.supports_plugins {
+        let _ = std::fs::create_dir_all(mc_dir.join("plugins"));
+    }
+    Ok(())
 }
 
 fn get_instance_info(app: &tauri::AppHandle, id: &str) -> Result<(PathBuf, Instance), String> {

@@ -37,9 +37,6 @@
     let { children } = $props();
 
     onMount(() => {
-        // --- CAMBIO DE TÍTULO PRIORITARIO ---
-        getCurrentWindow().setTitle("AnvilCraft Panel v.0.1.12 (beta)");
-        
         let unlisten: () => void;
 
         // Close prevention logic
@@ -119,13 +116,6 @@
                 };
             } catch (e) {
                 console.error("Failed to setup listeners:", e);
-            }
-
-            // 1. Título Inmediato (PRUEBA DE FUEGO)
-            try {
-                await getCurrentWindow().setTitle("si se ve el cambio");
-            } catch (e) {
-                console.error("Immediate title failed:", e);
             }
 
             // 2. Título Refinado (Cuando el canal responda)

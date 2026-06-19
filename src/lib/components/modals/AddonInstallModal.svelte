@@ -11,6 +11,7 @@
         old_version: string | null;
         size: number;
         last_modified: number;
+        platform?: string;
     }
 
     interface Props {

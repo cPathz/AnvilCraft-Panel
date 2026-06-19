@@ -17,7 +17,7 @@
     let { instance, loading = $bindable(true) }: Props = $props();
     let runtime = $derived(appState.getRuntime(instance.id));
     let type = $derived(runtime?.addonsType || 'none');
-    let isLocked = $derived(instance.state === 'Running' || instance.state === 'Starting' || runtime?.state === 'Running' || runtime?.state === 'Starting');
+    let isLocked = $derived(instance.state === 'Running' || instance.state === 'Starting');
 
     // UI state
     let addons = $state<any[]>([]);
@@ -97,7 +97,7 @@
             });
             // The file watcher will handle the refresh, but we update locally for speed
             addon.enabled = newState;
-        } catch (e) {
+        } catch (e: any) {
             toast.error(e.toString());
         }
     }

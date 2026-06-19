@@ -34,7 +34,32 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "🔨 AnvilCraft Panel ${{ github.ref_name }}"
-          releaseBody: "Versión oficial de AnvilCraft Panel. Incluye instalador EXE y paquete MSIX para la Store."
+          releaseBody: |
+            [APP_NOTES]
+            ¡Más loaders y más cómodo! Esta versión añade soporte para NeoForge, Forge, Fabric, Quilt, Paper, Spigot, Purpur, Folia, Velocity, Waterfall y BungeeCord desde el panel. Los servidores nuevos crean automáticamente las carpetas mods/ y plugins/ según el loader, listas para soltar tus addons. Detección de jugadores y estado del servidor más rápida. Detrás del telón: refactor del backend Rust con LoaderStrategy + mejora de seguridad.
+            [/APP_NOTES]
+
+            ## Cambios desde v0.1.13
+
+            ### Added
+            - **Loader module refactor** en `src-tauri/src/loaders/`: trait `LoaderStrategy` + `LoaderRegistry` con 4 categorías (Vanilla, Bukkit, Mods, Proxies). `InstanceEngine` enum extendido de 11 a 16 variantes (incluye BungeeCord + 4 hybrids)
+            - **NeoForge 2-step install** + **modpack importer** (CurseForge + Modrinth)
+            - **Auto-create `.minecraft/mods/` y `plugins/`** en `create_instance` según capabilities del loader (antes era post-install)
+            - **MSIX store deployment** + dynamic version automation
+
+            ### Changed
+            - Bump `@sveltejs/kit` 2.9.0 → 2.63.0
+            - Smart loader detection, state detection, and display
+            - Smart player detection and language-agnostic parsing
+            - `stop_instance` consulta `loader.stop_command()` vía registry (antes hardcoded match)
+
+            ### Fixed
+            - `ansiConverter.ts`: `escapeXml` → `escapeXML` (XML escaping no funcionaba en `ansi-to-html` actual)
+            - `ErrorLogView.svelte`: guard `clearIssues` con `if (instance)` para evitar crash en unmount
+            - TS strict cascade fixes en `UpdateModal` + `AddonsView`
+
+            ### Docs
+            - `SECURITY_AUDIT.md`: 5 vulnerabilidades npm (1 HIGH devalue, 4 moderate svelte/svelte-i18n/esbuild/postcss); todas SSR-only/build-time, no aplican al runtime Tauri desktop
           releaseDraft: false
           prerelease: false
           args: "--bundles nsis"

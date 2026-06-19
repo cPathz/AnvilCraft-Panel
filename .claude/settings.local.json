@@ -24,7 +24,12 @@
       "Bash(xxd)",
       "Bash(node -e ' *)",
       "Read(//c/Users/Luis/Code/Personal/AnvilCraft/src/lib/**)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(cargo tree *)",
+      "Bash(python3 -c ' *)",
+      "Bash(sed -n '49,58p' \"D:/Usuarios/Luis Macias/Documentos/Proyectos/AnvilCraft/src-tauri/src/commands/instance.rs\")"
     ]
   }
 }

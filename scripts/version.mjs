@@ -84,8 +84,12 @@ function readVersion(file) {
       return match ? match[1] : null;
     }
     case 'xml': {
+      // MSIX usa formato 4-segmentos (0.1.14.0). Normalizamos a 3-segmentos
+      // para comparar con la fuente de verdad.
       const match = content.match(/<Identity[^>]*Version="([^"]+)"/);
-      return match ? match[1] : null;
+      if (!match) return null;
+      const parts = match[1].split('.');
+      return parts.slice(0, 3).join('.');
     }
     case 'badge': {
       const match = content.match(/Version-v(\d+\.\d+\.\d+)-/);

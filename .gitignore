@@ -1,35 +1,75 @@
+# OS
 .DS_Store
-node_modules
-/build
-/.svelte-kit
-/package
-.env
-.env.*
-!.env.example
+Thumbs.db
+desktop.ini
+
+# Archivos temporales de editores
+*.swp
+*.swo
+*~
+*.tmp
+*.bak
+*.orig
+*.rej
+
+# AI assistants y editores AI (cualquiera que uses en el futuro)
+.claude/
+.cursor/
+.aider*
+.continue/
+.codeium/
+.cody/
+.cline/
+.windsurf/
+.roo/
+.trae/
+.kiro/
+.augment/
+.gemini/
+.mcp.json
+claude_desktop_config.json
+
+# Otros editores / IDEs
+.idea/
+.vs/
+
+# Node / SvelteKit
+node_modules/
+/build/
+/.svelte-kit/
+/package/
+/dist/
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
 # Rust / Tauri
 src-tauri/target/
 src-tauri/binaries/
+src-tauri/gen/
+src-tauri/check_output*.txt
+src-tauri/check_final.txt
 
-# Producción
-dist/
-
-# Backup
-_backup/
-*.rar
-*.zip
-
-# Ignore raw data for dev use only
-src/lib/data/minecraft/
-
-# Registro de desarrollo local
-dev_log.md
-DB_EXPERIMENTAL.md
-
-# Tauri Signer
+# Tauri Signer (NUNCA subir llaves)
 /.tauri/
 tauri.key
 tauri.key.pub
-# Instrucciones de Release
+*.pem
+
+# Backups
+_backup/
+*.rar
+*.zip
+*.7z
+
+# Dev debris (logs, scripts, outputs de debugging)
+check_output.txt
+tauri_stderr.txt
+tauri_stdout.txt
+dev_log.md
+extract_arguments.py
+inspect_regs.py
+scratch/
+
+# Documentación interna (no es para el repo público)
+DB_EXPERIMENTAL.md
 RELEASE_PROTOCOL.md

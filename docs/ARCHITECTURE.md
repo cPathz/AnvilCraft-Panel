@@ -84,13 +84,15 @@ AnvilCraft/
 ├── docs/                           # Documentación pública
 │   ├── ARCHITECTURE.md             # ← este archivo
 │   ├── I18N.md                     # Guía completa de internacionalización
+│   ├── VERSIONING.md               # Single source of truth para versión
 │   ├── SECURITY_AUDIT.md
 │   ├── ROADMAP_STORE.md
 │   └── CONSOLE_PERFORMANCE.md
 │
 ├── scripts/                        # Scripts de desarrollo (Node.js, ESM)
 │   ├── translate.mjs               # Genera traducciones base desde en.json
-│   └── validate-locales.mjs        # Valida que todos los locales tengan las mismas claves
+│   ├── validate-locales.mjs        # Valida que todos los locales tengan las mismas claves
+│   └── version.mjs                 # Single source of truth para la versión (sync 6 archivos)
 │
 └── .github/workflows/release.yml
 ```
@@ -108,6 +110,12 @@ AnvilCraft/
 → Encuentra la clave (ej. `instance.btn_create`)
 → Cámbiala en TODOS los archivos de `locales/`
 → (O solo en `en.json` y deja que un colaborador traduzca después)
+
+### "Quiero cambiar la versión del proyecto"
+→ `npm run version -- patch` (o minor/major/0.1.15)
+→ Sincroniza 6 archivos automáticamente desde `package.json`
+→ Ver `docs/VERSIONING.md` para la guía completa
+→ Verifica con: `npm run version:check`
 
 ### "Quiero agregar un item al menú lateral"
 → Edita `src/lib/components/NavigationRail.svelte`
@@ -191,5 +199,6 @@ AnvilCraft/
 - `ROADMAP_STORE.md` — roadmap de Microsoft Store
 - `CONSOLE_PERFORMANCE.md` — optimizaciones de la consola
 - `I18N.md` — guía completa de internacionalización
+- `VERSIONING.md` — single source of truth para la versión
 - `CONTRIBUTING.md` — cómo contribuir
 - `docs/ANALYSIS.md` — análisis técnico (privado, ignorado de git)

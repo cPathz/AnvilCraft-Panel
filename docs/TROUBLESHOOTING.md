@@ -55,15 +55,32 @@
 
 **Síntoma:** El binario dice "v.0.1.13" pero `package.json` dice 0.1.14, o el badge de README dice v.1.2.
 
-**Causa raíz:** La versión se define en 3 lugares (package.json, Cargo.toml, tauri.conf.json) y se hardcodea en el README. Al bumpear, se actualiza uno y se olvidan los otros.
+**Causa raíz:** La versión se define en 6 lugares (package.json, Cargo.toml, tauri.conf.json, AppxManifest.xml, README badge, SECURITY_AUDIT). Al bumpear, se actualiza uno y se olvidan los otros.
 
-**Fix:** Pendiente. Estrategia: usar un script o GitHub Action que sincronice las versiones automáticamente. Mientras tanto, al bumpear, actualizar los 3 archivos en el mismo commit.
+**Fix (2026-08-02):** Resuelto. Ahora `package.json` es la **única fuente de verdad** y un script sincroniza el resto.
 
-**Archivos a tocar:**
-- `package.json` → `"version": "X.Y.Z"`
-- `src-tauri/Cargo.toml` → `version = "X.Y.Z"`
-- `src-tauri/tauri.conf.json` → `"version": "X.Y.Z"`
-- `README.md` → badge `![Version-vX.Y.Z]`
+```bash
+# Ver status
+npm run version
+
+# Bumpear
+npm run version -- patch    # o minor/major/"0.1.15"
+
+# Sincronizar sin cambiar
+npm run version:sync
+
+# Verificar en CI
+npm run version:check
+```
+
+Sincroniza 5 archivos automáticamente:
+- `src-tauri/Cargo.toml`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/msix/AppxManifest.xml` (formato 4-segmentos, agrega `.0`)
+- `README.md` (badge)
+- `docs/SECURITY_AUDIT.md`
+
+Doc completa: `docs/VERSIONING.md`.
 
 ---
 

@@ -2,6 +2,8 @@
 
 ¡Gracias por tu interés en mejorar AnvilCraft! Este documento te guía para contribuir efectivamente.
 
+> **📖 Empieza por aquí:** [`docs/COMMANDS.md`](docs/COMMANDS.md) — todos los comandos del proyecto en un solo lugar.
+
 ## 🤝 Maneras de contribuir
 
 - 🐛 **Reportar bugs** — usa la [issue template de bug](../../.github/ISSUE_TEMPLATE/bug_report.md)

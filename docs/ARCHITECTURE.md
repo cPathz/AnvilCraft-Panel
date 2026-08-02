@@ -83,6 +83,7 @@ AnvilCraft/
 │
 ├── docs/                           # Documentación pública
 │   ├── ARCHITECTURE.md             # ← este archivo
+│   ├── COMMANDS.md                 # Cheat sheet de todos los comandos
 │   ├── I18N.md                     # Guía completa de internacionalización
 │   ├── VERSIONING.md               # Single source of truth para versión
 │   ├── SECURITY_AUDIT.md
@@ -200,5 +201,6 @@ AnvilCraft/
 - `CONSOLE_PERFORMANCE.md` — optimizaciones de la consola
 - `I18N.md` — guía completa de internacionalización
 - `VERSIONING.md` — single source of truth para la versión
+- `COMMANDS.md` — cheat sheet de todos los comandos
 - `CONTRIBUTING.md` — cómo contribuir
 - `docs/ANALYSIS.md` — análisis técnico (privado, ignorado de git)

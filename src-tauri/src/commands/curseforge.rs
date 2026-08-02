@@ -28,9 +28,21 @@ use uuid::Uuid;
 use zip::ZipArchive;
 
 // ── CurseForge API ────────────────────────────────────────────────────────────
-// Public CurseForge API key (used for server-side tooling, widely distributed).
-const CF_API_KEY: &str = "REDACTED-CURSEFORGE-KEY-ROTATED-2026-08-02";
+// API key is loaded from the CURSEFORGE_API_KEY environment variable.
+// Set it in a local `.env` file (gitignored) before building.
+// To get a key: https://console.curseforge.com/
 const CF_API_BASE: &str = "https://api.curseforge.com/v1";
+
+/// Returns the CurseForge API key from the `CURSEFORGE_API_KEY` env var,
+/// or an error if it's not set.
+fn cf_api_key() -> Result<String, String> {
+    std::env::var("CURSEFORGE_API_KEY")
+        .map_err(|_| {
+            "CURSEFORGE_API_KEY not set. Add it to a local .env file or set it in your environment. \
+             Get a key at https://console.curseforge.com/"
+                .to_string()
+        })
+}
 
 // ── Manifest structs ──────────────────────────────────────────────────────────
 
@@ -177,7 +189,7 @@ async fn cf_get_download_url(client: &reqwest::Client, project_id: u64, file_id:
     let url = format!("{}/mods/{}/files/{}/download-url", CF_API_BASE, project_id, file_id);
     let resp = client
         .get(&url)
-        .header("x-api-key", CF_API_KEY)
+        .header("x-api-key", cf_api_key()?)
         .send()
         .await
         .map_err(|e| e.to_string())?;

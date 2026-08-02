@@ -1,7 +1,12 @@
-# Security Audit — Dependency Vulnerabilities (2026-06-07)
+# Security Audit — Análisis de Seguridad (actualizado 2026-08-02)
 
-> Generado por Claude. Análisis de `npm audit --omit=dev` + revisión manual.
-> Aplica a AnvilCraft v0.1.14. Las vulnerabilidades en devDependencies no se incluyen en este análisis.
+> Auditoría completa de AnvilCraft v0.1.14 → v0.1.15. Cubre:
+> - Dependencias npm con vulnerabilidades
+> - Secretos hardcodeados en código
+> - Capabilities de Tauri (qué puede hacer el frontend)
+> - XSS, command injection, path traversal
+>
+> Generado por Claude (análisis) + Luis Macias (decisiones de remediación).
 
 ## Resumen ejecutivo
 
@@ -88,11 +93,153 @@
 
 ---
 
+# 🔐 Auditoría de código (2026-08-02)
+
+Análisis manual del código fuente en busca de secretos hardcodeados, vulnerabilidades, y configuración insegura.
+
+## 🔴 Secretos hardcodeados (encontrados y remediados)
+
+### 1. `CURSEFORGE_API_KEY` en código fuente
+
+**Archivo:** `src-tauri/src/commands/curseforge.rs:32`
+
+```rust
+// ANTES (vulnerable):
+const CF_API_KEY: &str = "REDACTED-CURSEFORGE-KEY-ROTATED-2026-08-02";
+```
+
+**Riesgo:** API key de CurseForge **privada** hardcodeada en código fuente, visible en GitHub. Un atacante podría:
+- Abusar la key para hacer requests no autorizadas
+- Hacer que CurseForge rate-limit o deshabilite la key
+- Costar dinero si hay límites de pago
+
+**Remediación (v0.1.15):** Movida a variable de entorno `CURSEFORGE_API_KEY`. El código retorna error claro si no está configurada.
+
+**Acción adicional requerida:**
+1. ✅ Luis rotó la key en https://console.curseforge.com/ (key nueva generada)
+2. ✅ Key vieja fue revocada
+3. ⚠️ Pendiente: limpiar el historial de git con `git filter-repo` para borrar la key del log
+
+### 2. `MSIX_CERT_PASSWORD` en script de build
+
+**Archivo:** `scripts/build-msix.ps1:46`
+
+```powershell
+# ANTES (vulnerable):
+$CertPassword = "REDACTED-MSIX-CERT-PASSWORD-ROTATED-2026-08-02"
+```
+
+**Riesgo:** Password de certificado de firma MSIX hardcodeado. Como el certificado es autofirmado/temporal, el riesgo es menor que el #1, pero igualmente es mala práctica.
+
+**Remediación (v0.1.15):** Movida a variable de entorno `MSIX_CERT_PASSWORD`. El script retorna error claro si no está configurada.
+
+## 🛡️ Análisis de superficie de ataque
+
+### Capabilities de Tauri (`src-tauri/capabilities/default.json`)
+
+| Permiso | Qué permite | ¿Necesario? | Riesgo |
+|---|---|---|---|
+| `core:default` | API core mínima | Sí | Mínimo |
+| `opener:default` | Abrir URLs externas en navegador | Sí (links a Discord, GitHub) | Bajo (solo abre URLs hardcoded en la UI) |
+| `dialog:default` | Diálogos de archivo (abrir, guardar) | Sí (importar modpacks, seleccionar archivos) | Bajo |
+| `updater:allow-check` | Verificar actualizaciones | Sí | Bajo |
+| `updater:allow-download-and-install` | Descargar e instalar updates | Sí | **Medio** (vector para RCE si atacante controla el endpoint) |
+| `process:default` | Plugin de procesos (exit, listado) | Sí | Bajo |
+| `core:window:allow-start-dragging` | Arrastrar ventana | Sí (UI) | Mínimo |
+| `core:window:allow-close` | Cerrar ventana | Sí | Mínimo |
+
+**Análisis:**
+- ✅ Solo se exponen los permisos necesarios (no hay permisos amplios)
+- ✅ No hay `core:webview:allow-internal-toggle-devtools` (no se puede abrir DevTools desde código)
+- ⚠️ `updater:allow-download-and-install` usa endpoint de GitHub Releases (`https://github.com/cPathz/AnvilCraft-Panel/releases/latest/download/latest.json`). Si un atacante compromete GitHub Releases, podría distribuir binarios maliciosos. **Mitigación:** El updater usa `pubkey` (clave pública de firma) en `tauri.conf.json:45` para verificar la firma. ✓
+
+### XSS en Svelte
+
+**Análisis:** Búsqueda de `{@html ...}` y similares:
+
+```
+src/lib/components/console/ConsoleView.svelte:758, 767, 1004
+```
+
+**Mitigación existente:** `src/lib/utils/ansiConverter.ts:7` configura `escapeXML: true` en `ansi-to-html`, lo que escapa `<`, `>`, `&`, `"`, `'` en el contenido del log. ✓
+
+**Vector residual:** Un log de Minecraft que contenga `<script>alert(1)</script>` se convierte a `&lt;script&gt;alert(1)&lt;/script&gt;` antes de pasar a `{@html}`, por lo que se renderiza como texto literal, no como script.
+
+**Riesgo residual:** BAJO. Si un atacante controla el proceso Java (Minecraft server), podría intentar inyectar, pero `escapeXML` lo mitiga.
+
+### Command injection (Rust)
+
+**Análisis:** Búsqueda de `Command::new`, `child_process`:
+
+```
+src-tauri/src/loaders/mods.rs:220, 232, 234, 496, 507, 509
+src-tauri/src/commands/instance.rs:816, 823, 830, 992, 1003, 1235, 1242, 1249
+src-tauri/src/commands/server.rs:63, 134
+```
+
+**Análisis:** Todos los usos son `Command::new(binario).arg(valor)` que en Rust NO invocan shell. Es seguro contra command injection clásico. ✓
+
+**Vector residual:** Paths que vienen del frontend se pasan a `Command::arg(path)`. Como Rust no usa shell, no hay inyección, pero sí podría abrirse un binario arbitrario si el path es controlado. **Riesgo:** Bajo (binarios legítimos esperados: `explorer`, `xdg-open`, `open`).
+
+### Path traversal
+
+**Análisis:** Búsqueda de `fs::read`, `fs::write`, `PathBuf::join`:
+
+**Mitigación existente:** `src-tauri/src/commands/curseforge.rs:124-127` usa `entry.enclosed_name()` que retorna `None` si el path del ZIP contiene `..` o es absoluto. ✓
+
+**Vector residual:** Paths de instancias se construyen con `app_data_dir().join("instances").join(slug)`. El `slug` viene del frontend (`create_instance`). Si no se valida que el slug sea seguro, podría apuntar fuera de `instances/`. **Riesgo:** Bajo (el slug es generado por el frontend, no por input del usuario externo).
+
+### HTTPS / TLS
+
+**Análisis:** Todas las llamadas HTTP usan `reqwest::Client::new()` que por defecto verifica certificados TLS. ✓
+
+```
+src-tauri/src/commands/java.rs:107
+src-tauri/src/loaders/proxies.rs (varios)
+src-tauri/src/loaders/vanilla.rs
+src-tauri/src/commands/curseforge.rs:178
+```
+
+**Endpoints:**
+- `https://api.adoptium.net` (Java downloads)
+- `https://api.curseforge.com` (modpacks)
+- `https://api.modrinth.com` (modpacks)
+- `https://launchermeta.mojang.com` (Minecraft versions)
+- `https://github.com/...` (updater)
+
+Todos HTTPS. ✓
+
+## 📋 Resumen de remediación (v0.1.15)
+
+| Severidad | Hallazgo | Estado |
+|---|---|---|
+| 🔴 | `CF_API_KEY` hardcodeada | ✅ Movida a env var |
+| 🔴 | `MSIX_CERT_PASSWORD` hardcodeado | ✅ Movido a env var |
+| 🟡 | `.env*` no en .gitignore | ✅ Agregado |
+| 🟢 | XSS en consola | ✅ Ya mitigado con `escapeXML` |
+| 🟢 | Command injection | ✅ Rust usa `Command::arg()` (sin shell) |
+| 🟢 | Path traversal en ZIPs | ✅ Ya mitigado con `enclosed_name()` |
+| 🟢 | HTTPS enforcement | ✅ `reqwest` verifica TLS |
+| 🟢 | Capabilities de Tauri | ✅ Mínimas necesarias |
+
+## 📝 Acciones pendientes
+
+1. **Rotar API key de CurseForge** (Luis debe hacerlo en https://console.curseforge.com/)
+2. **Limpiar historial de git** con `git-filter-repo` (eliminar la key vieja del log)
+3. **Force-push** (justificado en este caso por secret leak)
+4. **Configurar `cargo audit` en CI** (pendiente, no urgente)
+5. **Configurar Dependabot auto-dismiss** para advisories que no aplican (Tauri desktop)
+6. **Agregar pre-commit hook** que corra `gitleaks` o similar para prevenir futuros secrets
+
+---
+
 ## Metodología
 
-Análisis generado el 2026-06-07 por Claude Code.
+Análisis generado/actualizado el 2026-08-02 por Claude Code.
 
 Fuentes:
-- `npm audit --omit=dev` (producción, excluyendo devDeps)
-- Inspección manual de los advisories para evaluar aplicabilidad
-- Exclusión basada en que AnvilCraft es Tauri desktop (no SSR, no dev server expuesto)
+- `npm audit` (producción + devDependencies)
+- Búsqueda manual de patrones de secretos (`api[_-]?key`, `secret`, `token`, `password`, `private[_-]?key`)
+- Inspección de capabilities de Tauri
+- Análisis de flujo de datos (frontend → IPC → Rust → filesystem/process)
+- Verificación de TLS, sanitización HTML, validación de paths

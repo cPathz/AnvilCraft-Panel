@@ -43,7 +43,11 @@ foreach ($icon in $RequiredIcons) {
 # 5. Generar Certificado de Firma Temporal
 Write-Host "--- Generando certificado de firma temporal ---" -ForegroundColor Yellow
 $CertPath = "$ProjectRoot\temp_cert.pfx"
-$CertPassword = "REDACTED-MSIX-CERT-PASSWORD-ROTATED-2026-08-02"
+$CertPassword = $env:MSIX_CERT_PASSWORD
+if (-not $CertPassword) {
+    Write-Error "MSIX_CERT_PASSWORD no esta configurado. Ejemplo: `$env:MSIX_CERT_PASSWORD = 'tu-password'"
+    exit 1
+}
 $Publisher = "CN=4C5C6D2B-352B-4EDE-B886-2F082C336275"
 
 $secpassword = ConvertTo-SecureString $CertPassword -AsPlainText -Force

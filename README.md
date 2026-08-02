@@ -12,7 +12,7 @@ Special thanks to Bertware for the inspiration with their program called **Bukki
 # AnvilCraft Panel
 
 ![Status](https://img.shields.io/badge/Status-Beta-purple?style=flat-square)
-![Version](https://img.shields.io/badge/Version-v0.1.14-blue?style=flat-square)
+![Version](https://img.shields.io/badge/Version-v0.1.15-blue?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
 **Come join our Discord community:** https://discord.gg/4BcbbgBQRP

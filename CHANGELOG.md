@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.15] - 2026-08-02
+
+### Security
+- **Moved hardcoded secrets to environment variables**:
+  - `CURSEFORGE_API_KEY`: now loaded from `CURSEFORGE_API_KEY` env var (was hardcoded in `src-tauri/src/commands/curseforge.rs`).
+  - `MSIX_CERT_PASSWORD`: now loaded from `MSIX_CERT_PASSWORD` env var (was hardcoded in `scripts/build-msix.ps1`).
+- **Rotated exposed CurseForge API key** (was visible in git history before this commit).
+- **Cleaned git history with `git-filter-repo`**: secret redactions applied to all 164 commits, then force-pushed.
+- **Added `.env.example`** as a public template for required environment variables.
+- **Updated `.gitignore`** to ignore `.env*` (allowing `.env.example` to be committed).
+- **Enhanced `docs/SECURITY_AUDIT.md`** with full security analysis (XSS, command injection, path traversal, capabilities, secret remediation).
+
+### Added
+- **`.env.example`** template documenting `CURSEFORGE_API_KEY` and `MSIX_CERT_PASSWORD` variables.
+- **Security section in `docs/SECURITY_AUDIT.md`** covering secret remediation, capabilities analysis, and threat model.
+
 ## [0.1.14] - 2026-08-02
 
 ### Changed

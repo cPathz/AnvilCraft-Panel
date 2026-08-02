@@ -83,9 +83,14 @@ AnvilCraft/
 │
 ├── docs/                           # Documentación pública
 │   ├── ARCHITECTURE.md             # ← este archivo
+│   ├── I18N.md                     # Guía completa de internacionalización
 │   ├── SECURITY_AUDIT.md
 │   ├── ROADMAP_STORE.md
 │   └── CONSOLE_PERFORMANCE.md
+│
+├── scripts/                        # Scripts de desarrollo (Node.js, ESM)
+│   ├── translate.mjs               # Genera traducciones base desde en.json
+│   └── validate-locales.mjs        # Valida que todos los locales tengan las mismas claves
 │
 └── .github/workflows/release.yml
 ```
@@ -94,7 +99,9 @@ AnvilCraft/
 
 ### "Quiero cambiar/agregar un idioma"
 → Edita `src/lib/locales/<idioma>.json`
-→ Ver `CONTRIBUTING.md` para agregar uno nuevo.
+→ Ver `CONTRIBUTING.md` para agregar uno nuevo, o `docs/I18N.md` para la guía completa
+→ Genera traducciones base con: `npm run translate -- <código>` (Google Translate)
+→ Valida con: `npm run translate:validate`
 
 ### "Quiero cambiar el texto de un botón/menú"
 → Busca el texto en `src/lib/locales/en.json`
@@ -183,5 +190,6 @@ AnvilCraft/
 - `SECURITY_AUDIT.md` — auditoría de seguridad de dependencias
 - `ROADMAP_STORE.md` — roadmap de Microsoft Store
 - `CONSOLE_PERFORMANCE.md` — optimizaciones de la consola
+- `I18N.md` — guía completa de internacionalización
 - `CONTRIBUTING.md` — cómo contribuir
 - `docs/ANALYSIS.md` — análisis técnico (privado, ignorado de git)

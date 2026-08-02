@@ -4,6 +4,37 @@
 
 ---
 
+## 🧹 Limpiezas de dead code (histórico)
+
+### [2026-08-02] `src/lib/i18n/` — carpeta muerta eliminada
+
+**Síntoma:** Carpeta duplicada de traducciones `src/lib/i18n/es.json` que nadie usaba.
+
+**Causa raíz:** Diseño viejo donde había dos directorios de locales (`lib/i18n/` y `lib/locales/`). Solo `lib/locales/` quedó activo en `i18n.ts:7-8`, pero la otra carpeta nunca se borró.
+
+**Verificación:** `grep -r 'i18n/' src/` no encontró referencias (solo el import de `i18n.ts` que apunta a `./locales/`).
+
+**Fix:** `Remove-Item src/lib/i18n -Recurse -Force`. Commit: `chore: reorganizar estructura`.
+
+---
+
+### [2026-08-02] `src-tauri/src/lib/data/` — data huérfana eliminada
+
+**Síntoma:** 150+ JSONs de Minecraft (blocks, items, commands, registries por versión) en `src-tauri/src/lib/data/minecraft/` que el binario no incluía y el runtime no leía.
+
+**Causa raíz:** Diseño inicial donde la data de Minecraft se iba a embeber en el binario Rust con `include_str!` / `include_bytes!` / `include_dir!`. El diseño cambió: `commands/dev.rs::import_minecraft_data` ahora escribe a `../src/lib/data/` (lado Svelte) y el frontend lo lee con `import` directo. La carpeta Rust quedó huérfana.
+
+**Verificación:**
+- `grep -r 'include_str!\|include_bytes!\|include_dir!\|embed_file' src-tauri/src/` → 0 matches
+- Todas las referencias en `commands/dev.rs:137,418,455,474,490,522,556` apuntan a `../src/lib/data/...`
+- `src/lib/data/` (Svelte side) sigue siendo el que se usa en runtime: `ConsoleView.svelte:8-9`, `IconPicker.svelte:2`, `CreateInstanceModal.svelte:16`
+
+**Fix:** `Remove-Item src-tauri/src/lib/data -Recurse -Force`. Commit: `chore: remove dead minecraft data embeds`.
+
+**Lección:** Antes de usar macros de embebido (`include_str!` etc.), confirmar que el diseño los necesita. Si el frontend Svelte puede leer JSONs con `import`, no hay razón para duplicar al lado Rust.
+
+---
+
 ## 🔴 Críticos (bloquean funcionalidad)
 
 ### [2026-06-18] Window title mostraba "v.0.1.12" hardcodeado

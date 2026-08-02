@@ -15,11 +15,45 @@
 
 AnvilCraft usa [`svelte-i18n`](https://github.com/svelte-i18n/svelte-i18n) con archivos JSON en `src/lib/locales/`.
 
-### Paso a paso
+### Opción 1 — Generar traducción base automáticamente (recomendado)
+
+El proyecto incluye un script que usa Google Translate (o Libre/Bing/DeepL) para generar un primer borrador, que después pules a mano.
+
+```bash
+# Una sola vez: instalar la dependencia
+npm install
+
+# Generar francés desde inglés
+npm run translate -- fr
+
+# Generar varios idiomas
+npm run translate -- fr de ja zh-CN
+
+# Generar un set común de 14 idiomas
+npm run translate -- --all
+
+# Ver todas las opciones
+npm run translate -- --help
+```
+
+El script:
+- Genera `src/lib/locales/<idioma>.json` desde `en.json`
+- Si el archivo ya existe, lo salta (usa `--force` para sobreescribir)
+- Imprime advertencias si `en.json` y el archivo fuente no coinciden en estructura
+
+Después de generar:
+1. Abre el archivo `.json` y revisa la calidad. Las traducciones automáticas son del 60-80%.
+2. Ajusta los **términos técnicos del proyecto** que suelen quedar mal:
+   - `instance` → "instancia" / "サーバー" / "实例" (depende del idioma)
+   - `loader` → "cargador" / usually left in English
+   - `modpack`, `addon`, `world` → generalmente se quedan en inglés
+3. Ejecuta `npm run translate:validate` para verificar que no falten claves.
+
+### Opción 2 — Traducir a mano desde cero
 
 1. **Fork** el repo y clónalo localmente.
 2. Copia `src/lib/locales/en.json` a `src/lib/locales/<tu-código-de-idioma>.json`
-   - Usa códigos ISO 639-1: `en`, `es`, `fr`, `de`, `pt`, `ja`, etc.
+   - Usa códigos ISO 639-1: `en`, `es`, `fr`, `de`, `pt`, `ja`, `zh-CN`, etc.
 3. **Traduce solo los valores**, nunca las claves:
    ```json
    // ❌ Mal
@@ -28,7 +62,7 @@ AnvilCraft usa [`svelte-i18n`](https://github.com/svelte-i18n/svelte-i18n) con a
    // ✅ Bien
    { "common": { "save": "Save" } }
    ```
-4. Verifica que el JSON sea válido (sin comas trailing, comillas balanceadas).
+4. Verifica con `npm run translate:validate` que no falten claves.
 5. Abre un PR con título `i18n: add <idioma> translation`.
 
 ### Cómo probar tu traducción localmente
@@ -39,6 +73,10 @@ npm run dev
 ```
 
 El idioma se selecciona automáticamente del navegador, o puedes forzarlo desde Settings → Appearance.
+
+### Documentación detallada
+
+Ver [`docs/I18N.md`](docs/I18N.md) para la guía completa (motores de traducción, glosario, CI).
 
 ## 🧩 Agregar un mod loader
 

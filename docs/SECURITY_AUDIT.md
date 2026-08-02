@@ -1,7 +1,7 @@
 # Security Audit — Dependency Vulnerabilities (2026-06-07)
 
 > Generado por Claude. Análisis de `npm audit --omit=dev` + revisión manual.
-> Aplica a AnvilCraft v0.1.13. Las vulnerabilidades en devDependencies no se incluyen en este análisis.
+> Aplica a AnvilCraft v0.1.14. Las vulnerabilidades en devDependencies no se incluyen en este análisis.
 
 ## Resumen ejecutivo
 

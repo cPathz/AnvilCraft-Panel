@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.14] - 2026-08-02
+
+### Changed
+- **Version sync**: Sincronizada la versión a 0.1.14 en `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `src-tauri/msix/AppxManifest.xml` y badge de `README.md`. (Antes: 0.1.13 en Cargo, v0.1.2 en badge.)
+
+### Removed
+- **Dead code cleanup**: `src-tauri/src/lib/data/` (161 JSONs huérfanos de definiciones de Minecraft, ~11 MB). Verificado: 0 matches de `include_str!`/`include_bytes!`/`include_dir!`. La data real vive en `src/lib/data/` (lado Svelte).
+- **Dead code cleanup**: `src/lib/i18n/` (carpeta muerta de traducciones, no se usaba — `i18n.ts` solo importa de `src/lib/locales/`).
+
+### Added
+- **i18n tooling**:
+  - `scripts/translate.mjs` — genera traducciones base desde `en.json` con `@parvineyvazov/json-translator` (Google/Bing/Libre/DeepL/GPT, gratis, sin API key).
+  - `scripts/validate-locales.mjs` — valida que todos los locales tengan la misma estructura de claves que `en.json` y reporta claves faltantes, sobrantes o vacías.
+  - `npm run translate -- <código>` para generar un idioma.
+  - `npm run translate:validate` para validar.
+- **Documentación**:
+  - `CONTRIBUTING.md` — guía de contribuidores (i18n, loaders, dev setup).
+  - `docs/ARCHITECTURE.md` — mapa del proyecto, dónde cambiar cada cosa.
+  - `docs/I18N.md` — guía completa de internacionalización.
+  - `docs/TROUBLESHOOTING.md` — log de problemas conocidos y soluciones.
+  - `.editorconfig` — formato consistente entre editores.
+  - `.github/ISSUE_TEMPLATE/{bug_report,feature_request}.md`.
+  - `.github/PULL_REQUEST_TEMPLATE.md`.
+
 ## [0.1.4] - 2026-04-20
 
 ### Added

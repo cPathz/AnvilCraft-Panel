@@ -73,3 +73,6 @@ scratch/
 # Documentación interna (no es para el repo público)
 DB_EXPERIMENTAL.md
 RELEASE_PROTOCOL.md
+
+# Documentación personal de Luis (no para el repo)
+docs/ANALYSIS.md

@@ -66,6 +66,8 @@ jobs:
 
       - name: Build MSIX (Custom Script)
         shell: pwsh
+        env:
+          MSIX_CERT_PASSWORD: ${{ secrets.MSIX_CERT_PASSWORD }}
         run: |
           ./scripts/build-msix.ps1
 

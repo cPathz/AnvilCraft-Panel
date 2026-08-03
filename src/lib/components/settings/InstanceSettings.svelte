@@ -2,6 +2,7 @@
     import { appState, type Instance } from "$lib/runes/store.svelte";
     import { invoke } from "@tauri-apps/api/core";
     import { open, save } from "@tauri-apps/plugin-dialog";
+    import { appDataDir, join } from "@tauri-apps/api/path";
     import { toast } from "$lib/runes/toast.svelte";
     import { onMount, tick } from "svelte";
     import { fade, slide } from "svelte/transition";
@@ -352,8 +353,17 @@
 
     async function selectJavaPath() {
         try {
+            // Default the picker to the runtimes/java folder where Adoptium
+            // and Azul Zulu downloads live, so the user lands on the right
+            // tree instead of whatever Windows was last showing.
+            const javaDir = await join(
+                await appDataDir(),
+                "runtimes",
+                "java",
+            );
             const selected = await open({
                 multiple: false,
+                defaultPath: javaDir,
                 filters: [
                     {
                         name: "Java Executable",

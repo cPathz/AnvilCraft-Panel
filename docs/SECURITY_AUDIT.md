@@ -449,3 +449,91 @@ Fuentes adicionales a las de la primera auditoría:
 - `gh secret list` y `gh variable list` para auditoría de GitHub Secrets
 - `git for-each-ref` para inspección de refs (tags + branches)
 - Búsqueda de `dev_log.md` tracked pese a `.gitignore`
+
+---
+
+# 🔍 Auditoría de Seguridad - Round 3 (2026-08-02, local)
+
+> Tercera auditoría, enfocada en el **filesystem local** de Luis. El scope público de GitHub quedó cerrado en Round 2.
+
+## Alcance
+
+**Incluido** (filesystem local fuera del repo público):
+- `P:/Proyectos/Anvilcraft RESPALDO/` — backup en disco que **NO** se sube a GitHub pero contiene código y secretos vivos
+- Working tree actual de `P:/Proyectos/AnvilCraft/` (re-verificación post-Round 2)
+- Configuración local: `.env`, `.env.example`, `.gitignore`
+- Llaves de firma: `tauri.key` (privada), `tauri.key.pub` (pública, en `tauri.conf.json`)
+
+## Verificaciones que pasaron (sin cambios desde Round 2)
+
+- ✅ Working tree sin secrets hardcoded (re-verificado).
+- ✅ Git history accesible limpio (re-verificado).
+- ✅ `.git/objects/` purgado de unreachable (0 objetos sueltos — re-verificado).
+- ✅ Tag huérfano `tool` eliminado.
+- ✅ `dev_log.md` no tracked (commit `6fa42a4`).
+- ✅ `.env` gitignored, solo 2 vars esperadas (`CURSEFORGE_API_KEY`, `MSIX_CERT_PASSWORD`).
+- ✅ `.env.example` plantilla pública, sin valores reales.
+- ✅ `.gitignore` exhaustivo: cubre `.env*`, `expressions.txt`, `.git.backup.*`, `*.local.txt`, debris de AI editors, dev logs.
+
+## Hallazgos nuevos
+
+### 🔴 Backup `P:/Proyectos/Anvilcraft RESPALDO/` contiene 3 archivos sensibles (severidad: ALTA, scope local)
+
+Este directorio está **fuera del repo público** (por eso Round 2 lo excluyó explícitamente) pero **sí está en disco** y constituye un riesgo de leak local si `P:/Proyectos/` se sincroniza a OneDrive/Google Drive/MEGA/Syncthing.
+
+| Archivo | Contenido | Estado |
+|---|---|---|
+| `scripts/build-msix.ps1:46` | `$CertPassword = "AnvilCraftStorePassword123"` | Valor **viejo**, NO rotado. El `.env` actual tiene un valor distinto (64 chars), pero esta copia del script tiene el original. |
+| `src-tauri/src/commands/curseforge.rs:32` | `const CF_API_KEY: &str = "$2a$10$bL4bIL5pUWqfcO7KQtnMReakwtfHbNKh6v1uTpKlzhwoueEJQnPnm"` | Valor **viejo** que aparece en `expressions.txt` como LEFT side del filter-repo. |
+| `tauri.key` (348 bytes) | Llave **privada** de firma Tauri Updater (`untrusted comment: rsign encrypted secret key`) | Contraparte de la `pubkey` activa en `tauri.conf.json:45`. Si un atacante obtiene esta llave, puede firmar updates maliciosos que la app aceptará como legítimos. |
+
+**Riesgo activo** (no del scope público de GitHub, pero sí de leak local):
+- Si `P:/Proyectos/` se sincroniza automáticamente a la nube, los 3 archivos se filtran.
+- Si el disco se compromete (ransomware, USB robado, etc.), los secrets se exponen.
+- El `AnvilCraftStorePassword123` es el mismo valor que el LEFT side del `expressions.txt` del filter-repo (confirmado en Round 2, blob `d2998038`).
+
+**Lo que NO es un problema**:
+- El backup en sí mismo no se sube a GitHub (verificado: no hay remote que apunte a `RESPALDO/`).
+- El `tauri.key` está en `.gitignore` (línea sobre `tauri.key` / `*.pem`), no en el repo público.
+
+**Acción recomendada (no urgente para el release público, sí para hygiene local)**:
+1. Mover el backup `RESPALDO/` a un disco **NO** sincronizado a la nube (sugerencia: `I:\Backups\AnvilCraft\` con BitLocker o USB cifrado). El disco `I:` (Seagate Barracuda 2TB) según el perfil de Luis no está sincronizado a la nube.
+2. Limpiar los 2 archivos de secrets del backup: copiar las versiones actuales (sin secrets) de `build-msix.ps1` y `curseforge.rs` sobre las del backup, o simplemente eliminar el backup y volver a clonar fresco desde GitHub.
+3. `tauri.key`: resguardar en USB cifrado o KeePass. Es un secret de firma a largo plazo, no debe estar en backups sincronizados.
+
+**Nota sobre el formato de la CF key**: El valor pre-cleanup tiene formato bcrypt-hash (`$2a$10$…`), unusual para una API key de CurseForge (que típicamente son UUIDs alfanuméricos). Puede ser un placeholder que Luis puso durante desarrollo y olvidó cambiar, o un valor deliberadamente ofuscado. Independientemente, Luis lo marcó como sensible en su `expressions.txt` y lo rotó (el `.env` actual tiene un valor distinto). Sin acción adicional más allá de limpiar el backup.
+
+---
+
+## Estado final consolidado (post Round 3)
+
+| Check | Estado | Round |
+|---|---|---|
+| Working tree sin secrets hardcoded | ✅ | 1 + 2 + 3 |
+| Git history (commits accesibles) sin secrets | ✅ | 1 + 2 + 3 |
+| `.git/objects/` purgado de unreachable | ✅ | 2 + 3 |
+| Tags accesibles desde main, sin huérfanos | ✅ | 2 + 3 |
+| PR branches sin cambios a archivos sensibles | ✅ | 2 + 3 |
+| `dev_log.md` removido del tracking | ✅ | 2 + 3 |
+| Tag huérfano `tool` eliminado | ✅ | 2 + 3 |
+| GitHub Secrets rotados y actuales | ✅ | 2 + 3 |
+| Variables de CI bien configuradas | ✅ | 2 + 3 |
+| `tauri.key` resguardado offline | ⚠️ **Pendiente** | 3 (este round) |
+| `RESPALDO/` con secrets viejos purgados | ⚠️ **Pendiente** | 3 (este round) |
+
+**No queda ningún pendiente crítico para el scope público de GitHub.** Quedan 2 pendientes locales (C1) que son hygiene de filesystem, no de release.
+
+## Limitaciones de Round 3
+
+- **No audité `P:/Proyectos/Anvilcraft RESPALDO/api-anvilcraft-jar/`** (proyecto Python separado). Fuera de scope por estar en un subdirectorio que no es de AnvilCraft.
+- **No audité Actions logs de runs pasados** — si `MSIX=true` se ejecutó alguna vez con secretos en logs, podría haber un leak allí. Requiere revisión manual de la UI web.
+- **No audité otros proyectos en `P:/Proyectos/`** (hay `IA Local/`, etc.) — fuera de scope de AnvilCraft.
+
+---
+
+Análisis generado el 2026-08-02 (tercera ronda) por Claude Code.
+
+Fuentes adicionales a las de rounds anteriores:
+- Búsqueda de secrets hardcoded en filesystem local (RESPALDO)
+- Inspección de `tauri.key` (presencia y exposición)
+- Re-verificación de remediaciones de Round 2 (gc, dev_log.md, tag tool, GitHub Secrets)

@@ -116,6 +116,56 @@ Recomendación: opción 2 (limpiar), pero requiere entender por qué estaban pla
 
 ---
 
+## 🐛 Bugs de runtime
+
+### [2026-08-02] `session.lock` stuck — Minecraft server no arranca después de cerrar AnvilCraft
+
+**Síntoma:**
+```
+[ERROR]: Failed to start the minecraft server
+java.io.IOException: El proceso no tiene acceso al archivo porque otro proceso tiene bloqueada una parte del archivo
+    at net.minecraft.util.DirectoryLock.create(DirectoryLock.java:35)
+    at net.minecraft.world.level.storage.LevelStorageSource$LevelStorageAccess.createLock(...)
+```
+
+El server no arranca, aunque la app esté cerrada. El log del server muestra el error justo después de `Starting net.minecraft.server.Main`.
+
+**Causa raíz:** Minecraft usa un archivo `session.lock` en `<instancia>/.minecraft/` para evitar que dos servers abran el mismo mundo simultáneamente. Cuando el child process de `java.exe` queda zombie (AnvilCraft crashea, o la app se cierra abruptamente), Windows no suelta el file lock inmediatamente. El nuevo server no puede crear su `session.lock` → IOException.
+
+**Hay dos causas concurrentes:**
+1. El child process de `java.exe` no se mata/espera correctamente cuando AnvilCraft termina (o crashea). El `session.lock` queda tomado por el Java zombie.
+2. Windows puede tardar en liberar file locks de procesos zombie, incluso después de matarlos.
+
+**Fix inmediato (workaround):**
+```powershell
+# 1. Ver qué java está corriendo
+Get-Process java -ErrorAction SilentlyContinue
+
+# 2. Matar todos los java zombies
+Get-Process java -ErrorAction SilentlyContinue | Stop-Process -Force
+
+# 3. Borrar el session.lock de la instancia
+Remove-Item "C:\Users\LMacias\AppData\Roaming\AnvilCraftPanel\instances\<nombre>\.minecraft\session.lock" -Force -ErrorAction SilentlyContinue
+```
+
+**Fix de raíz (pendiente en `src-tauri/src/commands/server.rs`):**
+1. Usar `command.kill_on_drop(true)` en el `tokio::process::Command` o `std::process::Command` que spawnea `java -jar`. Esto garantiza que si el handle de Tauri se cae, el child también.
+2. Después de `Stop`, llamar `child.wait()` para confirmar que el proceso murió antes de retornar.
+3. Implementar startup orphan detection: cuando AnvilCraft arranca, checkear si hay `java.exe` con `parent_pid == <anvilcraft>` o `session.lock` huérfanos, y limpiarlos/avisar.
+
+**Warnings de Java 22+ observados (no bloqueantes, pero sí ruido):**
+```
+[WARN]: java.lang.System::load has been called by com.sun.jna.Native ...
+[WARN]: Use --enable-native-access=ALL-UNNAMED to avoid a warning
+[WARN]: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil
+```
+
+Son restricciones de acceso nativo de Java 22+. No son la causa del error, pero en una versión futura de Java van a bloquear a `jna` y `joml`. Eventualmente Mojang actualizará esas libs.
+
+**Lección:** Cuando un spawn de proceso es a largo plazo, la limpieza de Tauri/Rust debe ser **explícita y bloqueante** (wait con timeout), no implícita. `kill_on_drop` es el seguro mínimo, no la solución completa.
+
+---
+
 ## 🟢 Cosas que pasan y se resuelven rápido
 
 ### `cargo tauri dev` falla: "vite no se reconoce"

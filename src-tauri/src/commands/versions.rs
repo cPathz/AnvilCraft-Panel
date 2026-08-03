@@ -78,6 +78,34 @@ pub async fn get_project_versions(project: String) -> Result<Vec<String>, String
         return Ok(builds.into_iter().map(|n| n.to_string()).collect());
     }
 
+    if project == "forge" {
+        // Forge has no PaperMC project, so we hit the Forge maven-metadata.xml
+        // directly and parse the <version> tags. Newest versions are listed last,
+        // so we reverse the vec to match the ordering of the PaperMC/Purpur branches
+        // above (newest-first) for the version dropdown.
+        let url = "https://files.minecraftforge.net/maven/net/minecraftforge/forge/maven-metadata.xml";
+        let client = reqwest::Client::new();
+        let body = client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?
+            .error_for_status()
+            .map_err(|e| e.to_string())?
+            .text()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let re = regex::Regex::new(r"<version>([0-9][^<]*)</version>")
+            .map_err(|e| format!("Regex build error: {}", e))?;
+        let mut versions: Vec<String> = re
+            .captures_iter(&body)
+            .map(|cap| cap[1].to_string())
+            .collect();
+        versions.reverse();
+        return Ok(versions);
+    }
+
     // Used by the frontend to list MC versions per project.
     // After Step 2, Paper/Spigot/Purpur/Folia don't need this anymore
     // (their fetch_versions lives in `loaders::bukkit`), but Velocity and

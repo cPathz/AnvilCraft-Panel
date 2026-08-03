@@ -42,6 +42,7 @@
 
     // Java Downloader State
     let javaRuntimes = $state<any[]>([]);
+    let zuluRuntimes = $state<any[]>([]);
     let downloadProgress = $state<
         Record<string, { step: string; progress: number }>
     >({});
@@ -118,13 +119,17 @@
                 console.error("Failed to get system memory", e);
             }
             await loadJavaRuntimes();
+            await loadZuluRuntimes();
 
             // Listen for Java download progress
             unlistenProgress = await listen<any>(
                 "install-progress",
                 (event) => {
                     const payload = event.payload;
-                    if (payload.id.startsWith("java-download-")) {
+                    const isJava =
+                        payload.id.startsWith("java-download-") ||
+                        payload.id.startsWith("zulu-download-");
+                    if (isJava) {
                         let step = payload.step;
 
                         // Map backend steps to translations
@@ -135,6 +140,8 @@
                             payload.progress === 100
                         ) {
                             step = get(_)("common.status_completed");
+                        } else if (step.startsWith("Extracting")) {
+                            step = get(_)("common.status_preparing");
                         } else if (step === "Preparing") {
                             step = get(_)("common.status_preparing");
                         } else if (step === "Creating files...") {
@@ -152,7 +159,11 @@
                             progress: payload.progress,
                         };
                         if (payload.step === "Done") {
-                            loadJavaRuntimes();
+                            if (payload.id.startsWith("zulu-download-")) {
+                                loadZuluRuntimes();
+                            } else {
+                                loadJavaRuntimes();
+                            }
                             setTimeout(() => {
                                 delete downloadProgress[payload.id];
                             }, 3000);
@@ -177,6 +188,14 @@
         }
     }
 
+    async function loadZuluRuntimes() {
+        try {
+            zuluRuntimes = await invoke("get_available_zulu_versions");
+        } catch (e) {
+            console.error("Failed to load zulu runtimes", e);
+        }
+    }
+
     async function handleDownloadJava(version: number) {
         const id = `java-download-${version}`;
         downloadProgress[id] = {
@@ -185,6 +204,33 @@
         };
         try {
             const path = await invoke<string>("download_java_runtime", {
+                version,
+            });
+            formSettings.java_path = path;
+            toast.success(
+                get(_)("instance_settings.toast_java_downloaded", {
+                    values: { version },
+                }),
+            );
+        } catch (e) {
+            console.error(e);
+            toast.error(
+                get(_)("instance_settings.toast_java_error", {
+                    values: { version },
+                }) + e,
+            );
+            delete downloadProgress[id];
+        }
+    }
+
+    async function handleDownloadZulu(version: number) {
+        const id = `zulu-download-${version}`;
+        downloadProgress[id] = {
+            step: get(_)("common.status_starting"),
+            progress: 0,
+        };
+        try {
+            const path = await invoke<string>("download_zulu_runtime", {
                 version,
             });
             formSettings.java_path = path;
@@ -902,6 +948,148 @@
                                 >%APPDATA%/AnvilCraftPanel/runtimes</code
                             >
                         </p>
+                    </div>
+                </div>
+
+                <!-- Portable Java (Azul Zulu) -->
+                <div
+                    class="bg-[#1e293b]/30 border border-[#1e293b] rounded-2xl overflow-hidden"
+                >
+                    <div
+                        class="px-6 py-4 border-b border-[#1e293b] bg-[#1e293b]/20 flex items-center justify-between"
+                    >
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center"
+                            >
+                                <svg
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="#3b82f6"
+                                    stroke-width="2"
+                                    ><path
+                                        d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                                    /><polyline
+                                        points="7 10 12 15 17 10"
+                                    /><line
+                                        x1="12"
+                                        y1="15"
+                                        x2="12"
+                                        y2="3"
+                                    /></svg
+                                >
+                            </div>
+                            <div class="flex flex-col gap-0.5">
+                                <h3 class="text-lg font-bold text-zinc-200">
+                                    {$_("instance_settings.java_portable_zulu")}
+                                </h3>
+                                <p
+                                    class="text-sm text-zinc-500 font-medium max-w-lg"
+                                >
+                                    {$_("instance_settings.java_portable_zulu_desc")}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        <div
+                            class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"
+                        >
+                            {#each zuluRuntimes as runtime}
+                                <div
+                                    class="bg-[#0f172a] border border-[#1e293b] rounded-xl p-3 flex flex-col gap-3 relative overflow-hidden group"
+                                >
+                                    <div
+                                        class="flex items-center justify-between"
+                                    >
+                                        <div class="flex items-center gap-2">
+                                            <span
+                                                class="text-xs font-black uppercase tracking-tighter text-zinc-500"
+                                                >Java {runtime.version}</span
+                                            >
+                                        </div>
+                                        {#if runtime.is_downloaded}
+                                            <div
+                                                class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"
+                                            ></div>
+                                        {/if}
+                                    </div>
+
+                                    {#if downloadProgress[`zulu-download-${runtime.version}`]}
+                                        <div
+                                            class="space-y-2 py-1"
+                                            transition:slide
+                                        >
+                                            <div
+                                                class="flex justify-between text-[10px] text-blue-400 font-bold"
+                                            >
+                                                <span class="truncate pr-2"
+                                                    >{downloadProgress[
+                                                        `zulu-download-${runtime.version}`
+                                                    ].step}</span
+                                                >
+                                                <span
+                                                    >{downloadProgress[
+                                                        `zulu-download-${runtime.version}`
+                                                    ].progress}%</span
+                                                >
+                                            </div>
+                                            <div
+                                                class="h-1 bg-zinc-800 rounded-full overflow-hidden"
+                                            >
+                                                <div
+                                                    class="h-full bg-blue-500 transition-all duration-300"
+                                                    style="width: {downloadProgress[
+                                                        `zulu-download-${runtime.version}`
+                                                    ].progress}%"
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    {:else}
+                                        <div class="flex flex-col gap-2">
+                                            {#if runtime.is_downloaded}
+                                                <button
+                                                    onclick={() =>
+                                                        useJavaRuntime(
+                                                            runtime.path,
+                                                        )}
+                                                    disabled={formSettings.java_path ===
+                                                        runtime.path}
+                                                    class="w-full py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all
+                                                           {formSettings.java_path ===
+                                                    runtime.path
+                                                        ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                                                        : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'}"
+                                                >
+                                                    {formSettings.java_path ===
+                                                    runtime.path
+                                                        ? $_(
+                                                              "instance_settings.java_in_use",
+                                                          )
+                                                        : $_(
+                                                              "instance_settings.java_use",
+                                                          )}
+                                                </button>
+                                            {:else}
+                                                <button
+                                                    onclick={() =>
+                                                        handleDownloadZulu(
+                                                            runtime.version,
+                                                        )}
+                                                    class="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold uppercase tracking-wider transition-all shadow-lg shadow-blue-600/20"
+                                                >
+                                                    {$_(
+                                                        "instance_settings.java_download",
+                                                    )}
+                                                </button>
+                                            {/if}
+                                        </div>
+                                    {/if}
+                                </div>
+                            {/each}
+                        </div>
                     </div>
                 </div>
 

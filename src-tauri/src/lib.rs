@@ -120,6 +120,8 @@ pub fn run() {
             // Java
             commands::java::get_available_java_versions,
             commands::java::download_java_runtime,
+            commands::java::get_available_zulu_versions,
+            commands::java::download_zulu_runtime,
             // Version
             commands::version::get_app_version,
         ])

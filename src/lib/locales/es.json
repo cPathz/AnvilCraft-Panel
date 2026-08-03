@@ -150,6 +150,8 @@
     "tip_java11": "Tip: Para 1.16.5 se recomienda Java 11 o 16. Java 17+ puede dar errores.",
     "java_portable": "Java Portátil (Adoptium)",
     "java_portable_desc": "Descarga entornos Java oficiales (Temurin) que se ejecutan de forma aislada. No requieren instalación en el sistema y se guardan en la carpeta de datos de AnvilCraft.",
+    "java_portable_zulu": "Java Portátil (Azul Zulu)",
+    "java_portable_zulu_desc": "Descarga builds de Azul Zulu para versiones de Java que Adoptium no distribuye (12, 13, 14). Se ejecutan de forma aislada y se guardan en la carpeta de datos de AnvilCraft.",
     "java_in_use": "En uso",
     "java_use": "Usar",
     "java_download": "Descargar",

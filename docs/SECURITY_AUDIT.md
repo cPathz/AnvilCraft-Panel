@@ -1,6 +1,6 @@
 # Security Audit — Análisis de Seguridad (actualizado 2026-08-02)
 
-> Aplica a AnvilCraft v0.1.15. Cubre:
+> Aplica a AnvilCraft v0.1.16. Cubre:
 > - Dependencias npm con vulnerabilidades
 > - Secretos hardcodeados en código
 > - Capabilities de Tauri (qué puede hacer el frontend)

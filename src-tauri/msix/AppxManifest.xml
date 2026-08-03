@@ -8,7 +8,7 @@
   <Identity
     Name="cPathz.AnvilCraftPanel"
     Publisher="CN=4C5C6D2B-352B-4EDE-B886-2F082C336275"
-    Version="0.1.15.0" />
+    Version="0.1.16.0" />
 
   <Properties>
     <DisplayName>AnvilCraft Panel</DisplayName>

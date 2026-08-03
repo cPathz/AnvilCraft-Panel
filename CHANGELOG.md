@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.16] - 2026-08-02
+
+### Changed
+- MSIX build step ahora es opt-in via variable de repo `BUILD_MSIX`. El workflow ya no falla cuando MSIX no se quiere construir. Se setea en GitHub repo → Settings → Variables → Actions.
+
+### Fixed
+- `MSIX_CERT_PASSWORD` se pasa correctamente al step de PowerShell (antes faltaba en el bloque `env:` del workflow, requería re-tag para que funcionara).
+
 ## [0.1.15] - 2026-08-02
 
 ### Security

@@ -65,6 +65,7 @@ jobs:
           args: "--bundles nsis"
 
       - name: Build MSIX (Custom Script)
+        if: ${{ vars.BUILD_MSIX == 'true' }}
         shell: pwsh
         env:
           MSIX_CERT_PASSWORD: ${{ secrets.MSIX_CERT_PASSWORD }}
@@ -72,6 +73,7 @@ jobs:
           ./scripts/build-msix.ps1
 
       - name: Upload MSIX to same Release
+        if: ${{ vars.BUILD_MSIX == 'true' }}
         uses: softprops/action-gh-release@v1
         with:
           files: AnvilCraft.msix

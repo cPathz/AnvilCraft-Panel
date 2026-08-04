@@ -166,6 +166,53 @@ Son restricciones de acceso nativo de Java 22+. No son la causa del error, pero 
 
 ---
 
+### [2026-08-04] Race condition — Start se habilita antes de que el install termine
+
+**Síntoma:**
+```
+Missing required library: net/minecraftforge/forge/1.21.11-61.1.14/forge-1.21.11-61.1.14-server.jar
+Exception in thread "main" java.lang.IllegalStateException: Missing required libraries! Check log
+        at net.minecraftforge.bootstrap.shim.Main.main(Main.java:70)
+```
+
+Aparece cuando el usuario hace click en Start en una instancia recién creada, antes de que el loader termine de escribir el server jar. Típico de Forge 1.21.11, que tarda ~50s en instalar (descarga installer, libraries, binary patcher). El `forge-...-server.jar` es el ÚLTIMO archivo que escribe el installer. Si el usuario clickea Start antes, el shim arranca con libraries incompletas.
+
+**Causa raíz:** `create_instance` escribía `state: "Stopped"` en el JSON inicial, y la UI habilitaba el botón Start desde el momento cero. No había gating entre "install corriendo" y "install terminado".
+
+**Fix en 2 capas (commits `ee6a282` + `36bab8e` + `22844c5`):**
+
+1. Nuevo state `InstanceState::Installing` en el enum (`models.rs`). `create_instance` ahora escribe `Installing` en el JSON inicial. El background install task flipea a `Stopped` cuando termina (éxito o error), vía el helper `loaders::common::finalize_install(app, id, target_dir)`.
+2. `start_instance` rechaza con error claro si el state persistido es `Installing` (defense-in-depth en backend).
+3. Frontend: el botón Start en `InstanceDetail.svelte` se deshabilita con `disabled={state === "Installing"}` y muestra "Installing..." con spinner. El `toggleServer` handler también hace early-return.
+4. Cada loader (los 12 con install real) llama a `finalize_install` **antes** de emitir el evento `install-progress` con `step: "Done"`, así el state flip y el "100% del modal" ocurren en el mismo instante — sin gap visible.
+
+**Verificación manual:**
+1. Crear una nueva instancia Forge desde la UI.
+2. Verificar que el botón Start se deshabilita con spinner durante el install (~50s).
+3. Al terminar, el botón vuelve a "Start Server" instantáneamente (sin gap visible entre el modal al 100% y el botón habilitado).
+
+**Lección:** Cuando un install es async y el frontend depende del state del backend para habilitar acciones, el state tiene que ser preciso desde el primer momento. `Installing → Stopped` no es un detalle cosmético — es la única forma de evitar que el usuario dispare acciones sobre una instancia a medio instalar. Además, los eventos de "progress" del frontend (modal al 100%) deben emitirse en el mismo orden que el state real del backend, idealmente desde el mismo lugar.
+
+### [2026-08-04] UI no refrescaba el state después del install
+
+**Síntoma:** El backend flipeaba `instance.json` de `Installing` a `Stopped` cuando el install terminaba, pero la UI seguía mostrando el botón "Installing..." con spinner indefinidamente. Solo se actualizaba después de cerrar y reabrir la app, o navegar a otra vista.
+
+**Causa raíz:** El spawn block de `create_instance` escribía el state en disco pero **nunca emitía el evento `instance-update`**. El listener de `+layout.svelte:95-109` (que llama `read_instances` y re-asigna `appState.selectedInstance`) ya existía, pero nadie lo disparaba al terminar el install.
+
+**Fix (commit `36bab8e`, refinado en `22844c5`):** Cada loader llama a `finalize_install` (en `loaders/common.rs:212`) antes del emit `"Done"`. Ese helper hace:
+```rust
+update_instance_state(instances_dir, id, InstanceState::Stopped);
+app.emit("instance-update", ());
+```
+
+El `+layout.svelte` escucha `instance-update`, re-fetchea, re-asigna el `selectedInstance` con la versión fresca, y el `$derived` en `InstanceDetail` re-evalúa → el condicional `{#if state === "Installing"}` se vuelve falso → el botón cambia a "Start Server".
+
+**Lección:** Cada vez que el backend cambia algo que el frontend muestra, tiene que emitir un evento. No basta con escribir a disco y esperar a que el frontend pregunte (polling). El estado del frontend es eventualmente-consistente solo si hay un evento que dispare el refresh.
+
+**Bug latente relacionado (no fixeado todavía):** El listener de `instance-update` se registra dentro de un `init()` async en `+layout.svelte:95-109`. Si un `instance-update` se emite antes de que `listen()` se complete (raro, solo si el install termina en los primeros ~100ms de abrir la app), se pierde. Fix recomendado: mover la suscripción a un `onMount` síncrono.
+
+---
+
 ## 🟢 Cosas que pasan y se resuelven rápido
 
 ### `cargo tauri dev` falla: "vite no se reconoce"

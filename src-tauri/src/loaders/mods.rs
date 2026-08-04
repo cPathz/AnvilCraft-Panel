@@ -495,6 +495,25 @@ impl LoaderStrategy for ForgeLoader {
 
         download_file(app, &installer_url, &installer_path, id, None, Some(&log_file)).await?;
 
+        let _ = app.emit(
+            "install-progress",
+            InstanceInstallProgress {
+                id: id.to_string(),
+                step: format!("Ejecutando instalador Forge {}...", combined),
+                progress: 50,
+                total_size: None,
+                downloaded: 0,
+            },
+        );
+
+        if let Ok(mut f) = fs::OpenOptions::new().append(true).open(&log_file) {
+            let _ = writeln!(
+                f,
+                "[{}] Running Forge installer headlessly...",
+                chrono::Local::now().format("%H:%M:%S")
+            );
+        }
+
         // Run installer headlessly
         let java_exe = crate::commands::java::find_any_java_executable(app).ok_or_else(|| {
             "Java not found. Install a Java runtime from Settings \u{2192} Portable Java, or set the JAVA_HOME environment variable.".to_string()
@@ -511,14 +530,123 @@ impl LoaderStrategy for ForgeLoader {
         std_cmd.creation_flags(0x08000000);
 
         let mut cmd = tokio::process::Command::from(std_cmd);
-        let status = cmd
+        let mut child = cmd
             .spawn()
-            .map_err(|e| format!("Failed to run Forge installer: {}", e))?
+            .map_err(|e| format!("Failed to run Forge installer: {}", e))?;
+
+        // Drain stderr — child.stderr.take() prevents the OS pipe buffer
+        // (~64KB) from filling up and blocking the child.
+        let app_for_stderr = app.clone();
+        let id_for_stderr = id.to_string();
+        let stderr_log = log_file.clone();
+        let stderr_handle = if let Some(stderr) = child.stderr.take() {
+            Some(tokio::spawn(async move {
+                use tokio::io::AsyncBufReadExt;
+                let mut reader = tokio::io::BufReader::new(stderr).lines();
+                let mut line_count: u64 = 0;
+                while let Ok(Some(line)) = reader.next_line().await {
+                    line_count += 1;
+                    if let Ok(mut f) = fs::OpenOptions::new().append(true).open(&stderr_log) {
+                        let _ = writeln!(
+                            f,
+                            "[{}] [STDERR] {}",
+                            chrono::Local::now().format("%H:%M:%S"),
+                            line
+                        );
+                    }
+                    if line_count % 3 == 0
+                        || line.contains("Complete")
+                        || line.contains("Installing")
+                        || line.contains("Downloading")
+                        || line.contains("Patching")
+                    {
+                        let mut short_line = line.clone();
+                        if short_line.len() > 60 {
+                            short_line.truncate(60);
+                            short_line.push_str("...");
+                        }
+                        let simulated_progress = 50 + (line_count.min(180) / 4);
+                        let _ = app_for_stderr.emit(
+                            "install-progress",
+                            InstanceInstallProgress {
+                                id: id_for_stderr.clone(),
+                                step: format!("Forge: {}", short_line),
+                                progress: simulated_progress as u64,
+                                total_size: None,
+                                downloaded: 0,
+                            },
+                        );
+                    }
+                }
+            }))
+        } else {
+            None
+        };
+
+        // Drain stdout — same pattern, no STDERR prefix.
+        let stdout_log = log_file.clone();
+        let app_for_stdout = app.clone();
+        let id_for_stdout = id.to_string();
+        let stdout_handle = if let Some(stdout) = child.stdout.take() {
+            Some(tokio::spawn(async move {
+                use tokio::io::AsyncBufReadExt;
+                let mut reader = tokio::io::BufReader::new(stdout).lines();
+                let mut line_count: u64 = 0;
+                while let Ok(Some(line)) = reader.next_line().await {
+                    line_count += 1;
+                    if let Ok(mut f) = fs::OpenOptions::new().append(true).open(&stdout_log) {
+                        let _ = writeln!(
+                            f,
+                            "[{}] {}",
+                            chrono::Local::now().format("%H:%M:%S"),
+                            line
+                        );
+                    }
+                    if line_count % 3 == 0
+                        || line.contains("Complete")
+                        || line.contains("Installing")
+                        || line.contains("Downloading")
+                        || line.contains("Patching")
+                    {
+                        let mut short_line = line.clone();
+                        if short_line.len() > 60 {
+                            short_line.truncate(60);
+                            short_line.push_str("...");
+                        }
+                        let simulated_progress = 50 + (line_count.min(180) / 4);
+                        let _ = app_for_stdout.emit(
+                            "install-progress",
+                            InstanceInstallProgress {
+                                id: id_for_stdout.clone(),
+                                step: format!("Forge: {}", short_line),
+                                progress: simulated_progress as u64,
+                                total_size: None,
+                                downloaded: 0,
+                            },
+                        );
+                    }
+                }
+            }))
+        } else {
+            None
+        };
+
+        let status = child
             .wait()
             .await
             .map_err(|e| format!("Failed to wait for Forge installer: {}", e))?;
 
-        let _ = fs::remove_file(&installer_path);
+        if let Some(handle) = stderr_handle {
+            handle.abort();
+        }
+        if let Some(handle) = stdout_handle {
+            handle.abort();
+        }
+
+        // NOTE: installer JAR is intentionally NOT removed — keep it around
+        // for debug if something goes wrong. NeoForge does delete it, but
+        // Forge's install hangs are easier to investigate with the JAR still
+        // on disk. Follow-up can re-enable deletion once this is stable.
         if !status.success() {
             return Err("Forge installer failed".into());
         }

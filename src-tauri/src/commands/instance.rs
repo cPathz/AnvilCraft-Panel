@@ -18,8 +18,6 @@ use tauri::{Emitter, Manager, State};
 use uuid::Uuid;
 use zip::ZipArchive;
 
-use crate::commands::server::update_instance_state;
-
 /// Look up a loader in the registry and run its `install`. Used by every
 /// non-hybrid engine (Vanilla, the 4 Bukkit loaders, NeoForge, the 3 proxies,
 /// and Fabric/Forge/Quilt). The 4 hybrids return an error from `create_instance`
@@ -197,7 +195,6 @@ pub async fn create_instance(
     let instance_id = id.clone();
     let instance_version = version.clone();
     let instance_path_clone = instance_path.clone();
-    let instances_dir_clone = instances_dir.clone();
     let loader_engine = instance.loader.clone();
     let custom_url_clone = custom_download_url.clone();
     let accept_eula_clone = accept_eula;
@@ -245,30 +242,25 @@ pub async fn create_instance(
         };
 
 
-        // The install is over (success or failure). Flip state back to
-        // `Stopped` so the Start button enables. If the install failed, the
-        // user can still see the error in the install-progress toast and
-        // decide whether to delete the instance or try again — but we never
-        // want to leave a half-installed instance stuck in `Installing`.
-        let _ = update_instance_state(
-            &instances_dir_clone,
-            &instance_id,
-            InstanceState::Stopped,
-        );
-
-        // Notify the frontend that instance state on disk changed. The layout
-        // listener (src/routes/+layout.svelte) re-reads the list and re-binds
-        // `appState.selectedInstance`, which makes `InstanceDetail`'s
-        // `$derived` re-evaluate and drop the "Installing..." spinner.
+        // On the success path, the loader itself flipped the state to
+        // `Stopped` and emitted `instance-update` from inside `install()`
+        // (see `loaders::common::finalize_install`) right before its final
+        // "Done" emit. That keeps the modal's 100% and the button refresh
+        // in the same instant.
         //
-        // Without this emit, the only path that refreshes the UI is the
-        // modal's `install-progress` "Done" handler, so any scenario that
-        // bypasses it (modal closed early, no Done event from a loader,
-        // 5 s safety fallback missed) leaves the UI stuck on "Installing..."
-        // even though `instance.json` is already `Stopped`.
-        let _ = app_handle.emit("instance-update", ());
-
+        // On the error path, no loader reached that point (either it
+        // returned an error or, for hybrid stubs, there is no loader at
+        // all). We still need to flip the state so the button isn't
+        // stuck on "Installing..." forever, and emit the error event.
         if let Err(e) = result {
+            // Loader errored before reaching its success path (or there was no
+            // loader at all — e.g. hybrid stubs). Still need to flip the state
+            // so the button isn't stuck on "Installing..." forever.
+            crate::loaders::common::finalize_install(
+                &app_handle,
+                &instance_id,
+                &instance_path_clone,
+            );
             let _ = app_handle.emit(
                 "install-progress",
                 InstanceInstallProgress {

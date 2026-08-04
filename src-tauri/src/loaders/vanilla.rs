@@ -171,6 +171,7 @@ impl LoaderStrategy for VanillaLoader {
 
         write_eula_txt(target_dir.join(".minecraft").join("eula.txt"), accept_eula)?;
 
+        crate::loaders::common::finalize_install(app, id, target_dir);
         let _ = app.emit(
             "install-progress",
             InstanceInstallProgress {

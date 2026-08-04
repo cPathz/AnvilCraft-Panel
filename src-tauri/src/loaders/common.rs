@@ -1,4 +1,4 @@
-use crate::models::InstanceInstallProgress;
+use crate::models::{InstanceInstallProgress, InstanceState};
 use chrono::Local;
 use futures_util::StreamExt;
 use std::fs;
@@ -195,4 +195,28 @@ pub fn write_eula_txt(path: std::path::PathBuf, accept: bool) -> Result<(), Stri
     }
 
     fs::write(path, content).map_err(|e| e.to_string())
+}
+
+/// Mark the install as finished (success or failure) by flipping the
+/// instance state from `Installing` to `Stopped` and emitting the
+/// `instance-update` event so `+layout.svelte`'s listener re-fetches
+/// the instance list and the `InstanceDetail`'s $derived clears the
+/// "Installing..." spinner. The state flip is idempotent: calling this
+/// multiple times for the same instance is safe.
+///
+/// **Order matters**: when called from a loader's success path, invoke
+/// it *immediately before* the final `install-progress` emit with
+/// `step: "Done"`. That way the modal's 100% and the state flip
+/// happen in the same instant, leaving no gap where the UI shows
+/// "Done" but the button still reads "Installing...".
+pub fn finalize_install(app: &tauri::AppHandle, id: &str, target_dir: &std::path::Path) {
+    use crate::commands::server::update_instance_state;
+    use tauri::Emitter;
+
+    // `target_dir` is the per-instance folder; its parent is the
+    // `instances/` dir that `update_instance_state` needs to scan.
+    if let Some(instances_dir) = target_dir.parent() {
+        let _ = update_instance_state(instances_dir, id, InstanceState::Stopped);
+    }
+    let _ = app.emit("instance-update", ());
 }

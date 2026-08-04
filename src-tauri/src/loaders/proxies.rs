@@ -242,6 +242,7 @@ async fn install_proxy(
 
     write_eula_txt(mc_dir.join("eula.txt"), accept_eula)?;
 
+    crate::loaders::common::finalize_install(app, id, target_dir);
     let _ = app.emit(
         "install-progress",
         InstanceInstallProgress {
@@ -308,6 +309,7 @@ async fn install_bungeecord(
     }
     std::fs::rename(&jar_path, &server_jar).map_err(|e| e.to_string())?;
 
+    crate::loaders::common::finalize_install(app, id, target_dir);
     let _ = app.emit(
         "install-progress",
         InstanceInstallProgress {

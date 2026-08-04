@@ -184,6 +184,9 @@ async fn install_inner(
 
     write_eula_txt(install_dir.join("eula.txt"), accept_eula)?;
 
+    // `install_dir` is `<target_dir>/.minecraft`; its parent is the
+    // per-instance folder that `finalize_install` expects.
+    crate::loaders::common::finalize_install(app, id, install_dir.parent().unwrap_or(install_dir));
     let _ = app.emit(
         "install-progress",
         InstanceInstallProgress {

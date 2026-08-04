@@ -346,6 +346,13 @@ async fn run_neoforge_installer(
 
     tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
 
+    // `minecraft_dir` is `<target_dir>/.minecraft`; its parent is the
+    // per-instance folder that `finalize_install` expects.
+    crate::loaders::common::finalize_install(
+        app,
+        id,
+        minecraft_dir.parent().unwrap_or(minecraft_dir),
+    );
     let _ = app.emit(
         "install-progress",
         InstanceInstallProgress {
@@ -689,6 +696,7 @@ impl LoaderStrategy for ForgeLoader {
 
         write_eula_txt(mc_dir.join("eula.txt"), accept_eula)?;
 
+        crate::loaders::common::finalize_install(app, id, target_dir);
         let _ = app.emit(
             "install-progress",
             InstanceInstallProgress {
@@ -758,6 +766,7 @@ impl LoaderStrategy for FabricLoader {
         download_file(app, &url, &jar_path, id, None, Some(&log_file)).await?;
         write_eula_txt(mc_dir.join("eula.txt"), accept_eula)?;
 
+        crate::loaders::common::finalize_install(app, id, target_dir);
         let _ = app.emit(
             "install-progress",
             InstanceInstallProgress {
@@ -825,6 +834,7 @@ impl LoaderStrategy for QuiltLoader {
         download_file(app, &url, &jar_path, id, None, Some(&log_file)).await?;
         write_eula_txt(mc_dir.join("eula.txt"), accept_eula)?;
 
+        crate::loaders::common::finalize_install(app, id, target_dir);
         let _ = app.emit(
             "install-progress",
             InstanceInstallProgress {

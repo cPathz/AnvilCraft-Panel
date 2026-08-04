@@ -256,6 +256,18 @@ pub async fn create_instance(
             InstanceState::Stopped,
         );
 
+        // Notify the frontend that instance state on disk changed. The layout
+        // listener (src/routes/+layout.svelte) re-reads the list and re-binds
+        // `appState.selectedInstance`, which makes `InstanceDetail`'s
+        // `$derived` re-evaluate and drop the "Installing..." spinner.
+        //
+        // Without this emit, the only path that refreshes the UI is the
+        // modal's `install-progress` "Done" handler, so any scenario that
+        // bypasses it (modal closed early, no Done event from a loader,
+        // 5 s safety fallback missed) leaves the UI stuck on "Installing..."
+        // even though `instance.json` is already `Stopped`.
+        let _ = app_handle.emit("instance-update", ());
+
         if let Err(e) = result {
             let _ = app_handle.emit(
                 "install-progress",

@@ -86,6 +86,7 @@ export const LOADERS: readonly LoaderMetadata[] = [
         category: "Mods",
         badge: "MODS",
         minJava: 17,
+        tested: true,
         capabilities: {
             supportsPlugins: false,
             supportsMods: true,

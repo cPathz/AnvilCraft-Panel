@@ -47,15 +47,27 @@ fn not_implemented_yet(name: &str) -> String {
 ///
 /// Returns `Some(absolute_path)` if found, otherwise `None` (classic launch).
 pub(crate) fn find_forge_args_file(mc_dir: &Path) -> Option<PathBuf> {
-    let libs_dir = mc_dir.join("libraries");
-    if !libs_dir.exists() {
-        return None;
-    }
-
     #[cfg(windows)]
     let target_name = "win_args.txt";
     #[cfg(not(windows))]
     let target_name = "unix_args.txt";
+
+    // Forge 1.21.x installs `win_args.txt` (or `unix_args.txt`) at the top of
+    // `mc_dir/` rather than inside `mc_dir/libraries/...`. Probe the new
+    // location first, then fall back to the recursive search in `libraries/`
+    // (NeoForge + Forge ≤ 1.20.x behaviour). Without this, server start would
+    // silently downgrade to `java -jar server.jar` and Forge 1.21.x would not
+    // boot (the shim jar — invoked via `@win_args.txt` — is what wires up the
+    // classpath).
+    let top_level = mc_dir.join(target_name);
+    if top_level.exists() {
+        return Some(top_level);
+    }
+
+    let libs_dir = mc_dir.join("libraries");
+    if !libs_dir.exists() {
+        return None;
+    }
 
     fn walk(dir: &Path, target: &str, depth: u8) -> Option<PathBuf> {
         if depth == 0 {
@@ -468,7 +480,31 @@ impl LoaderStrategy for ForgeLoader {
         &self,
         _mc_version: Option<&str>,
     ) -> Result<Vec<VersionMeta>, String> {
-        Err(not_implemented_yet("Forge"))
+        // Delegate to the project-versions shortcut, which already hits the
+        // Forge maven-metadata.xml. Mapping to `VersionMeta` keeps the rest of
+        // the install pipeline (which reads `url`) working without duplicating
+        // the HTTP/regex logic.
+        let versions = crate::commands::versions::get_project_versions("forge".to_string()).await?;
+        Ok(versions
+            .into_iter()
+            .map(|combined| {
+                // Combined id is "mc_version-forge_version" (e.g.
+                // "1.21.11-61.1.14"). The installer URL embeds it twice:
+                //   https://maven.minecraftforge.net/net/minecraftforge/forge/{combined}/forge-{combined}-installer.jar
+                let mc_version = combined.split('-').next().unwrap_or("").to_string();
+                let url = format!(
+                    "https://maven.minecraftforge.net/net/minecraftforge/forge/{}/forge-{}-installer.jar",
+                    combined, combined
+                );
+                VersionMeta {
+                    id: combined.clone(),
+                    build: None,
+                    url: Some(url),
+                    display_name: combined,
+                    requires_mc_version: if mc_version.is_empty() { None } else { Some(mc_version) },
+                }
+            })
+            .collect())
     }
 
     async fn install(

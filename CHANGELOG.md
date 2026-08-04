@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Azul Zulu section in Portable Java settings** (`src/lib/components/settings/InstanceSettings.svelte`): nueva sección UI entre Adoptium y "Java Args" que descarga Java 12, 13 y 14 desde `api.azul.com/metadata/v1/zulu/packages`. Cubre los huecos que Adoptium no distribuye (versiones no-LTS pre-17). **Crítico para modpacks que piden Java 14** (ej. SkyFactory One 1.0.7). Estructura en disco: `%APPDATA%/AnvilCraftPanel/runtimes/java/zulu-{12,13,14}/`.
+- **Adoptium version expansion** (`src-tauri/src/commands/java.rs:20`): lista de versiones portables alineada con el catálogo oficial. De 6 versiones (`8, 11, 16, 17, 21, 25`) a 13 (`8, 11, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26`). Java 16 sigue pineado a `jdk-16.0.2+7` (special case preservado).
+- **Forge version fetching** (`src-tauri/src/commands/versions.rs`): atajo para "forge" en `get_project_versions` que consulta `https://files.minecraftforge.net/maven/net/minecraftforge/forge/maven-metadata.xml` y parsea con regex. Antes el modal 404eaba contra PaperMC API (que no tiene proyecto "forge").
+
+### Fixed
+- **Forge installer "program not found"** (`src-tauri/src/loaders/mods.rs:496` + `run_neoforge_installer:220`): el `Command::new("java")` requería `java` en el PATH de Windows. Cuando Java se instala desde el panel (Adoptium/Zulu), el ejecutable vive en `%APPDATA%/AnvilCraftPanel/runtimes/java/{ver}/bin/java.exe` y **no** se agrega al PATH. Ahora `find_any_java_executable()` busca en el directorio del panel antes de hacer fallback al PATH. Si no encuentra nada, error claro: *"Java not found. Install a Java runtime from Settings → Portable Java, or set the JAVA_HOME environment variable."* NeoForge se benefició del mismo fix preventivo.
+- **Forge installer hangs at "Finalizing download... 100%"** (`src-tauri/src/loaders/mods.rs:471-668`): pipe buffer deadlock. `Stdio::piped()` + `.wait()` sin drain bloqueaba al installer a ~136MB cuando el buffer del OS se llenaba. Ahora se hace drain de stdout/stderr en tasks tokio paralelas (mismo patrón que `run_neoforge_installer`), con tee a `install.log` y progress events a la UI. Bonus: la UI ahora muestra "Forge: Patching 142/..." en vez de mentir con "Finalizing download... 100%".
+
+### Notes
+- **Migración desde RESPALDO**: estos features vienen del backup local `P:/Proyectos/Anvilcraft RESPALDO/AnvilCraft/dev_log.md` (entries 2026-07-01 y 2026-06-18) que no se habían pusheado a git. Ahora sincronizados.
+- **Pendiente**: hay un cambio sin commitear en `src-tauri/Cargo.toml` (bump `0.1.14 → 0.1.16`) que el sub-agente dejó pendiente. Decidir si commitear o descartar.
+
 ## [0.1.16] - 2026-08-02
 
 ### Changed

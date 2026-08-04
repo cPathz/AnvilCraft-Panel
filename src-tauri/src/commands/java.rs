@@ -383,3 +383,38 @@ pub async fn download_zulu_runtime(app: AppHandle, version: u8) -> Result<String
         Err("Zulu Java executable not found after extraction".to_string())
     }
 }
+
+/// Find a Java executable to use for running installer JARs (NeoForge/Forge).
+/// Searches in this order:
+///   1. App's Java runtimes directory: {app_data_dir}/runtimes/java/{ver}/bin/java.exe
+///   2. Recursive search inside app's runtimes (for nested folder structures
+///      like Adoptium's jdk8u412-b08-jre/bin/java.exe)
+///   3. System PATH (java.exe in any PATH directory)
+///
+/// Returns None if no Java executable can be found anywhere.
+pub fn find_any_java_executable(app: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+    // 1+2. App's Java installations
+    if let Ok(app_data) = app.path().app_data_dir() {
+        let java_dir = app_data.join("runtimes").join("java");
+        if let Some(found) = find_java_executable(&java_dir) {
+            return Some(found);
+        }
+    }
+
+    // 3. System PATH
+    find_java_in_path()
+}
+
+fn find_java_in_path() -> Option<std::path::PathBuf> {
+    let exe = if cfg!(windows) { "java.exe" } else { "java" };
+    let Ok(path_var) = std::env::var("PATH") else {
+        return None;
+    };
+    for dir in std::env::split_paths(&path_var) {
+        let candidate = dir.join(exe);
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+    None
+}

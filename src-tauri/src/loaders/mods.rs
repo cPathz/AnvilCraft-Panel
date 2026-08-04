@@ -217,7 +217,10 @@ async fn run_neoforge_installer(
         );
     }
 
-    let mut std_cmd = std::process::Command::new("java");
+    let java_exe = crate::commands::java::find_any_java_executable(app).ok_or_else(|| {
+        "Java not found. Install a Java runtime from Settings \u{2192} Portable Java, or set the JAVA_HOME environment variable.".to_string()
+    })?;
+    let mut std_cmd = std::process::Command::new(&java_exe);
     std_cmd
         .arg("-jar")
         .arg(&installer_path)
@@ -493,7 +496,10 @@ impl LoaderStrategy for ForgeLoader {
         download_file(app, &installer_url, &installer_path, id, None, Some(&log_file)).await?;
 
         // Run installer headlessly
-        let mut std_cmd = std::process::Command::new("java");
+        let java_exe = crate::commands::java::find_any_java_executable(app).ok_or_else(|| {
+            "Java not found. Install a Java runtime from Settings \u{2192} Portable Java, or set the JAVA_HOME environment variable.".to_string()
+        })?;
+        let mut std_cmd = std::process::Command::new(&java_exe);
         std_cmd
             .arg("-jar")
             .arg(&installer_path)

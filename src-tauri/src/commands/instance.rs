@@ -18,6 +18,8 @@ use tauri::{Emitter, Manager, State};
 use uuid::Uuid;
 use zip::ZipArchive;
 
+use crate::commands::server::update_instance_state;
+
 /// Look up a loader in the registry and run its `install`. Used by every
 /// non-hybrid engine (Vanilla, the 4 Bukkit loaders, NeoForge, the 3 proxies,
 /// and Fabric/Forge/Quilt). The 4 hybrids return an error from `create_instance`
@@ -172,7 +174,12 @@ pub async fn create_instance(
         path: slug,
         date_created: Utc::now(),
         last_played: None,
-        state: InstanceState::Stopped,
+        // Mark the instance as `Installing` from the moment the JSON is on
+        // disk. This gates the Start button (and `start_instance` rejects it
+        // with a clear error) until the background install finishes. Without
+        // this, a user could click Start while the installer is still writing
+        // the server jar, producing a "Missing required library" boot error.
+        state: InstanceState::Installing,
         settings: InstanceSettings::default(),
         build,
     };
@@ -190,6 +197,7 @@ pub async fn create_instance(
     let instance_id = id.clone();
     let instance_version = version.clone();
     let instance_path_clone = instance_path.clone();
+    let instances_dir_clone = instances_dir.clone();
     let loader_engine = instance.loader.clone();
     let custom_url_clone = custom_download_url.clone();
     let accept_eula_clone = accept_eula;
@@ -236,6 +244,17 @@ pub async fn create_instance(
             }
         };
 
+
+        // The install is over (success or failure). Flip state back to
+        // `Stopped` so the Start button enables. If the install failed, the
+        // user can still see the error in the install-progress toast and
+        // decide whether to delete the instance or try again — but we never
+        // want to leave a half-installed instance stuck in `Installing`.
+        let _ = update_instance_state(
+            &instances_dir_clone,
+            &instance_id,
+            InstanceState::Stopped,
+        );
 
         if let Err(e) = result {
             let _ = app_handle.emit(

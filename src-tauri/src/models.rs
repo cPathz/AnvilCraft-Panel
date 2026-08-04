@@ -38,6 +38,13 @@ pub enum InstanceEngine {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum InstanceState {
+    /// Initial state while the loader's `install()` is still running
+    /// (downloading the server jar, running the Forge installer, etc.).
+    /// UI must gate the Start button while in this state — without it, a
+    /// user can fire Start before the installer finishes writing files,
+    /// producing "Missing required library" errors at server boot.
+    /// See TROUBLESHOOTING.md (race condition, 2026-08-04) for context.
+    Installing,
     Stopped,
     Starting,
     Running,

@@ -52,6 +52,7 @@
     "status_stopping": "Deteniendo...",
     "status_error": "Error",
     "status_stopped": "Detenido",
+    "status_installing": "Instalando...",
     "btn_folder": "Carpeta",
     "tooltip_folder": "Abrir carpeta de la instancia",
     "tooltip_rename": "Renombrar instancia",

@@ -86,6 +86,11 @@
 
     // --- Instance Actions ---
     async function toggleServer() {
+        if (instance.state === "Installing") {
+            // UI gate should normally prevent this, but guard defensively
+            // against rapid double-clicks where the state may have just changed.
+            return;
+        }
         if (instance.state === "Stopped" || instance.state === "Error") {
             try {
                 await invoke("start_instance", { id: instance.id });
@@ -485,12 +490,32 @@
 
             <button
                 onclick={toggleServer}
-                class="h-10 w-32 justify-center rounded-xl font-bold text-sm shadow-xl transition-all flex items-center gap-2 active:scale-95 select-none {instance.state ===
+                disabled={instance.state === "Installing"}
+                title={instance.state === "Installing"
+                    ? $_("instance_detail.status_installing")
+                    : instance.state === "Running" || instance.state === "Starting"
+                        ? $_("instance_detail.btn_stop")
+                        : $_("instance_detail.btn_start")}
+                class="h-10 w-32 justify-center rounded-xl font-bold text-sm shadow-xl transition-all flex items-center gap-2 active:scale-95 select-none disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 disabled:hover:from-green-500 disabled:hover:to-green-600 {instance.state ===
                     'Running' || instance.state === 'Starting'
                     ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white shadow-red-500/20'
                     : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white shadow-green-500/20'}"
             >
-                {#if instance.state === "Running" || instance.state === "Starting"}
+                {#if instance.state === "Installing"}
+                    <svg
+                        class="animate-spin"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg
+                    >
+                    {$_("instance_detail.status_installing")}
+                {:else if instance.state === "Running" || instance.state === "Starting"}
                     <svg
                         width="16"
                         height="16"

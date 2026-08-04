@@ -10,7 +10,7 @@ export interface Instance {
     icon: string;
     date_created: string;
     last_played: string | null;
-    state: 'Stopped' | 'Starting' | 'Running' | 'Stopping' | 'Error';
+    state: 'Stopped' | 'Starting' | 'Running' | 'Stopping' | 'Installing' | 'Error';
     settings?: {
         min_ram: number;
         max_ram: number;

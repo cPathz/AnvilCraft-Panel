@@ -23,6 +23,7 @@ pub async fn start_instance(
     let mut instance_path = PathBuf::new();
     let mut settings = InstanceSettings::default();
     let mut instance_engine = InstanceEngine::Vanilla;
+    let mut inst_state = InstanceState::Stopped;
 
     // Find instance
     if instances_dir.exists() {
@@ -36,6 +37,7 @@ pub async fn start_instance(
                             instance_path = entry.path();
                             settings = inst.settings;
                             instance_engine = inst.loader;
+                            inst_state = inst.state;
                             break;
                         }
                     }
@@ -46,6 +48,18 @@ pub async fn start_instance(
 
     if !instance_path.exists() {
         return Err("Instance not found".to_string());
+    }
+
+    // Reject early if the instance's install is still running. Without this
+    // guard, the spawned java process can race the installer and fail with
+    // "Missing required library" because the server jar hasn't been written
+    // to disk yet. The UI is expected to disable the Start button while
+    // `state == Installing`, but this is a defence-in-depth backstop.
+    if inst_state == InstanceState::Installing {
+        return Err(
+            "Instance is still installing. Please wait until it finishes before starting the server."
+                .to_string(),
+        );
     }
 
     let mc_dir = instance_path.join(".minecraft");
@@ -355,7 +369,7 @@ pub async fn send_command(
 }
 
 // Private Helper
-fn update_instance_state(
+pub(crate) fn update_instance_state(
     instances_dir: &std::path::Path,
     id: &str,
     new_state: InstanceState,

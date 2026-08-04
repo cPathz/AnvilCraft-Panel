@@ -52,6 +52,7 @@
     "status_stopping": "Stopping",
     "status_error": "Error",
     "status_stopped": "Stopped",
+    "status_installing": "Installing...",
     "btn_folder": "Folder",
     "tooltip_folder": "Open instance folder",
     "tooltip_rename": "Rename instance",
